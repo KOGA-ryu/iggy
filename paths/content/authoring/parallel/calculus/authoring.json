@@ -1,0 +1,26 @@
+{
+  "format": "paths_learning_authoring",
+  "format_version": 1,
+  "package_id": "pilot_calculus_derivative",
+  "package_version": 1,
+  "sources": [
+    {
+      "id": "pilot_calculus_derivative_original_v1",
+      "kind": "original",
+      "title": "Build a derivative from a difference quotient",
+      "uri": "paths:original/pilot_calculus_derivative/v1",
+      "revision": "1",
+      "attribution": "Original Paths prose, worked example, exercise decisions, distractors, mathematical certificates and review. Definitions and conditions were checked against OpenStax Calculus Volume 1, section 3.1.",
+      "reuse": "Original project material; no external exercise wording, textbook prose or figures copied.",
+      "content_ids": [
+        "pilot_calc_derivative_v1_reading",
+        "pilot_calc_derivative_v1_read_notation",
+        "pilot_calc_derivative_v1_worked_check",
+        "pilot_calc_derivative_v1_choose_next_step",
+        "pilot_calc_derivative_v1_explain_step",
+        "pilot_calc_derivative_v1_repair_error",
+        "pilot_calc_derivative_v1_independent"
+      ]
+    }
+  ]
+}

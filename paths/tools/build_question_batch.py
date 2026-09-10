@@ -29,6 +29,7 @@ PROBABILITY_FAMILY = 'finite_probability_v1'
 PROBABILITY_GROUPS = ('event', 'complement', 'boundary')
 PROBABILITY_TITLES = ('Count an event', 'Count its complement', 'Impossible or certain')
 REASONING_ROOT = ROOT / 'content/authoring/learning/probability_reasoning'
+MATRIX_REASONING_ROOT = ROOT / 'content/authoring/learning/matrix_reasoning'
 # Authoring roles describe the decision and required certificate, not a new runtime solver.
 EXERCISE_ROLES = {
     'read_notation':'notation_interpretation', 'worked_check':'worked_example',
@@ -466,7 +467,7 @@ def verify_role_content(questions, compiled, certificates):
             check(len(actual['steps'])==1 and all(not s.get('hint') for s in actual['steps']),q,'guidance','The fresh problem must remain one uncued choice; linked reading is optional')
 
 
-def finite_case(q, keys):
+def case_fields(q, keys):
     case=q['case'];require(set(case)==set(keys),f"{q['id']}: unexpected original case fields")
     return case
 
@@ -476,7 +477,7 @@ def finite_set(values):
 
 
 def uniform_case(q, keys=('n','event')):
-    case=finite_case(q,keys);n=case['n']
+    case=case_fields(q,keys);n=case['n']
     require(type(n) is int and 3<=n<=32,f"{q['id']}: expected 3 through 32 equally likely outcomes")
     outcomes=list(range(1,n+1))
     if 'divisor' in case:
@@ -501,7 +502,7 @@ def worked_certificate(q):
 
 
 def method_certificate(q):
-    case=finite_case(q,('weights','event'));event=case['event']
+    case=case_fields(q,('weights','event'));event=case['event']
     require(type(case['weights']) is dict and list(case['weights'])==['a','b','c'] and event==['a','b'],'This bounded contrast uses outcomes a, b, c and event a or b')
     require(all(type(v) is str for v in case['weights'].values()),'Outcome weights must be exact fraction strings')
     weights={k:Fraction(v) for k,v in case['weights'].items()}
@@ -530,7 +531,7 @@ def repair_certificate(q):
 
 
 def transfer_certificate(q):
-    case=finite_case(q,('blue','red','green'));require(all(type(v) is int and 1<=v<=10 for v in case.values()),'Token counts must be positive integers at most ten')
+    case=case_fields(q,('blue','red','green'));require(all(type(v) is int and 1<=v<=10 for v in case.values()),'Token counts must be positive integers at most ten')
     # Enumerate physical tokens: colours are events, not equally likely outcomes.
     tokens=[(colour,i) for colour,count in case.items() for i in range(1,count+1)];event=[t for t in tokens if t[0]!='red'];n=len(tokens)
     probability=sum((Fraction(1,n) for _ in event),Fraction(0))
@@ -545,26 +546,26 @@ ROLE_CHECKERS={
 }
 
 
-def reasoning_certificate(q):
-    given,after,steps,facts=ROLE_CHECKERS[q['role']](q)
+def reasoning_certificate(q, checkers=ROLE_CHECKERS):
+    try:
+        given,after,steps,facts=checkers[q['role']](q)
+    except export.ExportError as error:
+        raise export.ExportError(error.code,f"{q['id']} ({q['role']}): {error}",error.diagnostics) from error
     require(len(after)==len(steps) and all(len(choices)==3 and len(set(choices))==3 and choices.count(answer)==1 for choices,answer in steps),f"{q['id']}: ambiguous reasoning choices")
     return dict(id=q['id'],role=q['role'],accepted=True,steps_checked=len(steps),wrong_choices_checked=2*len(steps),
         evidence=dict(kind=EXERCISE_ROLES[q['role']],facts=facts),
         expected=dict(given=given,after=after,steps=[dict(choices=choices,answer=answer) for choices,answer in steps]))
 
 
-def reasoning_documents():
-    source=REASONING_ROOT/'sequence.json';raw=export.read_bytes(source,128*1024)
-    questions=validate_role_sequence(export.decoded(raw),source);certificates=[reasoning_certificate(q) for q in questions]
-    values=dict(subject='probability_statistics',subject_title='Probability and Statistics',
-        chapter='finite_probability_practice',chapter_title='Finite probability: count and compare',
-        reading_id='probability_reasoning_v1_reading',reading_title='Reason about probability')
+def reasoning_documents(root, checkers, values, filename):
+    source=root/'sequence.json';raw=export.read_bytes(source,128*1024)
+    questions=validate_role_sequence(export.decoded(raw),source);certificates=[reasoning_certificate(q,checkers) for q in questions]
     for q in questions:
         for key in ('id','title','objective'):values[q['role']+'_'+key]=q[key]
     values['practice_links']=''.join(f"@practice {q['id']}\n" for q in questions)
     for field,name in (('lesson_blocks','lesson.md.in'),('questions','questions.paths.md.in')):
-        path=REASONING_ROOT/name;values[field]=fill_template(export.read_bytes(path,128*1024).decode('utf-8'),values,path)
-    return questions,certificates,{'04_reasoning.paths.md':chapter_text(values).encode()},values['reading_id'],export.sha(raw)
+        path=root/name;values[field]=fill_template(export.read_bytes(path,128*1024).decode('utf-8'),values,path)
+    return questions,certificates,{filename:chapter_text(values).encode()},values['reading_id'],export.sha(raw)
 
 
 def verify_probability_compiled(questions, compiled):
@@ -612,7 +613,10 @@ def probability_batch(args):
         response_mode='choices.v1',written_checker=False,worked_questions=len(questions),retained_questions=0,
         teaching_review='Original finite counting lesson; user visual acceptance pending')
     if args.format_version==2:
-        roles,certificates,role_docs,reading_id,manifest_hash=reasoning_documents()
+        roles,certificates,role_docs,reading_id,manifest_hash=reasoning_documents(REASONING_ROOT,ROLE_CHECKERS,
+            dict(subject='probability_statistics',subject_title='Probability and Statistics',
+                 chapter='finite_probability_practice',chapter_title='Finite probability: count and compare',
+                 reading_id='probability_reasoning_v1_reading',reading_title='Reason about probability'),'04_reasoning.paths.md')
         questions=questions+roles;results=results+certificates;docs.update(role_docs)
         author['sources'].append(dict(id='probability_reasoning_v1',kind='generated',title='Original probability reasoning sequence',
             uri='paths:generated/probability_reasoning_v1',revision='1',attribution=author['sources'][0]['attribution']
@@ -624,9 +628,137 @@ def probability_batch(args):
     return questions,results,docs,author,audit
 
 
-BUILDERS={'matrix':matrix_batch,'linear':linear_batch,'probability':probability_batch}
-COMPILED_CHECKS={'probability':verify_probability_compiled}
-ROUTES_PER_QUESTION={'matrix':5,'linear':5,'probability':1}
+def row_equation(row):
+    lhs=''
+    for value,symbol in zip(row,('x','y')):
+        if value:lhs+=('-' if value<0 else '+' if lhs else '')+('' if abs(value)==1 else tex(abs(value)))+symbol
+    return (lhs or '0')+'='+tex(row[2])
+
+
+def exact_rows(rows, count, identity):
+    require(type(rows) is list and len(rows)==count and all(type(row) is list and len(row)==3
+            and all(type(v) is int and abs(v)<=20 for v in row) for row in rows),
+            f'{identity}: expected {count} augmented rows of three integers, magnitude at most 20')
+    return [[Fraction(v) for v in row] for row in rows]
+
+
+def system_solution(rows):
+    (a,b,c),(d,e,f)=rows;det=a*e-b*d
+    require(det!=0,'This bounded matrix sequence requires a unique solution')
+    xy=[(c*e-b*f)/det,(a*f-c*d)/det]
+    require(all(a*xy[0]+b*xy[1]==c for a,b,c in rows),'Original-row substitution failed')
+    return xy
+
+
+def matrix_case(q, operation=False):
+    case=case_fields(q,('rows','multiplier') if operation else ('rows',))
+    rows=exact_rows(case['rows'],2,q['id']);xy=system_solution(rows)
+    if operation:require(type(case['multiplier']) is int and 0<abs(case['multiplier'])<=6,f"{q['id']}: expected a nonzero row-addition multiplier, magnitude at most 6")
+    return rows,xy
+
+
+def row_addition(rows, multiplier):
+    after=operate(rows,'add_row_1_to_2',multiplier)
+    require(system_solution(after)==system_solution(rows),'Row addition changed the original solution')
+    require(operate(after,'add_row_1_to_2',-multiplier)==rows,'Inverse did not recover every original entry')
+    return after
+
+
+def row_operation(multiplier, destination=2, source=1):
+    return add_tex(rf'R_{destination}\leftarrow R_{destination}',multiplier,rf'R_{source}')
+
+
+def matrix_notation_certificate(q):
+    row=exact_rows([case_fields(q,('row',))['row']],1,q['id'])[0];a,b,c=row
+    answer=row_equation(row);choices=[answer,row_equation([a,-b,c]),row_equation([a,-c,b])]
+    return matrix_tex([row]),[answer],[(choices,answer)],dict(coefficients=list(map(str,row[:2])),constant=str(c),equation=answer)
+
+
+def matrix_worked_certificate(q):
+    rows,xy=matrix_case(q,True);k=q['case']['multiplier'];after=row_addition(rows,k);a,b,c=after[1]
+    require(a==0 and b==1,'Worked role supplies the two completed coefficients 0 and 1')
+    operation=row_operation(k)
+    missing=rf"R'_2=\left[\begin{{array}}{{cc|c}}{tex(a)}&{tex(b)}&\square\end{{array}}\right]"
+    given=r'\begin{gathered}'+matrix_tex(rows)+r'\\'+operation+r'\\'+missing+r'\end{gathered}'
+    values=[rows[1][2],c,rows[1][2]-k*rows[0][2]]
+    return given,[matrix_tex(after)],[(list(map(tex,values)),tex(c))],dict(new_constant=str(c),new_row=list(map(str,after[1])),original_solution=list(map(str,xy)))
+
+
+def matrix_method_certificate(q):
+    rows,xy=matrix_case(q);require(rows[0][0]!=0 and rows[1][0]!=0,'Elimination needs a nonzero source and target coefficient')
+    k=-rows[1][0]/rows[0][0];after=row_addition(rows,k)
+    candidates=[(-k,2,1),(k,1,2),(k,2,1)]
+    changed=[operate(rows,'add_row_1_to_2' if destination==2 else 'add_row_2_to_1',factor) for factor,destination,_ in candidates]
+    matches=[i for i,result in enumerate(changed) if result[0]==rows[0] and result[1][0]==0]
+    require(matches==[2],'Exactly one operation must cancel row 2 while retaining row 1')
+    choices=[row_operation(*candidate) for candidate in candidates]
+    return matrix_tex(rows),[matrix_tex(after)],[(choices,choices[2])],dict(multiplier=str(k),target_entries=[str(r[1][0]) for r in changed],original_solution=list(map(str,xy)))
+
+
+def matrix_explanation_certificate(q):
+    rows,xy=matrix_case(q,True);k=q['case']['multiplier'];after=row_addition(rows,k)
+    repeated=operate(after,'add_row_1_to_2',k);erased=[after[0],[Fraction(0)]*3]
+    recovered=operate(after,'add_row_1_to_2',-k)
+    require(repeated!=rows and erased!=rows and recovered==rows,'Only the inverse may recover the original system')
+    given=r'\begin{gathered}'+matrix_tex(rows)+r'\\'+row_operation(k)+r'\\'+matrix_tex(after)+r'\end{gathered}'
+    choices=[row_operation(k),r'R_2\leftarrow 0R_2',row_operation(-k)]
+    return given,[matrix_tex(rows)],[(choices,choices[2])],dict(inverse_multiplier=str(-k),recovered_rows=[[str(v) for v in row] for row in recovered],original_solution=list(map(str,xy)))
+
+
+def matrix_repair_certificate(q):
+    rows,xy=matrix_case(q,True);k=q['case']['multiplier'];after=row_addition(rows,k)
+    require(after[1][:2]==[0,1] and k<0 and rows[0][2]!=0,'Repair case requires cancellation to [0, 1 | c] and a changed constant')
+    a,b,c=rows[1];source=rows[0];m=-k;bad=[after[1][0],after[1][1],c]
+    # L1 omits only the constant operation; L2 evaluates it and L3 reads that bad row.
+    expressions=[rf'{tex(value)}-{tex(m)}({tex(other)})' for value,other in zip(rows[1],source)]
+    given=(r'\begin{gathered}'+matrix_tex(rows)+r"\\\begin{aligned}L_1 &: R'_2=["+expressions[0]+r',\,'+expressions[1]+r'\mid'+tex(c)+r"]\\L_2 &: R'_2=[0,\,1\mid"+tex(c)+r']\\L_3 &: y='+tex(c)+r'\end{aligned}\end{gathered}')
+    corrected=after[1][2];wrong_xy=[(source[2]-source[1]*c)/source[0],c]
+    require(sum(value*component for value,component in zip(rows[1][:2],wrong_xy))!=c,'The incomplete operation must change the original solution')
+    correction=rf'L_1:\quad {tex(c)}\ \mathrm{{must\ become}}\ {expressions[2]}'
+    choices=list(map(tex,(c,c-source[2],corrected)))
+    return given,[correction,matrix_tex(after)+rf',\quad y={tex(corrected)}'],[(['L_1','L_2','L_3'],'L_1'),(choices,tex(corrected))],dict(first_error='L_1',incorrect_row=list(map(str,bad)),corrected_row=list(map(str,after[1])),original_solution=list(map(str,xy)),incorrect_pair=list(map(str,wrong_xy)))
+
+
+def matrix_transfer_certificate(q):
+    rows,(x,y)=matrix_case(q);pairs=[(y,x),(x,y),(2*x,y)]
+    residuals=[[a*u+b*v-c for a,b,c in rows] for u,v in pairs]
+    require([i for i,r in enumerate(residuals) if r==[0,0]]==[1],'Only one ordered pair must satisfy both original equations')
+    choices=[rf'(x,y)=\left({tex(u)},{tex(v)}\right)' for u,v in pairs]
+    return matrix_tex(rows),[rf'x={tex(x)},\quad y={tex(y)}'],[(choices,choices[1])],dict(solution=list(map(str,(x,y))),choice_residuals=[[str(v) for v in r] for r in residuals])
+
+
+MATRIX_ROLE_CHECKERS={
+    'read_notation':matrix_notation_certificate,'worked_check':matrix_worked_certificate,
+    'choose_next_step':matrix_method_certificate,'explain_step':matrix_explanation_certificate,
+    'repair_error':matrix_repair_certificate,'independent':matrix_transfer_certificate,
+}
+
+
+def matrix_reasoning_batch(args):
+    export.require(args.count==6 and type(args.count) is int,'batch.count','Matrix reasoning is one six-question sequence; --count must be 6')
+    export.require(args.format_version==1,'batch.format','Matrix reasoning uses format version 1')
+    questions,checks,docs,reading,manifest_hash=reasoning_documents(MATRIX_REASONING_ROOT,MATRIX_ROLE_CHECKERS,
+        dict(subject='linear_algebra',subject_title='Linear Algebra',chapter='worked_matrix_practice',chapter_title='Worked matrix practice',
+             reading_id='matrix_reasoning_v1_reading',reading_title='Reason about row operations'),'matrix_reasoning.paths.md')
+    author=dict(format='paths_learning_authoring',format_version=1,package_id='matrix_reasoning_practice',package_version=args.version,
+        sources=[dict(id='matrix_reasoning_v1',kind='generated',title='Original matrix row-operation reasoning sequence',
+            uri='paths:generated/matrix_reasoning_v1',revision='1',
+            attribution='Original Paths examples and explanations. Augmented matrices and row-operation conventions checked against OpenStax College Algebra 2e, section 7.6: https://openstax.org/books/college-algebra-2e/pages/7-6-solving-systems-with-gaussian-elimination',
+            reuse='Original questions and exact rational certificates; no external exercise text copied.',content_ids=[q['id'] for q in questions]+[reading])])
+    audit=dict(family='matrix_reasoning_v1',family_version=1,format_version=1,count=6,questions=questions,mathematical_checks=checks,
+        response_mode='choices.v1',written_checker=False,worked_questions=6,retained_questions=0,exercise_roles=list(EXERCISE_ROLES),role_manifest_sha256=manifest_hash,
+        template_sha256={name:export.sha(export.read_bytes(MATRIX_REASONING_ROOT/name,128*1024)) for name in ('lesson.md.in','questions.paths.md.in')},
+        chapter_sha256=export.sha(export.read_bytes(CHAPTER_TEMPLATE,128*1024)),teaching_review='Original six-role matrix sequence; user visual and teaching acceptance pending')
+    return questions,checks,docs,author,audit
+
+
+def verify_matrix_reasoning_compiled(questions, compiled):
+    verify_role_content(questions,compiled,[reasoning_certificate(q,MATRIX_ROLE_CHECKERS) for q in questions])
+
+
+BUILDERS={'matrix':matrix_batch,'linear':linear_batch,'probability':probability_batch,'matrix-reasoning':matrix_reasoning_batch}
+COMPILED_CHECKS={'probability':verify_probability_compiled,'matrix-reasoning':verify_matrix_reasoning_compiled}
+ROUTES_PER_QUESTION={'matrix':5,'linear':5,'probability':1,'matrix-reasoning':1}
 
 
 def authoring_inputs(family):
@@ -635,6 +767,7 @@ def authoring_inputs(family):
         'linear':(LINEAR_TEMPLATE,ROOT/'content/authoring/learning/linear_reference/lesson.md.in',linear.SPEC,Path(linear.__file__)),
         'probability':tuple(PROBABILITY_ROOT/name for name in ('recipe.json','question.paths.md.in','lesson.md.in'))
                       +tuple(REASONING_ROOT/name for name in ('sequence.json','questions.paths.md.in','lesson.md.in')),
+        'matrix-reasoning':tuple(MATRIX_REASONING_ROOT/name for name in ('sequence.json','questions.paths.md.in','lesson.md.in')),
     }[family]
     return {str(p.relative_to(ROOT) if p.is_relative_to(ROOT) else p):export.sha(export.read_bytes(p,128*1024))
             for p in (Path(__file__),CHAPTER_TEMPLATE,*paths)}
@@ -681,9 +814,9 @@ def run(args):
 def main():
     cli = argparse.ArgumentParser(description=__doc__)
     cli.add_argument('--family', choices=tuple(BUILDERS), default='matrix')
-    cli.add_argument('--count', type=int, default=12, help='3..36 in multiples of 3 for matrix/probability, 6..36 in multiples of 6 for linear')
+    cli.add_argument('--count', type=int, help='matrix/probability: 3..36 by 3 (default 12); linear: 6..36 by 6 (default 12); matrix-reasoning: exactly 6')
     cli.add_argument('--version', type=int, help='immutable package version; increase when extending a batch')
-    cli.add_argument('--format-version', type=int, choices=(1,2), help='matrix/probability default to 2, linear to 1')
+    cli.add_argument('--format-version', type=int, choices=(1,2), help='matrix/probability default to 2, linear/matrix-reasoning to 1')
     cli.add_argument('--target', type=Path, default=ROOT / 'b/sorter')
     cli.add_argument('--model', type=Path, default=ROOT / 'b/paths_learning_document_tests')
     cli.add_argument('--output', type=Path)
@@ -692,7 +825,8 @@ def main():
     cli.add_argument('--publish', action='store_true', help='activate through the existing publisher; otherwise export only')
     try:
         args = cli.parse_args()
-        default={"matrix":2,"linear":1,"probability":2}[args.family]
+        default={"matrix":2,"linear":1,"probability":2,"matrix-reasoning":1}[args.family]
+        if args.count is None:args.count={'matrix':12,'linear':12,'probability':12,'matrix-reasoning':6}[args.family]
         if args.version is None:args.version=default
         if args.format_version is None:args.format_version=default
         export.require(0 < args.version <= 2**32-1, 'batch.version', 'Version must be a positive 32-bit integer')

@@ -1,0 +1,36 @@
+{
+  "format": "paths_learning_draft",
+  "format_version": 1,
+  "note": "Origin snapshot only, not validation of later edits. Preview does not publish or load personal progress.",
+  "origin_files": [
+    {
+      "bytes": 16932,
+      "path": "documents/chapter.paths.md",
+      "sha256": "e1123524d2ae998f8475708cbbd1264990a4488bcebc528c979b9c83fa6a165d"
+    }
+  ],
+  "package_id": "linear_family_v1_sample",
+  "package_version": 1,
+  "preview_only": true,
+  "source": "/Users/kogaryu/iggy3d/paths/build/parallel-authoring/algebra/bea050abe72bd6053f71aeb12b7c53e206fa6e6ac4ccffa50c1bbb14af68761c/authoring",
+  "sources": [
+    {
+      "attribution": "Original Paths questions, lesson, variation plan and exact arithmetic certificates.",
+      "content_ids": [
+        "linear_family_v1_sample_e763914cd65d_reading",
+        "linear_family_v1_sample_read_notation_c633381fc7db",
+        "linear_family_v1_sample_worked_check_191af608c76b",
+        "linear_family_v1_sample_choose_next_step_dc1c24b720b1",
+        "linear_family_v1_sample_explain_step_8ce66ab16575",
+        "linear_family_v1_sample_repair_error_191af608c76b",
+        "linear_family_v1_sample_independent_804227bab05d"
+      ],
+      "id": "linear_family_v1_sample_source",
+      "kind": "generated",
+      "reuse": "Original project material; no external exercise text copied.",
+      "revision": "1",
+      "title": "Original balanced-equation teaching family",
+      "uri": "paths:generated/linear_family_v1"
+    }
+  ]
+}

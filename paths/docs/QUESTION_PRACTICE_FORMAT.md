@@ -8,11 +8,14 @@ own checked responses. Motion and further
 interactive 3D integration are deferred. Existing prepared questions retain
 their current format.
 
-The user wants fast solving and substantial explanation in one workspace,
-progressing from small, explained decisions to writing the entire solution.
-Every question therefore has four support levels. A separate complexity band
-describes the mathematics. Changing support never changes the problem, domain,
-answer, or mathematical standard of correctness.
+The user's current preference is fast multiple-choice solving with substantial
+explanation available in the same textbook workspace. New subject pilots follow
+the [shared authoring contract](PARALLEL_QUESTION_AUTHORING.md) and its six
+exercise roles. Prepared `choices.v1` questions do not offer four written support
+levels. The four-level contract below describes the existing bounded linear and
+matrix kernels; writing remains an optional capability of those templates.
+A separate complexity band describes the mathematics. Changing support never
+changes the problem, domain, answer, or mathematical standard of correctness.
 
 The [linear batch](QUESTION_BATCHES.md#linear-equations) now applies the worked
 reference format to 12 `linear.v1` cards, using the existing exact recipe. One

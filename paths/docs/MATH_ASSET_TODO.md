@@ -1,20 +1,20 @@
 # Math diagrams and model assets — to-do list
 
-Planning snapshot: 9 September 2026. **Six subjects, 178 chapters/topics, 930 source entries, 135 exercise cards, and 37 existing Math Lab models (updated through P066).**
+Planning snapshot: 9 September 2026. **Six subjects, 178 chapters/topics, 930 source entries, 135 exercise cards, and 39 existing Math Lab models (updated through P068).**
 
 This is the complete chapter-level scope for the current learning library, not a separate new engine for every chapter. Each chapter gets a concise diagram brief and an interactive-model brief. Subcategories sit within their parent chapter; repeated material shares a model or preset. The broader unread book shelf is not counted as additional chapters here.
 
 **D = diagrams and linked plots. M = interactive models/assets.** A model can be 2D or 3D. Abstract topics use finite examples and labelled diagrams where those explain the idea better. All boxes below mean chapter/family work remains to be organized and delivered; references to existing models mean reuse or extension, not that every chapter is already integrated.
 
-**Latest asset: [P066 — Relations and Graphs Lab](P066_RELATIONS_AND_GRAPHS.md).** Six-node directed relations now support adjacency, shortest paths, property witnesses and equivalence grouping; the three-by-three matching layer supplies augmentations and Hall obstructions. These are shared foundations; chapter integration and broader graph algorithms remain open.
+**Latest asset: [P068 — Quotients and Homomorphisms Lab](P068_QUOTIENTS_AND_HOMOMORPHISMS.md).** Group maps now supply preservation witnesses, kernel/fiber collapse and quotient-to-image operations. Editable subsets expose normality, representative conflicts and finite-ring ideal conditions. These are bounded foundations; broader algebra and chapter integration remain open.
 
 ## Existing models to reuse
 
-These 37 model families are present in the current source registry. The list is an implementation inventory, not a new visual-acceptance claim.
+These 39 model families are present in the current source registry. The list is an implementation inventory, not a new visual-acceptance claim.
 
 | Area | Existing models |
 | --- | --- |
-| Algebra and sets | Algebra blocks; Symmetry; Modular drums; Gaussian lattice; Roots of unity; Boolean Solids Lab; Sets and Maps Lab |
+| Algebra and sets | Algebra blocks; Symmetry; Modular drums; Gaussian lattice; Roots of unity; Boolean Solids Lab; Sets and Maps Lab; Finite Algebra Lab; Quotients and Homomorphisms Lab |
 | Trigonometry and harmonics | Trigonometry; Harmonics; Harmonic sphere |
 | Calculus and geometry | Calculus; Functions; Surfaces; Vector fields; Flux shells; Curves and sweeps; Lathe Lab; Patch Lab |
 | Linear algebra | Linear algebra; Tensor blocks; Covariance cloud; Quadratic forms; PSD cone; Norm balls; Distance Geometry Lab; Polar Decomposition Lab; QR and Least Squares Lab |
@@ -23,6 +23,18 @@ These 37 model families are present in the current source registry. The list is 
 
 Existing matrix boards, linear-system figures, and determinant-volume figures also provide reusable foundations.
 
+## Reusable foundation planning
+
+[The foundation plan](MATH_ASSET_REUSE_PLAN.md) audits missing shared capabilities
+through P068 and prioritizes six initial foundations, with eleven later extensions
+or specialist compositions. [The routing table](MATH_ASSET_REUSE_MAP.tsv) assigns
+one primary planning route to each of the 178 chapters and 135 exercise cards;
+these are starting points, not completion claims. [The batch workflow](MATH_ASSET_BATCH_WORKFLOW.md)
+defines isolated asset-worker outputs, one integration owner and three verified
+existing-model configurations for a proposed Terra pilot. No workers have been
+dispatched and no new foundation or automatic recipe loader is implemented by
+this planning checkpoint. The chapter checklist below remains canonical.
+
 ## Shared build queue
 
 These **26 shared families** collect the work below. Several extend existing labs; each can be delivered in small batches.
@@ -30,8 +42,8 @@ These **26 shared families** collect the work below. Several extend existing lab
 - [ ] **QR and least squares** — Orthogonal frames, projections, residuals, QR stages, and rank-deficient/minimum-norm examples. **P064:** real 3x2 asset delivered; general-size extensions and chapter integration remain.
 - [ ] **Matrix factorizations and numerical work** — LU/Cholesky/Schur/Jordan/Smith stages, sparsity, pivoting, roundoff, work counts, and iterative solvers.
 - [ ] **Subspaces and sensitivity** — Fundamental subspaces, principal angles, conditioning, perturbations, and Procrustes alignment.
-- [ ] **Sets, maps, and logic** — Finite sets, quotients, function arrows, truth tables, circuits, and proof dependencies. **P065:** finite maps, fiber partitions, competing compositions and weighted pushforwards delivered; broader logic and chapter integration remain.
-- [ ] **Finite algebra** — Groups, rings, ideals, modules, finite fields, extensions, and automorphism actions.
+- [ ] **Sets, maps, and logic** — Finite sets, quotients, function arrows, truth tables, circuits, and proof dependencies. **P065:** finite maps, fiber partitions, competing compositions and weighted pushforwards delivered; broader logic and chapter integration remain. **P068:** group-map preservation and kernel-to-image quotient examples are available.
+- [ ] **Finite algebra** — Groups, rings, ideals, modules, finite fields, extensions, and automorphism actions. **P067:** operation tables, group-law witnesses, generated subgroups/cosets and Z/nZ ring examples delivered; broader algebra and chapter integration remain. **P068:** finite-group quotients and small-ring ideals/quotients now have representative and absorption witnesses.
 - [ ] **Categories and homological algebra** — Commutative diagrams, exact sequences, complexes, resolutions, filtrations, and spectral-sequence pages.
 - [ ] **Polynomials and complex analysis** — Roots, rational functions, complex-function views, contours, residues, and algebraic-curve examples.
 - [ ] **Triangles, inverse functions, and hyperbolic geometry** — General triangles, branch restrictions, circle/hyperbola links, and spherical triangles.
@@ -62,18 +74,18 @@ The three-digit numbers match the suffix of the library’s stable topic IDs: 00
 
 Source: [Algebra notes](</Users/kogaryu/Documents/ChatGPT/math terms and definitions/sections/algebra.md>).
 
-- [ ] **001 — Algebraic Structures** — **D:** Sets, structure hierarchy, operation tables, and maps between groups/rings/fields. **M:** Finite-set and operation-table explorer; reuse the symmetry and Gaussian-integer labs.
+- [ ] **001 — Algebraic Structures** — **D:** Sets, structure hierarchy, operation tables, and maps between groups/rings/fields. **M:** Finite-set and operation-table explorer; reuse the symmetry and Gaussian-integer labs. **Asset progress:** [P067](P067_FINITE_ALGEBRA.md) supplies editable finite operation tables and verified group laws; the full chapter remains open. **P068 progress:** [Quotients and Homomorphisms](P068_QUOTIENTS_AND_HOMOMORPHISMS.md) supplies structure-preserving finite-group maps and quotient-ring examples; the full chapter remains open.
 - [ ] **002 — Number Systems and Divisibility** — **D:** Number-set nesting, divisibility trees, Euclidean steps, and residue cycles. **M:** Extend modular drums with GCD, prime factors, and linked remainder views.
-- [ ] **003 — Equations and Relations** — **D:** Function arrows, equivalence classes, and equation-versus-identity comparisons. **M:** Mapping machine with injection, surjection, bijection, composition, and quotient settings. **Asset progress:** [P065](P065_SETS_AND_MAPS.md) supplies finite maps, injection/surjection, fibers and composition; the full chapter remains open. **P066 progress:** [Relations and Graphs](P066_RELATIONS_AND_GRAPHS.md) supplies relation-property witnesses and finite equivalence classes; the full chapter remains open.
+- [ ] **003 — Equations and Relations** — **D:** Function arrows, equivalence classes, and equation-versus-identity comparisons. **M:** Mapping machine with injection, surjection, bijection, composition, and quotient settings. **Asset progress:** [P065](P065_SETS_AND_MAPS.md) supplies finite maps, injection/surjection, fibers and composition; the full chapter remains open. **P066 progress:** [Relations and Graphs](P066_RELATIONS_AND_GRAPHS.md) supplies relation-property witnesses and finite equivalence classes; the full chapter remains open. **P068 progress:** [Quotients and Homomorphisms](P068_QUOTIENTS_AND_HOMOMORPHISMS.md) supplies kernel/fiber collapse and quotient projections; the full chapter remains open.
 - [ ] **004 — Polynomials and Rational Expressions** — **D:** Coefficient strips, factor trees, repeated roots, poles, and excluded inputs. **M:** Extend Functions with draggable polynomial roots and rational-function holes/asymptotes.
 - [ ] **005 — Inequalities and Expressions** — **D:** Number-line intervals, absolute-value distances, and AM–GM rectangle comparisons. **M:** Norm-ball comparisons plus an adjustable fixed-area rectangle/box.
-- [ ] **006 — Symmetry and Group Actions** — **D:** Permutation cycles, orbit graphs, stabilizers, and coset partitions. **M:** Extend Symmetry with labelled polygons, cube actions, and noncommuting moves.
+- [ ] **006 — Symmetry and Group Actions** — **D:** Permutation cycles, orbit graphs, stabilizers, and coset partitions. **M:** Extend Symmetry with labelled polygons, cube actions, and noncommuting moves. **Asset progress:** [P067](P067_FINITE_ALGEBRA.md) supplies S3 permutations, generated subgroups, left/right cosets and normality; the full chapter remains open. **P068 progress:** [Quotients and Homomorphisms](P068_QUOTIENTS_AND_HOMOMORPHISMS.md) supplies nonnormal-subgroup representative conflicts and quotient groups; the full chapter remains open.
 - [ ] **007 — Algebraic Methodology** — **D:** Substitution chains, reversible equation steps, and contradiction dependencies. **M:** Small composition/substitution sandbox; reuse existing equation and function models.
-- [ ] **008 — Theorems** — **D:** Bézout, remainder, coset, factorization, CRT, and interpolation proof figures. **M:** Reuse modular, finite-group, polynomial, and interpolation models as theorem examples.
-- [ ] **009 — Worked examples** — **D:** Step-by-step Euclidean, factorization, and cyclic-subgroup traces. **M:** Presets for the preceding algebra models; no separate model family.
-- [ ] **010 — Proof sketches** — **D:** Assumption-to-conclusion maps and highlighted witnesses/counterexamples. **M:** Replay the chapter's small integer, polynomial, and subgroup examples.
-- [ ] **011 — Algebraic Structures and Quotients** — **D:** Ideal lattices, quotient classes, and nilpotent multiplication chains. **M:** Extend Gaussian lattice and finite-ring tables with ideals and quotient projections.
-- [ ] **012 — Advanced Ring-Theoretic Terms** — **D:** Ideal chains, Euclidean descent, and maximal-ideal quotient diagrams. **M:** Integer/polynomial ring examples with division steps and quotient-field checks.
+- [ ] **008 — Theorems** — **D:** Bézout, remainder, coset, factorization, CRT, and interpolation proof figures. **M:** Reuse modular, finite-group, polynomial, and interpolation models as theorem examples. **Asset progress:** [P067](P067_FINITE_ALGEBRA.md) supplies finite coset partitions and subgroup-order examples; the full chapter remains open. **P068 progress:** [Quotients and Homomorphisms](P068_QUOTIENTS_AND_HOMOMORPHISMS.md) supplies finite first-isomorphism-theorem examples; the full chapter remains open.
+- [ ] **009 — Worked examples** — **D:** Step-by-step Euclidean, factorization, and cyclic-subgroup traces. **M:** Presets for the preceding algebra models; no separate model family. **Asset progress:** [P067](P067_FINITE_ALGEBRA.md) supplies cyclic-group presets and animated generator powers; the full chapter remains open. **P068 progress:** [Quotients and Homomorphisms](P068_QUOTIENTS_AND_HOMOMORPHISMS.md) supplies reduction, parity, projection and ideal presets; the full chapter remains open.
+- [ ] **010 — Proof sketches** — **D:** Assumption-to-conclusion maps and highlighted witnesses/counterexamples. **M:** Replay the chapter's small integer, polynomial, and subgroup examples. **Asset progress:** [P067](P067_FINITE_ALGEBRA.md) supplies concrete identity, associativity and commutativity counterexamples; the full chapter remains open. **P068 progress:** [Quotients and Homomorphisms](P068_QUOTIENTS_AND_HOMOMORPHISMS.md) supplies map-preservation, representative and ideal-absorption counterexamples; the full chapter remains open.
+- [ ] **011 — Algebraic Structures and Quotients** — **D:** Ideal lattices, quotient classes, and nilpotent multiplication chains. **M:** Extend Gaussian lattice and finite-ring tables with ideals and quotient projections. **Asset progress:** [P067](P067_FINITE_ALGEBRA.md) supplies Z/nZ units and zero-divisor witnesses; ideals and quotient projections remain; the full chapter remains open. **P068 progress:** [Quotients and Homomorphisms](P068_QUOTIENTS_AND_HOMOMORPHISMS.md) supplies editable small-ring ideals and quotient operation tables; the full chapter remains open.
+- [ ] **012 — Advanced Ring-Theoretic Terms** — **D:** Ideal chains, Euclidean descent, and maximal-ideal quotient diagrams. **M:** Integer/polynomial ring examples with division steps and quotient-field checks. **Asset progress:** [P067](P067_FINITE_ALGEBRA.md) supplies bounded modular-ring and prime-modulus field examples; ideal chains remain; the full chapter remains open. **P068 progress:** [Quotients and Homomorphisms](P068_QUOTIENTS_AND_HOMOMORPHISMS.md) supplies ideal-condition witnesses in modular, product and dual-number rings; the full chapter remains open.
 - [ ] **013 — Algebraic and Module Extensions** — **D:** Fraction/localization maps, radical membership, and factorization comparisons. **M:** Finite examples of radicals and localization; labelled algebraic-set slices where useful.
 - [ ] **014 — Advanced Module Theory** — **D:** Module/submodule inclusions, homomorphisms, exactness, and tensor grids. **M:** Lattice and torsion modules plus editable kernel/image diagrams; reuse Tensor blocks.
 - [ ] **015 — Homological and Categorical Additions** — **D:** Lifting/extension diagrams, free generators, and torsion decomposition. **M:** Small module examples showing projective, injective, and flat behavior under stated assumptions.

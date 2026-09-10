@@ -1,0 +1,65 @@
+@block introduction | start | - | From nearby slopes to one derivative
+@prose A derivative at a point records an instantaneous rate of change. We will build that number from slopes over nearby intervals, not by putting zero into a denominator. In this pilot every input is real and dimensionless, and every function is a polynomial of degree at most two.
+@prose The six exercises progress from reading derivative notation to completing a limit, choosing a factorization, stating its condition, repairing an expansion, and finding a fresh derivative. They use multiple-choice controls; the final question is still a choice question, not a claim of independent written work or mastery.
+@endblock
+
+@block definition | terms | 1.1 | Function values and increments
+@prose A function f assigns one output to each allowed input. The symbol x names a real input variable, and a names one fixed real input at which we want a derivative. The function value f(a) is the output after substituting a into the whole rule; it is not the derivative f'(a). Prime notation f'(a) names the derivative, when that limit exists.
+@display eq1
+f(a+h)\quad\text{means evaluate the entire function at the real input }a+h
+@prose The real number h is an increment: it moves the input from a to a+h. Thus f(a+h)-f(a) is the corresponding change in output. For h not equal to zero, dividing that output change by h gives an average slope over the two distinct inputs a and a+h.
+@display eq2
+\frac{f(a+h)-f(a)}{h}\qquad(h\ne0)
+@prose The condition h not equal to zero keeps the two inputs distinct and prevents division by zero. It belongs to the quotient before any cancellation; it does not say that a later limit substitutes h=0 into that original quotient.
+@endblock
+
+@block proposition | rule | 1.2 | The derivative is a limit of average slopes
+@prose A limit describes what values approach as an input gets arbitrarily close to a target through permitted nearby values. Here h approaches zero through nonzero real values. If the average slopes approach one number, that number is the instantaneous slope, or derivative, at a.
+@display eq3
+f'(a)=\lim_{h\to0}\frac{f(a+h)-f(a)}{h}
+@prose The quotient is an average slope for each permitted nonzero h. The derivative is not one more average slope at h=0: it is the limit of those nearby slopes. For a graph, that limiting slope is the slope of the tangent line at the point with input a.
+@endblock
+
+@block proposition | condition | 1.3 | Why cancellation comes before the limit
+@prose For a polynomial f(x)=Ax^2+Bx+C, expand at a real a. The constants cancel in the output difference, leaving a factor h.
+@display eq4
+\begin{aligned}f(a+h)-f(a)&=A(a+h)^2+B(a+h)+C-(Aa^2+Ba+C)\\&=Ah^2+(2Aa+B)h\\&=h\bigl(Ah+2Aa+B\bigr)\end{aligned}
+@prose When h is nonzero, the quotient equals Ah+2Aa+B after cancelling its common factor h. The original quotient is still undefined at h=0, because its denominator is zero. The simplified polynomial is defined and continuous at zero, so its limit may be found by evaluating that simplified expression at zero.
+@display eq5
+\frac{f(a+h)-f(a)}{h}=Ah+2Aa+B\quad(h\ne0),\qquad f'(a)=2Aa+B
+@help proof
+@prose The factorization is a polynomial identity: expanding h(Ah+2Aa+B) gives Ah^2+(2Aa+B)h. For h nonzero, dividing the equal numerator and denominator factors gives Ah+2Aa+B. At h=0, the original expression has denominator zero and has no value. A limit only uses permitted nearby h values, and the continuous simplified polynomial tends to its value 2Aa+B at zero.
+@endblock
+
+@block example | worked | 1.4 | A complete difference-quotient calculation
+@prose Work this separate example from start to finish: f(x)=x^2+x at a=1. First distinguish the value f(1)=2 from the derivative we seek. Substituting 1+h into the whole function, including its linear term, gives the next value.
+@display eq6
+\begin{aligned}f(1)&=1^2+1=2\\f(1+h)&=(1+h)^2+(1+h)=2+3h+h^2\end{aligned}
+@prose Subtract f(1), factor the increment, and cancel only while h is nonzero. Then take the limit of the simplified polynomial.
+@display eq7
+\begin{aligned}\frac{f(1+h)-f(1)}{h}&=\frac{(2+3h+h^2)-2}{h}\\&=\frac{h(3+h)}{h}=3+h\quad(h\ne0)\\f'(1)&=\lim_{h\to0}(3+h)=3\end{aligned}
+@help hint
+@prose Evaluate f(1+h) by replacing every x in x^2+x with 1+h. Keep h nonzero while cancelling, then ask what the simplified expression approaches as h approaches zero.
+@help answer
+@display eq8
+f'(1)=3
+@help solution
+@prose The square expands as (1+h)^2=1+2h+h^2, and the linear term contributes another 1+h. Their sum is 2+3h+h^2. Subtracting f(1)=2 leaves 3h+h^2=h(3+h). Cancellation is valid only for h not equal to zero, where the quotient becomes 3+h. That simplified polynomial is continuous, so its limit at zero is 3. As an independent coefficient check, differentiating x^2+x gives 2x+1, and (2x+1) at x=1 is also 3.
+@endblock
+
+@block example | errors | 1.5 | Two different zero claims to reject
+@prose Do not confuse h=0 with h approaching zero. Setting h=0 in the original difference quotient creates a zero denominator, so it is not an allowed calculation. The limit asks about nonzero h values as close to zero as desired.
+@display eq9
+\frac{h(3+h)}{h}\ \text{is undefined at }h=0,\qquad\lim_{h\to0}(3+h)=3
+@prose Another common error is to compute f(a+h) as though only the squared term changed. In f(x)=2x^2+x, the linear term x also becomes 1+h. Dropping its h changes the coefficient of h and therefore changes the derivative. Check the substitution before trusting later cancellation.
+@endblock
+
+@block exercise | practice | 1.6 | Use the definitions in six choices
+@prose In the exercises, read each given as real and dimensionless. The gold Given names the original function and point. Cyan Working records only a selected, checked conclusion. A wrong choice retains that working and explains the particular mismatch. The error-repair question labels its student work deliberately incorrect; it is not accepted working.
+@prose The final question gives a fresh quadratic without a prescribed method or answer in its public wording. You may return to this reading, but check the distinction between the function value f(a) and the instantaneous slope f'(a).
+@endblock
+
+@block summary | summary | 1.7 | A derivative built with its conditions visible
+@prose Evaluate f(a) and f(a+h) as different quantities. For nonzero h, their quotient is an average slope. Expand and factor before cancelling the common increment, then take a limit of the simplified expression. For Ax^2+Bx+C, the expansion yields Ah+2Aa+B after cancellation, so the derivative is 2Aa+B. Check it separately by differentiating coefficients and evaluating at a.
+@prose Definitions and conditions were checked against OpenStax Calculus Volume 1, section 3.1, Defining the Derivative: its difference-quotient definition, derivative-at-a definition, and examples using h. The prose, worked example, questions and distractors here are original Paths material.
+@endblock

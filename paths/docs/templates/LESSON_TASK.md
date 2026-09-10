@@ -1,6 +1,11 @@
 # Lesson task: <title>
 
 Status: DRAFT — fill the mathematical inputs and boundaries before assignment.
+
+For the four text-only subject pilots, use the filled
+[parallel authoring packets](../PARALLEL_QUESTION_AUTHORING.md) instead. Their
+workers supply content and certificates; the coordinator owns builds and
+publication. This template remains for a lesson with app/model integration.
 Repository: `/Users/kogaryu/iggy3d/paths`
 Model/effort: <Terra Medium for an established binding; High for a new integration>
 Scope: one lesson, implemented and built; leave changes uncommitted.

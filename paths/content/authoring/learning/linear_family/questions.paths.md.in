@@ -1,0 +1,102 @@
+@question {{read_notation_id}} | {{read_notation_title}}
+@template choices.v1
+@version 1
+@goal {{read_notation_objective}}
+@given {{read_notation_given}}
+@domain The unknown x is real. Match ax+b=c. In the ordered pair (a,b), a is the coefficient multiplying x and b is the separate signed added constant.
+@read {{reading_id}}
+@step 10 | Which pair gives (a,b), in that order?
+{{read_notation_choices_1}}
+@feedback 12 | The original added term is positive {{read_notation_b}}. Replacing it by {{read_notation_opposite_b}} changes the expression. Include the sign actually written.
+@feedback 13 | This pair swaps the two jobs. The number multiplying x is {{read_notation_a}}; the separate added constant is {{read_notation_b}}.
+@after {{read_notation_after_1}}
+@wrong Match each number to its job in ax+b=c before doing any arithmetic.
+@why The term {{read_notation_a}}x is multiplication, so a={{read_notation_a}}. The separate term is +{{read_notation_b}}, so b={{read_notation_b}}. This identifies the expression's parts; it does not yet solve the equation.
+@end
+
+@question {{worked_check_id}} | {{worked_check_title}}
+@template choices.v1
+@version 1
+@goal {{worked_check_objective}}
+@given {{worked_check_given}}
+@domain The unknown x is real. The added constant is {{worked_check_b}}. The worked step subtracts that same signed constant from both complete sides.
+@read {{reading_id}}
+@step 10 | After the constant cancels on the left, what is {{worked_check_c}}-({{worked_check_b}}) on the right?
+{{worked_check_choices_1}}
+@feedback 12 | {{worked_check_c}} is the unchanged original right side. Subtracting the constant on the left requires subtracting it on the right too. Evaluate {{worked_check_c}}-({{worked_check_b}}).
+@feedback 13 | {{worked_check_c_plus_b}} comes from adding the negative constant again. To undo addition of {{worked_check_b}}, subtract {{worked_check_b}}; that adds {{worked_check_opposite_b}}.
+@after {{worked_check_after_1}}
+@wrong Subtracting a negative adds its positive opposite. Apply that calculation to the original right side.
+@why We have {{worked_check_a}}x+({{worked_check_b}})={{worked_check_c}} and want no added constant. Subtracting {{worked_check_b}} from both sides is reversible by adding it back. The constant cancels and {{worked_check_c}}-({{worked_check_b}})={{worked_check_rhs}}, giving the reached equation. The coefficient stays {{worked_check_a}}. This is one step; division by the nonzero coefficient would finish the solution.
+@end
+
+@question {{choose_next_step_id}} | {{choose_next_step_title}}
+@template choices.v1
+@version 1
+@goal {{choose_next_step_objective}}
+@given {{choose_next_step_given}}
+@domain The unknown x is real. The goal is specifically to remove the added constant, retain the coefficient multiplying x, and preserve exactly the original solutions.
+@read {{reading_id}}
+@step 10 | Which reached equation satisfies all three parts of this goal?
+{{choose_next_step_choices_1}}
+@feedback 12 | Adding {{choose_next_step_b}} to both sides is reversible and preserves the solution set. It leaves the added constant {{choose_next_step_twice_b}}, so this valid operation misses the requested cancellation goal.
+@feedback 13 | This removes {{choose_next_step_b}} on the left but leaves the right side unchanged. Apply the subtraction to both complete sides; otherwise the original solution no longer satisfies the reached equation.
+@after {{choose_next_step_after_1}}
+@wrong Check both equivalence and the stated goal. Preserving equality alone is not enough to remove the added constant.
+@why Subtracting {{choose_next_step_b}} from both sides cancels the added term and gives {{choose_next_step_c}}-{{choose_next_step_b}}={{choose_next_step_rhs}} on the right. Adding {{choose_next_step_b}} back recovers the given, proving equivalence. The coefficient remains {{choose_next_step_a}}; its negative sign belongs to the multiplication and is not cancelled with the constant.
+@end
+
+@question {{explain_step_id}} | {{explain_step_title}}
+@template choices.v1
+@version 1
+@goal {{explain_step_objective}}
+@given {{explain_step_given}}
+@domain The unknown x is real. The arrow shows division of both complete sides by {{explain_step_a}}. Each choice below acts on both complete sides of the equation after the arrow.
+@read {{reading_id}}
+@step 10 | Which operation reverses the division and restores the equation before the arrow?
+{{explain_step_choices_1}}
+@feedback 12 | Dividing by {{explain_step_a}} again is valid because it is nonzero, but it repeats the division. It does not restore the preceding coefficient. Undo division using multiplication by that divisor.
+@feedback 13 | Multiplying by zero produces 0=0, which every real number satisfies. It erases the original restriction and cannot restore it.
+@after {{explain_step_after_1}}
+@wrong An inverse must recover the actual preceding equation. A valid operation can still be the wrong inverse for this goal.
+@why Multiplication by {{explain_step_a}} undoes division by {{explain_step_a}}. It restores the coefficient of x to {{explain_step_a}} and the right side to {{explain_step_c}}. Because the multiplier is nonzero, either equation can be recovered from the other. This demonstrates reversibility; choosing an inverse does not require writing a general proof.
+@end
+
+@question {{repair_error_id}} | {{repair_error_title}}
+@template choices.v1
+@version 1
+@goal {{repair_error_objective}}
+@given {{repair_error_given}}
+@domain The first equation is the original problem with real unknown x. L1, L2 and L3 are a student's deliberately incorrect attempt, supplied for diagnosis. They are not accepted working.
+@read {{reading_id}}
+@step 10 | Which is the first line that fails to preserve the original solution set?
+{{repair_error_choices_1}}
+@feedback 12 | L2 correctly evaluates the expression already written in L1. Check whether L1 used the correct inverse operation before judging that arithmetic.
+@feedback 13 | L3 correctly divides the equation in L2 by the nonzero coefficient. Its answer is wrong for the original problem because an earlier line changed that problem.
+@after {{repair_error_after_1}}
+@wrong Read from the original equation downward. Find the first invalid transformation, even if later arithmetic follows it correctly.
+@why L1 removes the negative constant on the left but adds that negative constant again on the right. Undoing addition requires subtraction of the same signed constant on both sides. L2 and L3 correctly follow the mistaken expression; they do not introduce the first error.
+@step 20 | Repair the right side: what is {{repair_error_c}}-({{repair_error_b}})?
+{{repair_error_choices_2}}
+@feedback 22 | {{repair_error_c_plus_b}} repeats the original sign error. Subtracting {{repair_error_b}} adds its opposite, {{repair_error_opposite_b}}.
+@feedback 23 | {{repair_error_c}} leaves the original right side untouched. Apply the balancing operation on that side too.
+@after {{repair_error_after_2}}
+@wrong Calculate the inverse operation using the signed constant from the original equation.
+@why The repaired right side is {{repair_error_rhs}}, so the equation is {{repair_error_a}}x={{repair_error_rhs}}. Dividing both sides by nonzero {{repair_error_a}} gives x={{repair_error_solution}}. Substitution checks the original: {{repair_error_a}}({{repair_error_solution}})+({{repair_error_b}})={{repair_error_c}}. Keeping the original constant in this check is essential.
+@end
+
+@question {{independent_id}} | {{independent_title}}
+@template choices.v1
+@version 1
+@goal {{independent_objective}}
+@given {{independent_given}}
+@domain The unknown x is real. Each option is a candidate value. A fraction is an exact number.
+@read {{reading_id}}
+@step 10 | Which value solves this equation?
+{{independent_choices_1}}
+@feedback 12 | With this candidate the variable expression evaluates to {{independent_neg_candidate_lhs}}, while the constant side is {{independent_c}}. The signs matter when testing an equality.
+@feedback 13 | {{independent_rhs}} is the value of the product {{independent_a}}x after the added constant is removed. It is not x itself. With this choice the original variable expression would equal {{independent_undivided_lhs}}, not {{independent_c}}.
+@after {{independent_after_1}}
+@wrong A solution must give equal values to the complete original expressions. The related reading remains available if you want help.
+@why Substituting {{independent_solution}} gives {{independent_a}}({{independent_solution}})+{{independent_b}}={{independent_c}}, matching the constant side. Reversing the written sides of an equality does not change its solutions. The nonzero coefficient also ensures uniqueness: two solutions would differ by a number whose product with {{independent_a}} is zero, so their difference must be zero.
+@end

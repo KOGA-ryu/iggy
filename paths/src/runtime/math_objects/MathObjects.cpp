@@ -12,6 +12,8 @@
 #include "runtime/math_objects/QrLeastSquares.hpp"
 #include "runtime/math_objects/FiniteMaps.hpp"
 #include "runtime/math_objects/FiniteGraph.hpp"
+#include "runtime/math_objects/FiniteAlgebra.hpp"
+#include "runtime/math_objects/FiniteQuotient.hpp"
 #include "runtime/math_objects/Membrane.hpp"
 #include "runtime/math_objects/MembraneGeometry.hpp"
 #include "runtime/math_objects/BooleanGeometry.hpp"
@@ -504,7 +506,75 @@ constexpr std::array<MathParameterSpec,static_cast<std::size_t>(MathParameter::C
   {MathParameter::GraphE52,MathObjectKind::Graph,"graph_e52","N5 to N2",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=5}},
   {MathParameter::GraphE53,MathObjectKind::Graph,"graph_e53","N5 to N3",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=5}},
   {MathParameter::GraphE54,MathObjectKind::Graph,"graph_e54","N5 to N4",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=5}},
-  {MathParameter::GraphE55,MathObjectKind::Graph,"graph_e55","N5 to N5",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=5}}
+  {MathParameter::GraphE55,MathObjectKind::Graph,"graph_e55","N5 to N5",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=5}},
+  {MathParameter::FaSize,MathObjectKind::FiniteAlgebra,"fa_size","Number of elements / modulus",2,6,1,6,0,false,{},{.group=MathControlGroup::Shape, .layers=15}},
+  {MathParameter::FaA,MathObjectKind::FiniteAlgebra,"fa_a","a / edit row / generator",0,5,1,2,0,false,"0\0" "1\0" "2\0" "3\0" "4\0" "5\0",{.group=MathControlGroup::Probe, .layers=15}},
+  {MathParameter::FaB,MathObjectKind::FiniteAlgebra,"fa_b","b",0,5,1,3,0,false,"0\0" "1\0" "2\0" "3\0" "4\0" "5\0",{.group=MathControlGroup::Probe, .layers=11}},
+  {MathParameter::FaC,MathObjectKind::FiniteAlgebra,"fa_c","c",0,5,1,1,0,false,"0\0" "1\0" "2\0" "3\0" "4\0" "5\0",{.group=MathControlGroup::Probe, .layers=2}},
+  {MathParameter::FaLaw,MathObjectKind::FiniteAlgebra,"fa_law","Inspect law",0,3,1,2,0,false,"Identity\0Inverses\0Associativity\0Commutativity\0",{.group=MathControlGroup::Operation, .layers=2}},
+  {MathParameter::FaWitness,MathObjectKind::FiniteAlgebra,"fa_witness","Use first failing witness",0,1,1,1,0,false,{},{.group=MathControlGroup::Operation, .layers=2}},
+  {MathParameter::FaGroup,MathObjectKind::FiniteAlgebra,"fa_group","Arrange cosets",0,1,0.01,0,0,false,{},{.group=MathControlGroup::Operation, .layers=4}},
+  {MathParameter::FaSide,MathObjectKind::FiniteAlgebra,"fa_side","Coset side",0,1,1,0,0,false,"Left: aH\0Right: Ha\0",{.group=MathControlGroup::Operation, .layers=4}},
+  {MathParameter::FaTime,MathObjectKind::FiniteAlgebra,"fa_time","Generator steps",0,6,0.01,0,0,false,{},{.group=MathControlGroup::Animation, .layers=4, .playbackLayers=4}},
+  {MathParameter::FaRingOperation,MathObjectKind::FiniteAlgebra,"fa_ring_operation","Ring operation",0,1,1,1,0,false,"Addition\0Multiplication\0",{.group=MathControlGroup::Operation, .layers=8}},
+  {MathParameter::FaE00,MathObjectKind::FiniteAlgebra,"fa_e00","0 * 0",0,5,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::FaA, .selectedValue=0, .layers=7}},
+  {MathParameter::FaE01,MathObjectKind::FiniteAlgebra,"fa_e01","0 * 1",0,5,1,1,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::FaA, .selectedValue=0, .layers=7}},
+  {MathParameter::FaE02,MathObjectKind::FiniteAlgebra,"fa_e02","0 * 2",0,5,1,2,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::FaA, .selectedValue=0, .layers=7}},
+  {MathParameter::FaE03,MathObjectKind::FiniteAlgebra,"fa_e03","0 * 3",0,5,1,3,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::FaA, .selectedValue=0, .layers=7}},
+  {MathParameter::FaE04,MathObjectKind::FiniteAlgebra,"fa_e04","0 * 4",0,5,1,4,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::FaA, .selectedValue=0, .layers=7}},
+  {MathParameter::FaE05,MathObjectKind::FiniteAlgebra,"fa_e05","0 * 5",0,5,1,5,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::FaA, .selectedValue=0, .layers=7}},
+  {MathParameter::FaE10,MathObjectKind::FiniteAlgebra,"fa_e10","1 * 0",0,5,1,1,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::FaA, .selectedValue=1, .layers=7}},
+  {MathParameter::FaE11,MathObjectKind::FiniteAlgebra,"fa_e11","1 * 1",0,5,1,2,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::FaA, .selectedValue=1, .layers=7}},
+  {MathParameter::FaE12,MathObjectKind::FiniteAlgebra,"fa_e12","1 * 2",0,5,1,3,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::FaA, .selectedValue=1, .layers=7}},
+  {MathParameter::FaE13,MathObjectKind::FiniteAlgebra,"fa_e13","1 * 3",0,5,1,4,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::FaA, .selectedValue=1, .layers=7}},
+  {MathParameter::FaE14,MathObjectKind::FiniteAlgebra,"fa_e14","1 * 4",0,5,1,5,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::FaA, .selectedValue=1, .layers=7}},
+  {MathParameter::FaE15,MathObjectKind::FiniteAlgebra,"fa_e15","1 * 5",0,5,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::FaA, .selectedValue=1, .layers=7}},
+  {MathParameter::FaE20,MathObjectKind::FiniteAlgebra,"fa_e20","2 * 0",0,5,1,2,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::FaA, .selectedValue=2, .layers=7}},
+  {MathParameter::FaE21,MathObjectKind::FiniteAlgebra,"fa_e21","2 * 1",0,5,1,3,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::FaA, .selectedValue=2, .layers=7}},
+  {MathParameter::FaE22,MathObjectKind::FiniteAlgebra,"fa_e22","2 * 2",0,5,1,4,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::FaA, .selectedValue=2, .layers=7}},
+  {MathParameter::FaE23,MathObjectKind::FiniteAlgebra,"fa_e23","2 * 3",0,5,1,5,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::FaA, .selectedValue=2, .layers=7}},
+  {MathParameter::FaE24,MathObjectKind::FiniteAlgebra,"fa_e24","2 * 4",0,5,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::FaA, .selectedValue=2, .layers=7}},
+  {MathParameter::FaE25,MathObjectKind::FiniteAlgebra,"fa_e25","2 * 5",0,5,1,1,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::FaA, .selectedValue=2, .layers=7}},
+  {MathParameter::FaE30,MathObjectKind::FiniteAlgebra,"fa_e30","3 * 0",0,5,1,3,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::FaA, .selectedValue=3, .layers=7}},
+  {MathParameter::FaE31,MathObjectKind::FiniteAlgebra,"fa_e31","3 * 1",0,5,1,4,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::FaA, .selectedValue=3, .layers=7}},
+  {MathParameter::FaE32,MathObjectKind::FiniteAlgebra,"fa_e32","3 * 2",0,5,1,5,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::FaA, .selectedValue=3, .layers=7}},
+  {MathParameter::FaE33,MathObjectKind::FiniteAlgebra,"fa_e33","3 * 3",0,5,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::FaA, .selectedValue=3, .layers=7}},
+  {MathParameter::FaE34,MathObjectKind::FiniteAlgebra,"fa_e34","3 * 4",0,5,1,1,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::FaA, .selectedValue=3, .layers=7}},
+  {MathParameter::FaE35,MathObjectKind::FiniteAlgebra,"fa_e35","3 * 5",0,5,1,2,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::FaA, .selectedValue=3, .layers=7}},
+  {MathParameter::FaE40,MathObjectKind::FiniteAlgebra,"fa_e40","4 * 0",0,5,1,4,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::FaA, .selectedValue=4, .layers=7}},
+  {MathParameter::FaE41,MathObjectKind::FiniteAlgebra,"fa_e41","4 * 1",0,5,1,5,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::FaA, .selectedValue=4, .layers=7}},
+  {MathParameter::FaE42,MathObjectKind::FiniteAlgebra,"fa_e42","4 * 2",0,5,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::FaA, .selectedValue=4, .layers=7}},
+  {MathParameter::FaE43,MathObjectKind::FiniteAlgebra,"fa_e43","4 * 3",0,5,1,1,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::FaA, .selectedValue=4, .layers=7}},
+  {MathParameter::FaE44,MathObjectKind::FiniteAlgebra,"fa_e44","4 * 4",0,5,1,2,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::FaA, .selectedValue=4, .layers=7}},
+  {MathParameter::FaE45,MathObjectKind::FiniteAlgebra,"fa_e45","4 * 5",0,5,1,3,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::FaA, .selectedValue=4, .layers=7}},
+  {MathParameter::FaE50,MathObjectKind::FiniteAlgebra,"fa_e50","5 * 0",0,5,1,5,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::FaA, .selectedValue=5, .layers=7}},
+  {MathParameter::FaE51,MathObjectKind::FiniteAlgebra,"fa_e51","5 * 1",0,5,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::FaA, .selectedValue=5, .layers=7}},
+  {MathParameter::FaE52,MathObjectKind::FiniteAlgebra,"fa_e52","5 * 2",0,5,1,1,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::FaA, .selectedValue=5, .layers=7}},
+  {MathParameter::FaE53,MathObjectKind::FiniteAlgebra,"fa_e53","5 * 3",0,5,1,2,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::FaA, .selectedValue=5, .layers=7}},
+  {MathParameter::FaE54,MathObjectKind::FiniteAlgebra,"fa_e54","5 * 4",0,5,1,3,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::FaA, .selectedValue=5, .layers=7}},
+  {MathParameter::FaE55,MathObjectKind::FiniteAlgebra,"fa_e55","5 * 5",0,5,1,4,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::FaA, .selectedValue=5, .layers=7}},
+  {MathParameter::QuSource,MathObjectKind::Quotient,"qu_source","Source group",0,6,1,4,0,false,"C2\0C3\0C4\0C5\0C6\0Klein four\0Triangle S3\0",{.group=MathControlGroup::Shape, .layers=7}},
+  {MathParameter::QuTarget,MathObjectKind::Quotient,"qu_target","Target group",0,6,1,1,0,false,"C2\0C3\0C4\0C5\0C6\0Klein four\0Triangle S3\0",{.group=MathControlGroup::Shape, .layers=3}},
+  {MathParameter::QuRing,MathObjectKind::Quotient,"qu_ring","Ring",0,6,1,4,0,false,"Z/2Z\0Z/3Z\0Z/4Z\0Z/5Z\0Z/6Z\0F2 x F2\0F2[e]/e^2\0",{.group=MathControlGroup::Shape, .layers=8}},
+  {MathParameter::QuA,MathObjectKind::Quotient,"qu_a","a / edit input",0,5,1,1,0,false,"0\0" "1\0" "2\0" "3\0" "4\0" "5\0",{.group=MathControlGroup::Probe, .layers=15}},
+  {MathParameter::QuB,MathObjectKind::Quotient,"qu_b","b",0,5,1,2,0,false,"0\0" "1\0" "2\0" "3\0" "4\0" "5\0",{.group=MathControlGroup::Probe, .layers=13}},
+  {MathParameter::QuMap0,MathObjectKind::Quotient,"qu_map0","f(0)",0,5,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::QuA, .selectedValue=0, .layers=3}},
+  {MathParameter::QuMap1,MathObjectKind::Quotient,"qu_map1","f(1)",0,5,1,1,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::QuA, .selectedValue=1, .layers=3}},
+  {MathParameter::QuMap2,MathObjectKind::Quotient,"qu_map2","f(2)",0,5,1,2,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::QuA, .selectedValue=2, .layers=3}},
+  {MathParameter::QuMap3,MathObjectKind::Quotient,"qu_map3","f(3)",0,5,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::QuA, .selectedValue=3, .layers=3}},
+  {MathParameter::QuMap4,MathObjectKind::Quotient,"qu_map4","f(4)",0,5,1,1,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::QuA, .selectedValue=4, .layers=3}},
+  {MathParameter::QuMap5,MathObjectKind::Quotient,"qu_map5","f(5)",0,5,1,2,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::QuA, .selectedValue=5, .layers=3}},
+  {MathParameter::QuMember0,MathObjectKind::Quotient,"qu_member0","Include 0 in subgroup / ideal",0,1,1,1,0,false,{},{.group=MathControlGroup::Operation, .layers=12}},
+  {MathParameter::QuMember1,MathObjectKind::Quotient,"qu_member1","Include 1 in subgroup / ideal",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .layers=12}},
+  {MathParameter::QuMember2,MathObjectKind::Quotient,"qu_member2","Include 2 in subgroup / ideal",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .layers=12}},
+  {MathParameter::QuMember3,MathObjectKind::Quotient,"qu_member3","Include 3 in subgroup / ideal",0,1,1,1,0,false,{},{.group=MathControlGroup::Operation, .layers=12}},
+  {MathParameter::QuMember4,MathObjectKind::Quotient,"qu_member4","Include 4 in subgroup / ideal",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .layers=12}},
+  {MathParameter::QuMember5,MathObjectKind::Quotient,"qu_member5","Include 5 in subgroup / ideal",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .layers=12}},
+  {MathParameter::QuCollapse,MathObjectKind::Quotient,"qu_collapse","Collapse classes",0,1,0.01,0,0,false,{},{.group=MathControlGroup::Animation, .layers=14, .playbackLayers=14}},
+  {MathParameter::QuWitness,MathObjectKind::Quotient,"qu_witness","Use first failing pair",0,1,1,1,0,false,{},{.group=MathControlGroup::Operation, .layers=13}},
+  {MathParameter::QuRepA,MathObjectKind::Quotient,"qu_rep_a","Alternate member of class a",0,5,1,0,0,false,"0\0" "1\0" "2\0" "3\0" "4\0" "5\0",{.group=MathControlGroup::Probe, .layers=12}},
+  {MathParameter::QuRepB,MathObjectKind::Quotient,"qu_rep_b","Alternate member of class b",0,5,1,0,0,false,"0\0" "1\0" "2\0" "3\0" "4\0" "5\0",{.group=MathControlGroup::Probe, .layers=12}},
+  {MathParameter::QuRingOperation,MathObjectKind::Quotient,"qu_ring_operation","Quotient operation",0,1,1,1,0,false,"Addition\0Multiplication\0",{.group=MathControlGroup::Operation, .layers=8}}
 }};
 constexpr std::array<MathObjectSpec,static_cast<std::size_t>(MathObjectKind::Count)> objects{{
   {MathObjectKind::Algebra,"algebra","Algebra","A cube full of algebra",
@@ -666,7 +736,15 @@ constexpr std::array<MathObjectSpec,static_cast<std::size_t>(MathObjectKind::Cou
   {MathObjectKind::Graph,"graph","Relations & Graphs Lab","Connect nodes and expose the structure",
    "A[i,j]=1 iff i R j; paths follow arrows; a matching shares no endpoints","Add a directed connection and inspect its adjacency row.",
    "Six labelled nodes and a binary directed relation, including self-loops. Gold selects the edited row. Lit matrix cells mean one; dark cells mean zero. Paths use unit edge lengths. The matching layer uses only links from nodes 0..2 to nodes 3..5; other stored links are retained for the other layers.",
-   {"Edit a relation and read its adjacency matrix.","Trace shortest paths and inspect property counterexamples.","Group equivalence classes and grow a bipartite matching."},{.18F,.22F,1},1,"Restart search / matching","Construction complete. Restart or scrub to inspect each stage."}
+   {"Edit a relation and read its adjacency matrix.","Trace shortest paths and inspect property counterexamples.","Group equivalence classes and grow a bipartite matching."},{.18F,.22F,1},1,"Restart search / matching","Construction complete. Restart or scrub to inspect each stage."},
+  {MathObjectKind::FiniteAlgebra,"finite","Finite Algebra Lab","Combine elements and test algebraic laws",
+   "table[a,b] = a*b; a group has identity, inverses and associativity","Find two elements whose product changes when their order is reversed.",
+   "Two to six elements. The first three layers use an editable closed operation table; every law is checked. Colours and numeric cell glyphs identify results. Shrinking the set clamps removed outputs. The ring layer uses standard addition and multiplication modulo the current size; the editable table is retained separately. Geometry illustrates algebra, not physical distance.",
+   {"Read and edit a finite operation table.","Inspect law witnesses and generate subgroups and cosets.","Explore units, zero divisors and prime-modulus fields."},{.18F,.22F,1},1,"Restart generator","Six generator steps complete. Restart or scrub the powers."},
+  {MathObjectKind::Quotient,"quotient","Quotients & Homomorphisms Lab","Collapse classes while preserving operations",
+   "f(a*b)=f(a)*f(b); [a][b]=[a*b] only if representatives do not matter","Build a surjective homomorphism with a nontrivial kernel and more than one image element.",
+   "Groups and rings have two to six elements. Maps and candidate subgroup/ideal membership are editable. Classes are formed only when their defining conditions hold. A dash in a table means conflicting results, never a chosen quotient product. Group quotients use left cosets. Ring maps here are quotient projections; arbitrary unital ring-map checking is outside this asset.",
+   {"Compare two routes through a map and an operation.","Collapse fibers and test quotient representatives.","Distinguish additive subgroups from ideals and construct quotient rings."},{.12F,.16F,1},.25,"Restart collapse","Classes fully collapsed. Restart or scrub the grouping."}
 }};
 constexpr std::array<MathLesson,4> functionLessons{{
   {"Inputs and roots","y = f(x)","Find an input where f(x) = 0.","Move the point or scrub a graph. The selected function owns every linked value."},
@@ -805,6 +883,46 @@ constexpr std::array<MathLesson,4> booleanLessons{{
   {"Sets and Boolean logic","Union: A OR B; intersection: A AND B; difference: A AND NOT B","Choose intersection and put the probe strictly inside both inputs.","The table lists all four input combinations; Probe match selects the current row away from boundaries. On an input boundary there is no active binary row. Smooth union uses the hard-union table as a baseline: blending can add material outside both inputs. The displayed surface encloses the sampled negative region, so isolated zero-thickness contacts have no material volume."},
   {"Blends and surface normals","smin(a,b)=h*a+(1-h)*b-k*h*(1-h); h=clamp(1/2+(b-a)/(2k),0,1)","Use a positive smooth blend to add material outside both inputs; find a regular surface on the probe line.","Blend width k rounds the meeting region; k=0 gives ordinary union. The gradient points toward increasing field values. A unit surface normal is shown at the nearest detected crossing on the x-directed probe line, when regular. Sharp switches, primitive ridges and zero gradients do not have a unique normal. The table keeps the gradient magnitude instead of treating the field as an exact distance."},
   {"Sampling solids","V_n = occupied midpoint cells * cell volume","Request at least 24 cells per axis for a nonzero solid; make the 48- and 64-cell volume estimates agree within 3 percent.","The mesh and the midpoint volume sum are separate approximations in the same fixed domain. The table compares increasingly fine grids with the 64-cell estimate. Agreement is evidence, not a certified error bound, and errors need not decrease at every count. A gold cell follows the probe. Requested and actual mesh counts are shown if the fixed mesh budget reduces resolution. Section view changes visible mesh volume only."}
+}};
+constexpr std::array<MathLesson,4> quotientLessons{{
+  {"Maps that preserve operations","f(a*b) = f(a)*f(b)","Build a surjective homomorphism with a nontrivial kernel and more than one image element.","Choose source and target groups, then edit f using the selected source bead. Gold follows a*b through f; violet combines the two images in the target. The table shows f(a*b) where both routes agree and a dash where they differ. The witness toggle selects the first failing pair without changing your map. Cn uses addition; Klein four uses XOR; S3 uses the permutation convention in Finite Algebra."},
+  {"Kernels, fibers and collapse","G/ker(f) is isomorphic to image(f), for a group homomorphism","Fully collapse a nontrivial homomorphism onto an image with at least two elements.","Fibers exist for every map. Only a verified group homomorphism gives the identity fiber the kernel label and enables the quotient-to-image operation table. Move Collapse classes or press Play. At full collapse one target bead represents each reached fiber; unused target elements remain small and muted. Picking individual source beads stops at full collapse; the input dropdown remains available. The image can be smaller than the target."},
+  {"Representatives and quotient groups","(aH)(bH) = (ab)H is well-defined exactly when H is normal","Fully collapse a proper nontrivial normal subgroup.","Include elements in H. A subgroup must contain the identity and be closed under products and inverses. Valid subgroups give left cosets even when H is not normal. Choose a and b, then alternate members of their classes to compare products. A nonnormal subgroup exposes the first pair of conflicting representative choices; ambiguous cells are dashes. No quotient-group operation is claimed in that case. Quotienting by the whole group correctly gives one class."},
+  {"Ideals and quotient rings","(a+I)+(b+I)=(a+b)+I; (a+I)(b+I)=ab+I","Fully collapse a proper nonzero ideal to a quotient ring with at least two elements.","Choose a ring and subset I. Ideals must be additive subgroups and absorb multiplication from both sides. The table can switch addition and multiplication. In F2 x F2, elements use bit pairs: addition is XOR and multiplication AND, with identity 3. Its diagonal {0,3} is an additive subgroup but not an ideal. In F2[e]/e^2, index a+2b denotes a+b e; multiplication has e^2=0. Invalid subsets report closure witnesses. Quotienting by the whole ring gives the zero ring, not a field."}
+}};
+constexpr std::array<MathParameter,MathObjectPreset::kCapacity> quotientPresetParameters{MathParameter::QuSource,MathParameter::QuTarget,MathParameter::QuRing,MathParameter::QuA,MathParameter::QuB,MathParameter::QuMap0,MathParameter::QuMap1,MathParameter::QuMap2,MathParameter::QuMap3,MathParameter::QuMap4,MathParameter::QuMap5,MathParameter::QuMember0,MathParameter::QuMember1,MathParameter::QuMember2,MathParameter::QuMember3,MathParameter::QuMember4,MathParameter::QuMember5,MathParameter::QuCollapse,MathParameter::QuWitness,MathParameter::QuRepA,MathParameter::QuRepB,MathParameter::QuRingOperation};
+constexpr std::array<MathObjectPreset,12> quotientPresets{{
+  {"Modulo 6 to modulo 3",quotientPresetParameters,{4,1,4,1,2,0,1,2,0,1,2,1,0,0,1,0,0,0,1,0,0,1},22},
+  {"Broken reduction map",quotientPresetParameters,{4,1,4,1,2,0,1,2,0,1,0,1,0,0,1,0,0,0,1,0,0,1},22},
+  {"Triangle parity",quotientPresetParameters,{6,0,4,1,2,0,1,1,0,0,1,1,0,0,1,1,0,0,1,0,0,1},22},
+  {"Nonnormal triangle subgroup",quotientPresetParameters,{6,0,4,2,3,0,1,1,0,0,1,1,1,0,0,0,0,0,1,0,0,1},22},
+  {"Modulo 4 to modulo 2",quotientPresetParameters,{2,0,2,1,2,0,1,0,1,0,0,1,0,1,0,0,0,0,1,0,0,1},22},
+  {"Trivial map and one class",quotientPresetParameters,{4,1,4,1,2,0,0,0,0,0,0,1,1,1,1,1,1,0,1,0,0,1},22},
+  {"Klein projection",quotientPresetParameters,{5,0,5,1,2,0,0,1,1,0,0,1,1,0,0,0,0,0,1,0,0,1},22},
+  {"Subset fails closure",quotientPresetParameters,{4,1,4,1,2,0,1,2,0,1,2,1,1,0,0,0,0,0,1,0,0,1},22},
+  {"Product-ring coordinate ideal",quotientPresetParameters,{5,0,5,1,2,0,0,1,1,0,0,1,1,0,0,0,0,0,1,0,0,1},22},
+  {"Product-ring diagonal fails ideal",quotientPresetParameters,{5,0,5,1,3,0,1,1,0,0,0,1,0,0,1,0,0,0,1,0,0,1},22},
+  {"Dual-number ideal",quotientPresetParameters,{5,0,6,1,2,0,1,0,1,0,0,1,0,1,0,0,0,0,1,0,0,1},22},
+  {"Zero ideal / identity map",quotientPresetParameters,{4,4,4,1,2,0,1,2,3,4,5,1,0,0,0,0,0,0,1,0,0,1},22},
+}};
+constexpr std::array<MathLesson,4> finiteLessons{{
+  {"Operations and order","a*b = table[a,b]; compare with b*a","Find a pair with a*b different from b*a.","Choose a row a and operand b. Edit the row entries to change the closed operation. Numeric glyphs and element colours identify every table result; gold outlines a*b and violet outlines b*a. The teal row frame marks the editable row even when an automatic witness uses another a. The two bent routes show their endpoints. Triangle permutations use indices 0=id, 1=(12), 2=(01), 3=(012), 4=(021), 5=(02), with a*b applying b first. Editing those entries creates a general table."},
+  {"Identity, inverses and witnesses","(a*b)*c = a*(b*c); e*a = a*e = a","Expose an associativity failure with unequal bracketed results.","All laws are checked on every active element. The witness toggle uses the first failing pair or triple for the chosen law; disable it to inspect your operands. Identity rows give a counterexample for each rejected candidate, with side 0=e*x and 1=x*e. Inverses require a two-sided identity; -1 means absent or undefined. Associative tables with identity and an inverse for every element are groups; commutativity is a separate property."},
+  {"Generated subgroups and cosets","H=<g>; left cosets aH; right cosets Ha; |G|=|H|*[G:H]","Fully group a proper nontrivial generated subgroup into cosets.","The selected a is generator g. Play follows e,g,g^2,... for six steps; between integers the bead is only a route animation. Coset colours and the grouping slider show the partition. Switching side compares aH and Ha. A subgroup is normal exactly when both sets agree for every representative. These constructions are unavailable when the edited table is not a group; no classes are invented."},
+  {"Finite rings","a+b and a*b modulo n; a unit has a multiplicative inverse","Find nonzero a and b whose product is zero modulo n.","This layer always uses the standard ring Z/nZ for the selected size, independent of table edits in other layers. Switch addition and multiplication. Teal beads mark units; coral beads mark nonzero zero divisors. The table gives an inverse or a nonzero annihilating partner, with -1 meaning none. Zero itself is excluded from the zero-divisor count. A field has every nonzero element invertible; within this range those moduli are 2, 3 and 5."}
+}};
+constexpr std::array<MathParameter,MathObjectPreset::kCapacity> finitePresetParameters{MathParameter::FaSize,MathParameter::FaA,MathParameter::FaB,MathParameter::FaC,MathParameter::FaLaw,MathParameter::FaWitness,MathParameter::FaGroup,MathParameter::FaSide,MathParameter::FaTime,MathParameter::FaRingOperation,MathParameter::FaE00,MathParameter::FaE01,MathParameter::FaE02,MathParameter::FaE03,MathParameter::FaE04,MathParameter::FaE05,MathParameter::FaE10,MathParameter::FaE11,MathParameter::FaE12,MathParameter::FaE13,MathParameter::FaE14,MathParameter::FaE15,MathParameter::FaE20,MathParameter::FaE21,MathParameter::FaE22,MathParameter::FaE23,MathParameter::FaE24,MathParameter::FaE25,MathParameter::FaE30,MathParameter::FaE31,MathParameter::FaE32,MathParameter::FaE33,MathParameter::FaE34,MathParameter::FaE35,MathParameter::FaE40,MathParameter::FaE41,MathParameter::FaE42,MathParameter::FaE43,MathParameter::FaE44,MathParameter::FaE45,MathParameter::FaE50,MathParameter::FaE51,MathParameter::FaE52,MathParameter::FaE53,MathParameter::FaE54,MathParameter::FaE55};
+constexpr std::array<MathObjectPreset,10> finitePresets{{
+  {"Clock group C2",finitePresetParameters,{2,1,1,1,2,1,0,0,0,1,0,1,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},46},
+  {"Clock group C3",finitePresetParameters,{3,1,1,1,2,1,0,0,0,1,0,1,2,0,0,0,1,2,0,0,0,0,2,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},46},
+  {"Clock group C4",finitePresetParameters,{4,2,1,1,2,1,0,0,0,1,0,1,2,3,0,0,1,2,3,0,0,0,2,3,0,1,0,0,3,0,1,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0},46},
+  {"Clock group C5",finitePresetParameters,{5,2,1,1,2,1,0,0,0,1,0,1,2,3,4,0,1,2,3,4,0,0,2,3,4,0,1,0,3,4,0,1,2,0,4,0,1,2,3,0,0,0,0,0,0,0},46},
+  {"Clock group C6",finitePresetParameters,{6,2,1,1,2,1,0,0,0,1,0,1,2,3,4,5,1,2,3,4,5,0,2,3,4,5,0,1,3,4,5,0,1,2,4,5,0,1,2,3,5,0,1,2,3,4},46},
+  {"Klein four group",finitePresetParameters,{4,1,2,1,2,1,0,0,0,1,0,1,2,3,0,0,1,0,3,2,0,0,2,3,0,1,0,0,3,2,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},46},
+  {"Triangle permutations S3",finitePresetParameters,{6,1,2,1,2,1,0,0,0,1,0,1,2,3,4,5,1,0,4,5,2,3,2,3,0,1,5,4,3,2,5,4,0,1,4,5,1,0,3,2,5,4,3,2,1,0},46},
+  {"Broken associativity",finitePresetParameters,{3,0,0,1,2,1,0,0,0,1,1,1,2,0,0,0,1,2,0,0,0,0,2,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},46},
+  {"Ring modulo 4",finitePresetParameters,{4,2,2,1,2,1,0,0,0,1,0,1,2,3,0,0,1,2,3,0,0,0,2,3,0,1,0,0,3,0,1,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0},46},
+  {"Ring modulo 6",finitePresetParameters,{6,2,3,1,2,1,0,0,0,1,0,1,2,3,4,5,1,2,3,4,5,0,2,3,4,5,0,1,3,4,5,0,1,2,4,5,0,1,2,3,5,0,1,2,3,4},46},
 }};
 constexpr std::array<MathLesson,4> graphLessons{{
   {"Connections and adjacency","A[i,j]=1 exactly when i R j","Make a one-way link: a relation that is not symmetric.","Click a node or choose its row. Six switches edit its outgoing connections, including its self-loop. The lit/dark matrix on the right reads source by row and destination by column. Bent arrows distinguish opposite directions. Positions illustrate connectivity; they do not set edge weights."},
@@ -1441,6 +1559,23 @@ Triple normSupport(const Triple& w,double p,bool infinity) {
   for(unsigned i=0;i<3;++i)result[i]=((w[i]>0)-(w[i]<0))*std::pow(std::fabs(w[i])/h,q-1);
   return result;
 }
+constexpr std::array<unsigned,7> quotientGroupSizes{2,3,4,5,6,4,6},quotientRingSizes{2,3,4,5,6,4,4};
+FiniteOperation quotientGroup(unsigned family){return family<5?modularOperation(family+2):family==5?kleinFourOperation():trianglePermutationOperation();}
+unsigned quotientSourceSize(const MathObjects& model){return model.snapshot().level==3?quotientRingSizes[static_cast<unsigned>(model.parameter(MathParameter::QuRing))]:quotientGroupSizes[static_cast<unsigned>(model.parameter(MathParameter::QuSource))];}
+std::array<unsigned,6> quotientMap(const MathObjects& model){std::array<unsigned,6> f{};for(unsigned i=0;i<6;++i)f[i]=static_cast<unsigned>(model.parameter(static_cast<MathParameter>(index(MathParameter::QuMap0)+i)));return f;}
+unsigned quotientSubset(const MathObjects& model){unsigned mask=0;for(unsigned i=0;i<quotientSourceSize(model);++i)if(model.parameter(static_cast<MathParameter>(index(MathParameter::QuMember0)+i))==1)mask|=1U<<i;return mask;}
+FiniteHomomorphism quotientHomomorphism(const MathObjects& model){return analyzeFiniteHomomorphism(quotientGroup(static_cast<unsigned>(model.parameter(MathParameter::QuSource))),quotientGroup(static_cast<unsigned>(model.parameter(MathParameter::QuTarget))),quotientMap(model));}
+FinitePartitionOperation quotientPartition(const MathObjects& model){
+  using P=MathParameter;if(model.snapshot().level<2)return quotientHomomorphism(model).fibers;
+  if(model.snapshot().level==2)return analyzeFiniteGroupQuotient(quotientGroup(static_cast<unsigned>(model.parameter(P::QuSource))),quotientSubset(model)).quotient;
+  const auto r=analyzeFiniteRingQuotient(finiteRingExample(static_cast<unsigned>(model.parameter(P::QuRing))),quotientSubset(model));return model.parameter(P::QuRingOperation)==0?r.addition:r.multiplication;
+}
+unsigned quotientMember(unsigned mask,unsigned ordinal){for(unsigned i=0;i<6;++i)if(mask&(1U<<i)){if(!ordinal)return i;--ordinal;}throw std::logic_error("quotient representative outside class");}
+FiniteOperation finiteInput(const MathObjects& model){
+  using P=MathParameter;const unsigned n=static_cast<unsigned>(model.parameter(P::FaSize));
+  if(model.snapshot().level==3)return modularOperation(n,model.parameter(P::FaRingOperation)==1);
+  FiniteOperation t;t.size=n;for(unsigned i=0;i<36;++i)t.values[i]=static_cast<unsigned>(model.parameter(static_cast<P>(index(P::FaE00)+i)));return t;
+}
 FiniteRelation graphInput(const MathObjects& model){
   FiniteRelation result=0;for(unsigned i=0;i<36;++i)if(model.parameter(static_cast<MathParameter>(index(MathParameter::GraphE00)+i))==1)result|=FiniteRelation{1}<<i;return result;
 }
@@ -1536,6 +1671,19 @@ public:
     const std::array<Vec3,4> corners{center-u-v,center+u-v,center+u+v,center-u+v};
     for(unsigned i=0;i<4;++i)rod(corners[i],corners[(i+1)%4],color,.014F,role);
   }
+  void operationCell(float x,float y,int value,Vec3 color) {
+    if(value < -1 || value > 5)throw std::logic_error("operation cell value outside -1..5");
+    auto& mesh=s.solid;
+    auto quad=[&](float cx,float cy,float z,float w,float h,Vec3 tint){
+      if(mesh.vertexCount+4>mesh.vertices.size()||mesh.indexCount+6>mesh.indices.size())throw std::logic_error("operation table mesh capacity");
+      const unsigned base=mesh.vertexCount;for(auto d:std::array<Vec3,4>{{{-w,-h,0},{w,-h,0},{w,h,0},{-w,h,0}}})mesh.vertices[mesh.vertexCount++]={Vec3{cx,cy,z}+d,{0,0,1},tint};for(unsigned k:{0U,1U,2U,0U,2U,3U})mesh.indices[mesh.indexCount++]=static_cast<std::uint16_t>(base+k);
+    };
+    quad(x,y,0,.195F,.195F,color);
+    constexpr std::array<unsigned,6> digits{0x3f,0x06,0x5b,0x4f,0x66,0x6d};
+    const unsigned mask=value<0?0x40:digits[static_cast<unsigned>(value)];
+    const std::array<Vec3,7> centers{{{0,.11F,0},{.065F,.055F,0},{.065F,-.055F,0},{0,-.11F,0},{-.065F,-.055F,0},{-.065F,.055F,0},{0,0,0}}};
+    for(unsigned segment=0;segment<7;++segment)if(mask&(1U<<segment)){const bool horizontal=segment==0||segment==3||segment==6;quad(x+centers[segment].x,y+centers[segment].y,.012F,horizontal?.065F:.012F,horizontal?.012F:.055F,white);}
+  }
   void table(std::string_view title,std::array<std::string_view,4> columns,std::size_t count) {
     s.table={};s.table.title=title;s.table.columns=columns;s.table.columnCount=count;
   }
@@ -1605,6 +1753,8 @@ std::span<const MathLesson> mathLessons(MathObjectKind kind) {
     case MathObjectKind::Qr:return qrLessons;
     case MathObjectKind::Maps:return mapsLessons;
     case MathObjectKind::Graph:return graphLessons;
+    case MathObjectKind::FiniteAlgebra:return finiteLessons;
+    case MathObjectKind::Quotient:return quotientLessons;
     default:return {};
   }
 }
@@ -1628,6 +1778,8 @@ std::span<const MathObjectPreset> mathObjectPresets(MathObjectKind kind,unsigned
     case MathObjectKind::Qr:return qrPresets;
     case MathObjectKind::Maps:return mapsPresets;
     case MathObjectKind::Graph:return graphPresets;
+    case MathObjectKind::FiniteAlgebra:return finitePresets;
+    case MathObjectKind::Quotient:return quotientPresets;
     default:return {};
   }
 }
@@ -1638,6 +1790,10 @@ double MathObjects::parameter(MathParameter p) const {
 }
 double MathObjects::parameterMaximum(MathParameter p) const {
   if(index(p)>=parameters.size())throw std::invalid_argument("unknown math parameter");
+  if(p==MathParameter::QuA||p==MathParameter::QuB)return quotientSourceSize(*this)-1;
+  if(p>=MathParameter::QuMap0&&p<=MathParameter::QuMap5)return quotientGroupSizes[static_cast<unsigned>(parameter(MathParameter::QuTarget))]-1;
+  if(p==MathParameter::QuRepA||p==MathParameter::QuRepB){const auto partition=quotientPartition(*this);if(!partition.classCount)return 0;const auto input=static_cast<unsigned>(parameter(p==MathParameter::QuRepA?MathParameter::QuA:MathParameter::QuB));return std::popcount(partition.members[partition.classOf[input]])-1;}
+  if((p>=MathParameter::FaA&&p<=MathParameter::FaC)||(p>=MathParameter::FaE00&&p<=MathParameter::FaE55))return parameter(MathParameter::FaSize)-1;
   if(p==MathParameter::GraphNode&&snapshot_.level==3)return 2;
   if(const auto* binding=mapBinding(p);binding&&binding->targetSize!=MathParameter::Count)return parameter(binding->targetSize)-1;
   return parameters[index(p)].maximum;
@@ -1646,6 +1802,17 @@ bool MathObjects::parameterAvailable(MathParameter p) const {
   if(index(p)>=parameters.size())return false;
   const auto& spec=parameters[index(p)];
   if(spec.owner!=snapshot_.kind||spec.minimumLevel>snapshot_.level||!(spec.control.layers&(1U<<snapshot_.level)))return false;
+  if(spec.owner==MathObjectKind::Quotient){
+    if(p>=MathParameter::QuMap0&&p<=MathParameter::QuMap5)return index(p)-index(MathParameter::QuMap0)<quotientSourceSize(*this);
+    if(p>=MathParameter::QuMember0&&p<=MathParameter::QuMember5)return index(p)-index(MathParameter::QuMember0)<quotientSourceSize(*this);
+    if(p==MathParameter::QuWitness)return snapshot_.level==0?!quotientHomomorphism(*this).valid:quotientPartition(*this).classCount&&!quotientPartition(*this).wellDefined;
+    if(p==MathParameter::QuRepA||p==MathParameter::QuRepB||(p==MathParameter::QuCollapse&&snapshot_.level>=2))return quotientPartition(*this).classCount>0;
+  }
+  if(spec.owner==MathObjectKind::FiniteAlgebra){
+    if(p>=MathParameter::FaE00&&p<=MathParameter::FaE55){const auto cell=index(p)-index(MathParameter::FaE00);return cell/6<parameter(MathParameter::FaSize)&&cell%6<parameter(MathParameter::FaSize);}
+    if(p==MathParameter::FaGroup||p==MathParameter::FaSide||p==MathParameter::FaTime)return analyzeFiniteAlgebra(finiteInput(*this)).group;
+    if(p==MathParameter::FaWitness){const auto a=analyzeFiniteAlgebra(finiteInput(*this));return (parameter(MathParameter::FaLaw)==2&&!a.associative)||(parameter(MathParameter::FaLaw)==3&&!a.commutative);}
+  }
   if(spec.owner==MathObjectKind::Graph){
     if(p>=MathParameter::GraphE00&&p<=MathParameter::GraphE55&&snapshot_.level==3){const auto edge=index(p)-index(MathParameter::GraphE00);return edge/6<3&&edge%6>=3;}
     if(p==MathParameter::GraphGroup)return analyzeFiniteGraph(graphInput(*this),0).equivalence;
@@ -1736,7 +1903,7 @@ MathActionResult MathObjects::dispatch(const MathAction& a) {
       if(a.parameter>=MathParameter::SimplexP0&&a.parameter<=MathParameter::SimplexQ1){const auto offset=index(a.parameter)-index(MathParameter::SimplexP0);const auto other=index(MathParameter::SimplexP0)+(offset^1U);if(a.value+parameters_[other]>1+1e-12)return {false,"probabilities A+B must not exceed one"};next=std::min(next,1-parameters_[other]);}
       parameters_[index(a.parameter)]=next;
       if(a.parameter==MathParameter::Shortcut)snapshot_.routeCount=1;
-      switch(snapshot_.kind){case MathObjectKind::Curve:case MathObjectKind::Lathe:case MathObjectKind::Membrane:case MathObjectKind::Rigid:case MathObjectKind::Truss:case MathObjectKind::Simplex:case MathObjectKind::Distance:case MathObjectKind::Polar:case MathObjectKind::Qr:case MathObjectKind::Maps:case MathObjectKind::Graph:snapshot_.playing=false;break;default:break;}
+      switch(snapshot_.kind){case MathObjectKind::Curve:case MathObjectKind::Lathe:case MathObjectKind::Membrane:case MathObjectKind::Rigid:case MathObjectKind::Truss:case MathObjectKind::Simplex:case MathObjectKind::Distance:case MathObjectKind::Polar:case MathObjectKind::Qr:case MathObjectKind::Maps:case MathObjectKind::Graph:case MathObjectKind::FiniteAlgebra:case MathObjectKind::Quotient:snapshot_.playing=false;break;default:break;}
       if(a.parameter==playbackParameter())snapshot_.playing=false;
       if(a.parameter==MathParameter::FieldPath){fieldPathReversed_=false;parameters_[index(MathParameter::FieldTime)]=0;snapshot_.playing=false;}
       break;
@@ -1879,6 +2046,15 @@ MathActionResult MathObjects::dispatch(const MathAction& a) {
     }
     case MathActionKind::Check:snapshot_.playing=false;check();return {true,"challenge_checked"};
     default:return {false,"unknown_action"};
+  }
+  if(snapshot_.kind==MathObjectKind::Quotient){
+    for(auto p:{MathParameter::QuA,MathParameter::QuB})parameters_[index(p)]=std::min(parameter(p),parameterMaximum(p));
+    for(unsigned i=0;i<6;++i){const auto p=static_cast<MathParameter>(index(MathParameter::QuMap0)+i);parameters_[index(p)]=std::min(parameter(p),parameterMaximum(p));}
+    for(auto p:{MathParameter::QuRepA,MathParameter::QuRepB})parameters_[index(p)]=std::min(parameter(p),parameterMaximum(p));
+  }
+  if(snapshot_.kind==MathObjectKind::FiniteAlgebra){
+    for(auto p:{MathParameter::FaA,MathParameter::FaB,MathParameter::FaC})parameters_[index(p)]=std::min(parameter(p),parameterMaximum(p));
+    for(unsigned i=0;i<36;++i){const auto p=static_cast<MathParameter>(index(MathParameter::FaE00)+i);parameters_[index(p)]=std::min(parameter(p),parameterMaximum(p));}
   }
   if(snapshot_.kind==MathObjectKind::Graph)parameters_[index(MathParameter::GraphNode)]=std::min(parameter(MathParameter::GraphNode),parameterMaximum(MathParameter::GraphNode));
   if(snapshot_.kind==MathObjectKind::Maps)for(const auto& binding:mapParameterBindings)if(binding.targetSize!=MathParameter::Count)
@@ -2169,6 +2345,22 @@ void MathObjects::check() {
         case 1:solved=result.fiberSizes[in.fiber]>=2&&parameter(MathParameter::MapsGroup)==1;good="Yes: this class contains multiple inputs with the same output.";bad="Choose Grouped fibers and inspect output B2.";break;
         case 2:{bool nonconstant=false;for(unsigned i=1;i<in.a;++i)nonconstant|=result.composed[i]!=result.composed[0];solved=result.commutes&&nonconstant;good="Yes: both routes agree on every input, with more than one output.";bad="Choose Commuting routes, or make each h destination equal g(f(A)).";break;}
         case 3:{unsigned positive=0;for(unsigned i=0;i<in.a;++i)positive+=in.f[i]==in.fiber&&in.weights[i]>0;solved=parameter(MathParameter::MapsCondition)==1&&result.conditionalDefined&&positive>=2&&result.eventProbability>0&&result.eventProbability<1;good="Yes: the selected event has two positive-weight inputs, renormalized to total probability one.";bad="Choose Weighted outcomes, select B0, and switch to conditioning.";break;}
+      }break;
+    }
+    case MathObjectKind::Quotient:{
+      using P=MathParameter;const unsigned level=snapshot_.level;
+      if(level<2){const auto h=quotientHomomorphism(*this);solved=h.valid&&h.surjective&&std::popcount(h.kernel)>1&&h.fibers.classCount>1&&(level==0||parameter(P::QuCollapse)==1);good="Yes: a nontrivial kernel gives a quotient isomorphic to the image.";bad=level==0?"Choose Modulo 6 to modulo 3 with its operation-preserving map.":"Choose Modulo 6 to modulo 3 and fully collapse the fibers.";}
+      else if(level==2){const auto h=analyzeFiniteGroupQuotient(quotientGroup(static_cast<unsigned>(parameter(P::QuSource))),quotientSubset(*this));solved=h.normal&&std::popcount(quotientSubset(*this))>1&&h.quotient.classCount>1&&parameter(P::QuCollapse)==1;good="Yes: this proper normal subgroup gives a well-defined quotient group.";bad="Choose Modulo 6 to modulo 3 and fully collapse its normal subgroup cosets.";}
+      else {const auto r=analyzeFiniteRingQuotient(finiteRingExample(static_cast<unsigned>(parameter(P::QuRing))),quotientSubset(*this));solved=r.ideal&&std::popcount(quotientSubset(*this))>1&&r.addition.classCount>1&&parameter(P::QuCollapse)==1;good="Yes: this proper nonzero ideal gives a quotient ring.";bad="Choose Product-ring coordinate ideal and fully collapse its additive cosets.";}
+      break;
+    }
+    case MathObjectKind::FiniteAlgebra:{
+      using P=MathParameter;const auto t=finiteInput(*this);const auto analysis=analyzeFiniteAlgebra(t);const unsigned a=static_cast<unsigned>(parameter(P::FaA)),b=static_cast<unsigned>(parameter(P::FaB));
+      switch(snapshot_.level){
+        case 0:solved=t(a,b)!=t(b,a);good="Yes: reversing these operands changes the result.";bad="Choose Triangle permutations S3, with a=1 and b=2.";break;
+        case 1:{unsigned x=a,y=b,z=static_cast<unsigned>(parameter(P::FaC));if(parameter(P::FaWitness)==1&&!analysis.associative){x=analysis.associativityWitness[0];y=analysis.associativityWitness[1];z=analysis.associativityWitness[2];}solved=parameter(P::FaLaw)==2&&t(t(x,y),z)!=t(x,t(y,z));good="Yes: this triple gives different bracketed results.";bad="Choose Broken associativity and inspect Associativity with the witness enabled.";break;}
+        case 2:{const auto h=generatedFiniteSubgroup(t,a,parameter(P::FaSide)==1);solved=h.defined&&h.order>1&&h.order<t.size&&parameter(P::FaGroup)==1;good="Yes: a proper nontrivial subgroup partitions the group into equal cosets.";bad="Choose Clock group C6, keep generator 2, and arrange cosets fully.";break;}
+        case 3:solved=parameter(P::FaRingOperation)==1&&a&&b&&t(a,b)==0;good="Yes: two nonzero elements multiply to zero in this ring.";bad="Choose Ring modulo 6 and multiply a=2 by b=3.";break;
       }break;
     }
     case MathObjectKind::Graph:{
@@ -3987,6 +4179,114 @@ void MathObjects::rebuild() {
           b.label(witness.count?"Gold: witness; dashed coral: required missing edge":"Selected property holds on all six nodes",{-4.1F,-2.35F,0},white);
         }else {b.table("Outgoing and incoming links",{"Out-degree","In-degree","Self-loop",{}},3);for(unsigned i=0;i<6;++i){unsigned out=0,incoming=0;for(unsigned j=0;j<6;++j){out+=(relation&relationEdge(i,j))!=0;incoming+=(relation&relationEdge(j,i))!=0;}b.row(names[i],{static_cast<double>(out),static_cast<double>(incoming),(relation&relationEdge(i,i))?1.:0.,0});}}
       }
+      break;
+    }
+    case MathObjectKind::FiniteAlgebra:{
+      using P=MathParameter;const unsigned level=snapshot_.level;const auto t=finiteInput(*this);const unsigned n=t.size,selected=static_cast<unsigned>(parameter(P::FaA));
+      const auto analysis=analyzeFiniteAlgebra(t);const auto subgroup=generatedFiniteSubgroup(t,selected,parameter(P::FaSide)==1);const auto ring=analyzeModularRing(n);
+      unsigned a=selected,other=static_cast<unsigned>(parameter(P::FaB)),c=static_cast<unsigned>(parameter(P::FaC));const unsigned law=static_cast<unsigned>(parameter(P::FaLaw));
+      if(level==1&&parameter(P::FaWitness)==1){if(law==2&&!analysis.associative){a=analysis.associativityWitness[0];other=analysis.associativityWitness[1];c=analysis.associativityWitness[2];}if(law==3&&!analysis.commutative){a=analysis.commutativityWitness[0];other=analysis.commutativityWitness[1];}}
+      static constexpr std::array<std::string_view,6> names{"0","1","2","3","4","5"};
+      const std::array<Vec3,6> colors{blue,teal,violet,gold,coral,Vec3{.5F,.85F,.3F}};
+      std::array<Vec3,6> points{};const bool grouping=level==2&&subgroup.defined;
+      for(unsigned i=0;i<n;++i){const double angle=2*pi*i/n+pi*.5;points[i]={-2.5F+1.35F*static_cast<float>(std::cos(angle)),1.35F*static_cast<float>(std::sin(angle)),0};
+        if(grouping){const unsigned group=subgroup.cosetOf[i];unsigned ordinal=0;for(unsigned j=0;j<i;++j)ordinal+=subgroup.cosetOf[j]==group;const double local=2*pi*ordinal/subgroup.order;const unsigned columns=std::min(3U,subgroup.cosetCount),rows=(subgroup.cosetCount+columns-1)/columns;const float x=-3.8F+2.6F*(group%columns+.5F)/columns,y=(rows-1)*.85F-(group/columns)*1.7F;
+          const Vec3 target{x+.32F*static_cast<float>(std::cos(local)),y+.5F*static_cast<float>(std::sin(local)),0};const float amount=static_cast<float>(parameter(P::FaGroup));points[i]=points[i]*(1-amount)+target*amount;}}
+      auto route=[&](unsigned from,unsigned to,Vec3 color,float lift,std::string_view role){
+        const auto start=points[from]+Vec3{0,0,lift};const auto end=points[to]+Vec3{0,0,lift};
+        if(from==to){const auto mid=start+Vec3{.3F,.32F,0};b.rod(start,mid,color,.022F,role);b.arrow(mid,end+Vec3{.1F,.04F,0},color,role);}
+        else {const auto mid=(start+end)*.5F+Vec3{0,.17F,lift};b.rod(start,mid,color,.022F,role);b.arrow(mid,end,color,role);}
+      };
+      if(grouping){for(unsigned i=0;i<n;++i)route(i,parameter(P::FaSide)==1?t(selected,i):t(i,selected),colors[subgroup.cosetOf[i]],.08F,"finite_generator_edge");
+        const double time=parameter(P::FaTime);const unsigned step=static_cast<unsigned>(time);const float fraction=static_cast<float>(time-step);const auto start=points[subgroup.powers[step%subgroup.order]],end=points[subgroup.powers[(step+1)%subgroup.order]];
+        const auto middle=(start+end)*.5F+Vec3{0,.17F,.08F};const auto moving=fraction<.5F?start*(1-2*fraction)+middle*(2*fraction):middle*(2-2*fraction)+end*(2*fraction-1);b.ball(moving+Vec3{0,0,.08F},.09F,gold,"finite_power_tracer");
+        if(parameter(P::FaGroup)==1)for(unsigned group=0;group<subgroup.cosetCount;++group){const unsigned columns=std::min(3U,subgroup.cosetCount),rows=(subgroup.cosetCount+columns-1)/columns;const float x=-3.8F+2.6F*(group%columns+.5F)/columns,y=(rows-1)*.85F-(group/columns)*1.7F;b.planeFrame({x,y,-.09F},{.4F,0,0},{0,.68F,0},colors[group],"finite_coset_frame");}
+      }else if(level==1&&law==2){route(a,t(a,other),gold,.06F,"finite_left_first");route(t(a,other),t(t(a,other),c),gold,.12F,"finite_left_result");route(other,t(other,c),violet,.22F,"finite_right_first");route(a,t(a,t(other,c)),violet,.3F,"finite_right_result");}
+      else if(level!=2){route(a,t(a,other),gold,.09F,"finite_product_route");route(other,t(other,a),violet,.23F,"finite_reversed_route");}
+      snapshot_.curve.active=true;snapshot_.curve.count=n;snapshot_.curve.selected=selected;snapshot_.curve.selectionParameter=P::FaA;
+      for(unsigned i=0;i<n;++i){auto color=grouping?colors[subgroup.cosetOf[i]]:colors[i];if(level==3)color=ring.inverse[i]>=0?teal:ring.zeroDivisorWitness[i]>=0?coral:muted;
+        b.ball(points[i],i==selected?.16F:.12F,color,"finite_element");b.label(names[i],points[i]+Vec3{-.06F,.22F,.08F},color);snapshot_.curve.controls[i]=points[i];}
+      // Cells and tiny numeric glyphs are quads in the existing bounded mesh.
+      // No font rendering or separate primitive per segment is involved.
+      const float cell=.44F,startX=.75F,startY=1.1F;
+      for(unsigned i=0;i<n;++i){b.label(names[i],{startX-.38F,startY-cell*i,.02F},i==a?gold:white);b.label(names[i],{startX+cell*i,startY+.35F,.02F},i==other?gold:white);
+        for(unsigned j=0;j<n;++j)b.operationCell(startX+cell*j,startY-cell*i,static_cast<int>(t(i,j)),colors[t(i,j)]*.43F);
+      }
+      if(level<3)b.planeFrame({startX+cell*(n-1)*.5F,startY-cell*selected,-.025F},{cell*(n-1)*.5F+.225F,0,0},{0,.225F,0},teal,"finite_edit_row");
+      b.planeFrame({startX+cell*other,startY-cell*a,.035F},{.215F,0,0},{0,.215F,0},gold,"finite_selected_cell");
+      if(a!=other&&level!=2)b.planeFrame({startX+cell*a,startY-cell*other,.035F},{.215F,0,0},{0,.215F,0},violet,"finite_reversed_cell");
+      b.label(level==3?(parameter(P::FaRingOperation)==1?"Multiplication modulo n":"Addition modulo n"):"Operation table: row * column",{.35F,1.95F,0},white);
+      b.metric("Elements",n);
+      if(level==3){b.metric("a op b",t(a,other));b.metric("Units",ring.unitCount);b.metric("Nonzero zero divisors",ring.zeroDivisorCount);b.metric("Field",ring.field);
+        b.table("Z/nZ: -1 means no multiplicative partner",{"Inverse","Nonzero annihilator","a op element",{}},3);for(unsigned i=0;i<n;++i)b.row(names[i],{double(ring.inverse[i]),double(ring.zeroDivisorWitness[i]),double(t(a,i)),0});
+        b.label("Teal: units; coral: nonzero zero divisors",{-4.1F,-2.05F,0},white);
+      }else {b.metric("Associative",analysis.associative);b.metric("Commutative",analysis.commutative);b.metric("Identity (-1 absent)",analysis.identity);b.metric("Group",analysis.group);
+        if(level==2){b.metric("Subgroup defined",subgroup.defined);b.metric("Subgroup order",subgroup.order);b.metric("Cosets",subgroup.cosetCount);b.metric("Normal subgroup",subgroup.normal);
+          b.table(subgroup.defined?"Generator action and coset partition":"Undefined: this table is not a group",{"In subgroup","Coset (-1 undefined)",parameter(P::FaSide)==1?"g * element":"element * g",{}},3);for(unsigned i=0;i<n;++i)b.row(names[i],{subgroup.defined?double((subgroup.mask>>i)&1):-1.,subgroup.defined?double(subgroup.cosetOf[i]):-1.,double(parameter(P::FaSide)==1?t(selected,i):t(i,selected)),0});
+          b.label(subgroup.defined?"Play follows powers; grouping preserves the operation":"Repair the group laws to enable subgroups and cosets",{-4.1F,-2.05F,0},white);
+        }else if(level==1&&law<2){
+          if(law==0){b.table("Identity candidates: counterexample x; side 0=e*x, 1=x*e",{"Counterexample x","Side (-1 if identity)","Result",{}},3);for(unsigned e=0;e<n;++e){const auto x=analysis.identityWitness[e];const bool valid=x==6;b.row(names[e],{valid?-1.:double(x),valid?-1.:double(analysis.identitySide[e]),valid?double(e):double(analysis.identitySide[e]?t(x,e):t(e,x)),0});}}
+          else{b.table(analysis.identity<0?"Inverses undefined: no two-sided identity":"Two-sided inverses (-1 means absent)",{"Inverse","a * element","element * a",{}},3);for(unsigned i=0;i<n;++i)b.row(names[i],{double(analysis.inverse[i]),double(t(a,i)),double(t(i,a)),0});}
+          b.label(law==0?"Each failed identity candidate has a concrete counterexample":"An inverse must work on both sides of the identity",{-4.1F,-2.05F,0},white);
+        }else {const bool assoc=level==1&&law==2;const unsigned lhs=assoc?t(t(a,other),c):t(a,other),rhs=assoc?t(a,t(other,c)):t(other,a);
+          b.metric("Displayed a",a);b.metric("Displayed b",other);if(assoc)b.metric("Displayed c",c);b.metric("Gold result",lhs);b.metric("Violet result",rhs);
+          if(assoc){b.table("Vary c with the displayed a and b",{"(a*b)*c","a*(b*c)","Equal",{}},3);for(unsigned i=0;i<n;++i)b.row(names[i],{double(t(t(a,other),i)),double(t(a,t(other,i))),t(t(a,other),i)==t(a,t(other,i))?1.:0.,0});}
+          else {b.table("Selected row a: both operation orders",{"a * element","element * a","Equal",{}},3);for(unsigned i=0;i<n;++i)b.row(names[i],{double(t(a,i)),double(t(i,a)),t(a,i)==t(i,a)?1.:0.,0});}
+          b.label(assoc?"Gold: (a*b)*c; violet: a*(b*c)":"Gold: a*b; violet: b*a",{-4.1F,-2.05F,0},white);
+        }
+      }
+      break;
+    }
+    case MathObjectKind::Quotient:{
+      using P=MathParameter;const unsigned level=snapshot_.level,n=quotientSourceSize(*this),selected=static_cast<unsigned>(parameter(P::QuA)),subset=quotientSubset(*this);
+      const auto source=quotientGroup(static_cast<unsigned>(parameter(P::QuSource))),target=quotientGroup(static_cast<unsigned>(parameter(P::QuTarget)));const auto map=quotientMap(*this);
+      FiniteHomomorphism hom;FiniteGroupQuotient group;FiniteRingQuotient ring;FinitePartitionOperation partition;FiniteOperation operation=source;
+      if(level<2){hom=analyzeFiniteHomomorphism(source,target,map);partition=hom.fibers;}
+      else if(level==2){group=analyzeFiniteGroupQuotient(source,subset);partition=group.quotient;}
+      else {const auto example=finiteRingExample(static_cast<unsigned>(parameter(P::QuRing)));ring=analyzeFiniteRingQuotient(example,subset);partition=parameter(P::QuRingOperation)==0?ring.addition:ring.multiplication;operation=parameter(P::QuRingOperation)==0?example.addition:example.multiplication;}
+      const unsigned rightCount=level<2?target.size:partition.classCount;const bool canCollapse=level==1||partition.classCount>0;
+      const float collapse=level==0||!canCollapse?0:static_cast<float>(parameter(P::QuCollapse));
+      unsigned a=selected,other=static_cast<unsigned>(parameter(P::QuB)),altA=a,altB=other;
+      if(level==0&&parameter(P::QuWitness)==1&&!hom.valid){a=hom.witness[0];other=hom.witness[1];}
+      if(level>=2&&partition.classCount){altA=quotientMember(partition.members[partition.classOf[a]],static_cast<unsigned>(parameter(P::QuRepA)));altB=quotientMember(partition.members[partition.classOf[other]],static_cast<unsigned>(parameter(P::QuRepB)));
+        if(parameter(P::QuWitness)==1&&!partition.wellDefined){a=partition.witness[0];other=partition.witness[1];altA=partition.witness[2];altB=partition.witness[3];}}
+      static constexpr std::array<std::string_view,6> raw{"0","1","2","3","4","5"},sourceNames{"A0","A1","A2","A3","A4","A5"},targetNames{"B0","B1","B2","B3","B4","B5"},classNames{"C0","C1","C2","C3","C4","C5"};
+      const std::array<Vec3,6> colors{blue,teal,violet,gold,coral,Vec3{.5F,.85F,.3F}};
+      std::array<Vec3,6> left{},right{};for(unsigned i=0;i<rightCount;++i)right[i]={-.85F,(static_cast<float>(rightCount)-1)*.35F-.7F*i,0};
+      for(unsigned i=0;i<n;++i){left[i]={-3.5F,(static_cast<float>(n)-1)*.35F-.7F*i,0};if(collapse>0){const unsigned destination=level<2?map[i]:partition.classOf[i];left[i]=left[i]*(1-collapse)+right[destination]*collapse;}}
+      auto arrow=[&](Vec3 from,Vec3 to,Vec3 color,float bend,std::string_view role){
+        if(length(to-from)<.001F){const auto mid=from+Vec3{bend,.26F,.1F};b.rod(from,mid,color,.018F,role);b.arrow(mid,to+Vec3{.06F,.04F,.04F},color,role);}
+        else {const auto mid=(from+to)*.5F+Vec3{bend,0,.1F};b.rod(from,mid,color,.018F,role);b.arrow(mid,to,color,role);}
+      };
+      if(collapse<1&&rightCount)for(unsigned i=0;i<n;++i){const unsigned destination=level<2?map[i]:partition.classOf[i];b.arrow(left[i],right[destination],colors[destination]*.6F,"quotient_projection");}
+      if(level==0){const unsigned product=source(a,other),lhs=map[product],rhs=target(map[a],map[other]);arrow(left[a],left[product],gold,-.25F,"quotient_combine_first");arrow(left[other],left[product],gold,-.12F,"quotient_second_operand");arrow(left[product],right[lhs],gold,.1F,"quotient_map_product");arrow(right[map[a]],right[rhs],violet,.22F,"quotient_combine_images");
+        b.metric("Homomorphism",hom.valid);b.metric("Displayed a",a);b.metric("Displayed b",other);b.metric("f(a*b)",lhs);b.metric("f(a)*f(b)",rhs);b.metric("Injective",hom.injective);b.metric("Surjective",hom.surjective);b.metric("Kernel size (-1 undefined)",hom.valid?std::popcount(hom.kernel):-1);
+        b.table("Map routes for the displayed a",{"f(x)","f(a*x)","f(a)*f(x)","Equal"},4);for(unsigned i=0;i<n;++i)b.row(sourceNames[i],{double(map[i]),double(map[source(a,i)]),double(target(map[a],map[i])),map[source(a,i)]==target(map[a],map[i])?1.:0.});
+      }else if(level==1){b.metric("Homomorphism",hom.valid);b.metric("Kernel size (-1 undefined)",hom.valid?std::popcount(hom.kernel):-1);b.metric("Image size",partition.classCount);b.metric("Target size",target.size);b.metric("Quotient-to-image defined",hom.valid);
+        b.table(hom.valid?"Kernel and fibers; classes correspond to the image":"Fibers only: this map is not a group homomorphism",{"Image B","Fiber class","In kernel (-1 undefined)",{}},3);for(unsigned i=0;i<n;++i)b.row(sourceNames[i],{double(map[i]),double(partition.classOf[i]),hom.valid?double((hom.kernel>>i)&1):-1.,0});
+      }else {const bool subsetValid=level==2?group.subgroup:ring.additiveSubgroup;
+        b.metric(level==2?"Subgroup":"Additive subgroup",subsetValid);b.metric(level==2?"Normal subgroup":"Ideal",level==2?group.normal:ring.ideal);b.metric("Classes",partition.classCount);b.metric("Operation well-defined",partition.classCount&&partition.wellDefined);
+        if(partition.classCount){const unsigned lhs=partition.classOf[operation(a,other)],rhs=partition.classOf[operation(altA,altB)];b.metric("Representative a",a);b.metric("Representative b",other);b.metric("Alternate a",altA);b.metric("Alternate b",altB);b.metric("Gold result class",lhs);b.metric("Violet result class",rhs);
+          if(collapse<1){arrow(left[a],left[operation(a,other)],gold,-.25F,"quotient_first_representatives");arrow(left[altA],left[operation(altA,altB)],violet,-.38F,"quotient_alternate_representatives");arrow(left[operation(a,other)],right[lhs],gold,.1F,"quotient_first_result");arrow(left[operation(altA,altB)],right[rhs],violet,.25F,"quotient_alternate_result");}
+          b.planeFrame(right[lhs],{.2F,0,0},{0,.23F,0},gold,"quotient_result_class");if(lhs!=rhs)b.planeFrame(right[rhs],{.23F,0,0},{0,.26F,0},violet,"quotient_conflicting_class");
+          b.table("Projection and two representative choices",{"In H / I","Class","a op element class","alt-a op element class"},4);for(unsigned i=0;i<n;++i)b.row(sourceNames[i],{double((subset>>i)&1),double(partition.classOf[i]),double(partition.classOf[operation(a,i)]),double(partition.classOf[operation(altA,i)])});
+          if(level==3&&!ring.ideal&&ring.additiveSubgroup){const auto w=ring.absorptionWitness;b.row("Absorption fails: r, i, r*i",{double(w[0]),double(w[1]),double(w[2]),0});}
+        }else {const auto failure=level==2?group.failure:ring.additiveFailure;const auto witness=level==2?group.subsetWitness:ring.additiveWitness;
+          b.metric("Closure witness x",witness[0]);b.metric("Closure witness y",witness[1]);b.metric("Missing result",witness[2]);
+          b.table(failure==FiniteSubsetFailure::MissingIdentity?"Subset excludes the identity / additive zero":failure==FiniteSubsetFailure::Inverse?"Subset excludes an inverse":"Subset is not closed under the group operation",{"In subset",{}, {},{}},1);for(unsigned i=0;i<n;++i)b.row(sourceNames[i],{double((subset>>i)&1),0,0,0});
+          b.ball(left[witness[2]],.2F,coral,"quotient_missing_member");
+        }
+      }
+      snapshot_.curve.active=collapse<1;snapshot_.curve.count=collapse<1?n:0;snapshot_.curve.selected=selected;snapshot_.curve.selectionParameter=P::QuA;
+      if(collapse<1)for(unsigned i=0;i<n;++i){const bool marked=level<2?(hom.valid&&(hom.kernel&(1U<<i))):(subset&(1U<<i));const auto color=marked?gold:blue;b.ball(left[i],(i==selected?.15F:.105F)*(1-.6F*collapse),color,"quotient_source_element");if(collapse<.85F)b.label(sourceNames[i],left[i]+Vec3{-.42F,.12F,.04F},color);snapshot_.curve.controls[i]=left[i];}
+      for(unsigned i=0;i<rightCount;++i){unsigned count=0;if(level<2){for(unsigned j=0;j<n;++j)count+=map[j]==i;}else count=std::popcount(partition.members[i]);b.ball(right[i],count?.13F+.018F*count*collapse:.055F,count?colors[i]:muted,"quotient_class_element");b.label(level<2?targetNames[i]:classNames[i],right[i]+Vec3{.17F,.12F,.04F},count?colors[i]:muted);}
+      const unsigned rows=level==0?n:level==1?(hom.valid?partition.classCount:0):partition.classCount;const float x0=.8F,y0=1.25F,cell=.44F;
+      for(unsigned i=0;i<rows;++i){const auto name=level==0?raw[i]:level==1?targetNames[hom.image[i]]:classNames[i];b.label(name,{x0-.38F,y0-cell*i,.025F});b.label(name,{x0+cell*i,y0+.35F,.025F});
+        for(unsigned j=0;j<rows;++j){int result=-1;if(level==0){if(map[source(i,j)]==target(map[i],map[j]))result=static_cast<int>(map[source(i,j)]);}else{result=partition.product[6*i+j];if(level==1&&result>=0)result=static_cast<int>(hom.image[static_cast<unsigned>(result)]);}b.operationCell(x0+cell*j,y0-cell*i,result,result<0?coral*.45F:colors[static_cast<unsigned>(result)]*.43F);}}
+      if(rows){const unsigned row=level==0?a:partition.classOf[a],column=level==0?other:partition.classOf[other];b.planeFrame({x0+cell*column,y0-cell*row,.025F},{.215F,0,0},{0,.215F,0},gold,"quotient_table_probe");}
+      b.label(level==3?"Ring elements":"Source group",{-4.05F,2.18F,0},white);b.label(level<2?"Target group":"Classes",{-1.35F,2.18F,0},white);
+      b.label(level==0?"Preserved products; dash = failure":level==1?(hom.valid?"Image operation":"No quotient-to-image claim"):level==3?(parameter(P::QuRingOperation)==0?"Class addition":"Class multiplication"):"Class products",{.35F,2.18F,0},white);
+      b.label(level>=2&&!partition.classCount?"Repair subset closure to define classes":level>=2&&!partition.wellDefined?"Dash = conflicting representatives; no quotient operation":level==1&&!hom.valid?"Fibers exist; the kernel theorem does not apply":"Gold and violet compare routes through the same construction",{-4.05F,-2.3F,0},white);
       break;
     }
     case MathObjectKind::Count:throw std::logic_error("invalid math object state");

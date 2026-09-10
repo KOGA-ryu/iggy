@@ -1,0 +1,123 @@
+@question {{read_notation_id}} | {{read_notation_title}}
+@template choices.v1
+@version 1
+@goal {{read_notation_objective}}
+@given \left[\begin{array}{cc|c}2&-1&5\end{array}\right]
+@domain The first two columns hold the coefficients of x and y, in that order. The entry after the vertical bar is the right-hand constant. The bar separates columns; it does not mean division. A coefficient of -1 gives the term -y.
+@read {{reading_id}}
+@step 10 | Which equation has these coefficients and this right-hand constant?
+@choice 11 | 2x-y=5
+@choice 12 | 2x+y=5
+@choice 13 | 2x-5y=-1
+@answer 11
+@feedback 12 | The y coefficient is -1, so its term is -y. This choice changes the sign of that coefficient.
+@feedback 13 | The entry -1 is before the bar and multiplies y. The entry 5 is after the bar and belongs on the right-hand side. Keep the columns in their stated roles.
+@after 2x-y=5
+@wrong Read one column at a time: the x coefficient, the y coefficient, then the right-hand constant.
+@why The row stands for 2 times x plus -1 times y equals 5, usually written 2x-y=5. It is one equation in two unknowns; translating this row alone has not determined a unique pair of values.
+@end
+
+@question {{worked_check_id}} | {{worked_check_title}}
+@template choices.v1
+@version 1
+@goal {{worked_check_objective}}
+@given \begin{gathered}\left[\begin{array}{cc|c}1&2&5\\2&5&13\end{array}\right]\\R_2\leftarrow R_2-2R_1\\R'_2=\left[\begin{array}{cc|c}0&1&\square\end{array}\right]\end{gathered}
+@domain The rows represent equations in real x and y. R1 is the first row and R2 is the second. The arrow replaces row 2 by its old value minus twice row 1; row 1 stays unchanged. A prime marks the new row. The square is one missing entry.
+@read {{reading_id}}
+@step 10 | The new coefficients are 2-2(1)=0 and 5-2(2)=1. What is the new constant, 13-2(5)?
+@choice 11 | 13
+@choice 12 | 3
+@choice 13 | 23
+@answer 12
+@feedback 11 | Thirteen is the original constant. The subtraction must also apply to the entry after the bar: subtract twice 5.
+@feedback 13 | Twenty-three comes from adding twice 5 to 13. The indicated operation subtracts twice row 1, so the constant is 13-10.
+@after \left[\begin{array}{cc|c}1&2&5\\0&1&3\end{array}\right]
+@wrong Apply the same subtraction to every entry in row 2, including its constant. The vertical bar does not stop the operation.
+@why Twice the old row 1 is [2, 4 | 10]. Subtract it entry by entry from [2, 5 | 13] to obtain [0, 1 | 3]. The new second equation is y=3. The first equation x+2y=5 has not changed. This step supplies y; it has not yet completed the solve for x.
+@end
+
+@question {{choose_next_step_id}} | {{choose_next_step_title}}
+@template choices.v1
+@version 1
+@goal {{choose_next_step_objective}}
+@given \left[\begin{array}{cc|c}1&-1&2\\3&1&10\end{array}\right]
+@domain The columns are x, y and the right-hand constant. The row named on the left of the arrow is the row to replace. In row 2 the x coefficient is 3; in row 1 it is 1. Apply a chosen operation to the complete destination row.
+@read {{reading_id}}
+@step 10 | Which operation makes the first entry of row 2 zero and keeps row 1 unchanged?
+@choice 11 | R_2\leftarrow R_2+3R_1
+@choice 12 | R_1\leftarrow R_1-3R_2
+@choice 13 | R_2\leftarrow R_2-3R_1
+@answer 13
+@feedback 11 | Adding three copies of row 1 makes the first entry 3+3(1)=6. This is a reversible operation, but it does not cancel the required entry.
+@feedback 12 | This changes row 1 and leaves the x coefficient in row 2 equal to 3. It is a valid row replacement, but it does not meet the stated goal.
+@after \left[\begin{array}{cc|c}1&-1&2\\0&4&4\end{array}\right]
+@wrong Check both the destination row and the sign of its cancelling multiple. A valid row operation need not achieve this particular goal.
+@why Subtracting three times row 1 gives the new row [3-3(1), 1-3(-1) | 10-3(2)] = [0, 4 | 4]. Thus the x term disappears from the second equation, which now says 4y=4. Row 1 stays [1, -1 | 2]. Adding three times that unchanged row back would recover the original row 2.
+@end
+
+@question {{explain_step_id}} | {{explain_step_title}}
+@template choices.v1
+@version 1
+@goal {{explain_step_objective}}
+@given \begin{gathered}\left[\begin{array}{cc|c}1&1&4\\2&-1&5\end{array}\right]\\R_2\leftarrow R_2-2R_1\\\left[\begin{array}{cc|c}1&1&4\\0&-3&-3\end{array}\right]\end{gathered}
+@domain Both matrices represent equations in real x and y. Row 1 is retained. To explain why the solution set is preserved, we must be able to recover the original second equation from the new one and the retained first equation.
+@read {{reading_id}}
+@step 10 | Starting from the lower matrix, which reverse operation recovers the upper matrix?
+@choice 11 | R_2\leftarrow R_2-2R_1
+@choice 12 | R_2\leftarrow 0R_2
+@choice 13 | R_2\leftarrow R_2+2R_1
+@answer 13
+@feedback 11 | This repeats the subtraction. It would give [-2, -5 | -11], not the original second row. Undo subtraction by adding the same multiple back.
+@feedback 12 | Multiplying by zero gives [0, 0 | 0], which erases this equation. The lost entries cannot be recovered from that zero row.
+@after \left[\begin{array}{cc|c}1&1&4\\2&-1&5\end{array}\right]
+@wrong Use the unchanged row 1 to undo exactly the earlier replacement of row 2.
+@why Adding twice row 1 gives [0+2(1), -3+2(1) | -3+2(4)] = [2, -1 | 5]. Any pair satisfying the original two equations also satisfies the new second equation, because it is their indicated difference. Conversely, a pair satisfying row 1 and the new row 2 satisfies their reverse combination, the original row 2. Both directions matter: the operation preserves exactly the common solutions, not just one example pair.
+@end
+
+@question {{repair_error_id}} | {{repair_error_title}}
+@template choices.v1
+@version 1
+@goal {{repair_error_objective}}
+@given \begin{gathered}\left[\begin{array}{cc|c}1&1&4\\2&3&11\end{array}\right]\\\begin{aligned}L_1 &: R'_2=[2-2(1),\,3-2(1)\mid11]\\L_2 &: R'_2=[0,\,1\mid11]\\L_3 &: y=11\end{aligned}\end{gathered}
+@domain The intended operation subtracts twice row 1 from row 2 and retains row 1. The columns are x, y and the constant. A prime denotes the replacement row. L1, L2 and L3 are a student's deliberately incorrect attempt, not accepted working.
+@read {{reading_id}}
+@step 10 | Which line first fails to apply the intended operation to the complete row?
+@choice 11 | L_1
+@choice 12 | L_2
+@choice 13 | L_3
+@answer 11
+@feedback 12 | Line 2 correctly evaluates the two subtractions that line 1 wrote. The error already appears in line 1, where the constant was left unchanged.
+@feedback 13 | Line 3 correctly reads y=11 from the student's row in line 2. That row was produced by an earlier incomplete row operation.
+@after L_1:\quad 11\ \mathrm{must\ become}\ 11-2(4)
+@wrong Follow the work from the top. Check the coefficients and the constant before interpreting the resulting row.
+@why Line 1 subtracts twice row 1 from the coefficients but omits the same subtraction from the right-hand constant. The constant must become 11-2(4). Later lines carry that first error forward. Applying an operation only before the bar generally changes the original system's solutions.
+@step 20 | Repair the constant. The corrected second row is [0, 1 | 11-2(4)]. What is y?
+@choice 21 | 11
+@choice 22 | 7
+@choice 23 | 3
+@answer 23
+@feedback 21 | This keeps the student's unchanged constant. Subtract twice 4 from 11 before reading the value of y.
+@feedback 22 | Seven is 11-4, which subtracts row 1 only once. The intended multiplier is two, so subtract 8.
+@after \left[\begin{array}{cc|c}1&1&4\\0&1&3\end{array}\right],\quad y=3
+@wrong The coefficient of y is already 1. Calculate the corrected constant using the full indicated multiple.
+@why The corrected constant is 11-8=3, so the second equation is y=3. Row 1 still says x+y=4, giving x=1. Checking the original equations gives 1+3=4 and 2(1)+3(3)=11. The student pair x=-7, y=11 would satisfy the first equation but fail the second, which is why checking both original rows matters.
+@end
+
+@question {{independent_id}} | {{independent_title}}
+@template choices.v1
+@version 1
+@goal {{independent_objective}}
+@given \left[\begin{array}{cc|c}2&1&4\\2&-1&2\end{array}\right]
+@domain The unknowns x and y are real. The first two columns are their coefficients in that order; the column after the bar contains the right-hand constants. Each choice gives the ordered pair (x,y).
+@read {{reading_id}}
+@step 10 | Which ordered pair solves this system?
+@choice 11 | (x,y)=\left(1,\frac{3}{2}\right)
+@choice 12 | (x,y)=\left(\frac{3}{2},1\right)
+@choice 13 | (x,y)=\left(3,1\right)
+@answer 12
+@feedback 11 | This swaps the values of x and y. In the first original row it gives 2(1)+3/2=7/2, not 4. Preserve the stated order of the unknowns.
+@feedback 13 | This treats the value of 2x as the value of x. It gives 2(3)+1=7 in the first row, not 4.
+@after x=\frac{3}{2},\quad y=1
+@wrong Test the chosen values against the original rows. Related reading is available if you want to revisit the method.
+@why Subtract the second equation from the first to get 2y=2, hence y=1. Substitution in 2x+y=4 gives 2x=3, so x=3/2. The pair checks in both original rows: 2(3/2)+1=4 and 2(3/2)-1=2. Exact fractions keep those equalities exact.
+@end

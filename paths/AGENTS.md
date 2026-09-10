@@ -22,6 +22,12 @@ This supersedes the earlier split that limited the textbook worker to equations.
 Responsibility for the full textbook does not authorize extra workers or
 automatically start a queued batch.
 
+The [parallel authoring packet](docs/PARALLEL_QUESTION_AUTHORING.md) prepares
+four bounded subject pilots. Read its subject-local instructions when explicitly
+assigned one. The coordinator owns shared tools/builds and publication; each
+subject worker writes only its listed authoring files. Preparing packets does
+not dispatch workers or authorize completion of a whole subject.
+
 ## Working rules
 
 - Work in `paths/`; no parent build, renderer, Creative, source-card, or Git

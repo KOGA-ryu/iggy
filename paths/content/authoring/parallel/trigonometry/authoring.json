@@ -1,0 +1,26 @@
+{
+  "format": "paths_learning_authoring",
+  "format_version": 1,
+  "package_id": "pilot_trigonometry_sine",
+  "package_version": 1,
+  "sources": [
+    {
+      "id": "pilot_trigonometry_sine_v1",
+      "kind": "original",
+      "title": "Original Paths sine-equation reasoning pilot",
+      "uri": "paths:original/pilot_trigonometry_sine/v1",
+      "revision": "1",
+      "attribution": "Original Paths lesson, worked example, questions, distractors, feedback, and exact certificates. Definitions and interval/period conventions were checked against OpenStax Precalculus 2e, section 7.5, Solving Trigonometric Equations: https://openstax.org/books/precalculus-2e/pages/7-5-solving-trigonometric-equations (accessed 2026-09-10).",
+      "reuse": "Original authoring; no external exercise text, figure, or solution prose copied.",
+      "content_ids": [
+        "pilot_trig_sine_v1_reading",
+        "pilot_trig_sine_v1_read_notation",
+        "pilot_trig_sine_v1_worked_check",
+        "pilot_trig_sine_v1_choose_next_step",
+        "pilot_trig_sine_v1_explain_step",
+        "pilot_trig_sine_v1_repair_error",
+        "pilot_trig_sine_v1_independent"
+      ]
+    }
+  ]
+}

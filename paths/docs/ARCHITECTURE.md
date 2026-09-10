@@ -130,6 +130,14 @@ the same `CorpusPractice` save/history owner. The batch records source digests
 and refuses to publish if an authoring input changes during verification.
 
 The six exercise roles are an authoring contract in `build_question_batch.py`.
+`reasoning_documents(root, checkers, values, filename)` now supplies one manifest,
+substitution and chapter-assembly route to probability and matrix sequences.
+Matrix reasoning is a separate additive package attached to the existing
+`worked_matrix_practice` chapter. Its exact-rational certificates check original
+solutions by Cramer's rule/substitution, row-addition inverses, elimination goals,
+the first omitted constant operation, and candidate-pair residuals. The shared
+certificate wrapper identifies the card/role on arithmetic failure. No runtime
+question model, renderer, save schema or 3D owner changes for this sequence.
 `validate_role_sequence()` checks the ordered role manifest and prerequisites;
 `verify_role_content()` compares compiled prepared questions with a family's
 independent mathematical certificates. `chapter_text()` supplies the common
@@ -232,6 +240,23 @@ This collection consumes no sorter slots and leaves the old catalogue and
 practice-save owner unchanged. The explicit authoring map and generator prove
 subject/chapter/subcategory coverage without modifying pinned source notes.
 
+`FiniteQuotient.hpp/.cpp` own group-map preservation, fibers/kernels,
+representative-independent partition operations, subgroup quotients and finite-ring
+ideals. A partition retains all possible product classes and marks ambiguity
+explicitly; nonnormal subgroups never receive an invented quotient multiplication.
+The Quotients and Homomorphisms Lab animates collapse without changing these
+facts. It shares `SnapshotBuilder::operationCell` numeric mesh cells with Finite
+Algebra, plus existing inspector, picker and playback contracts. One-class
+quotients and proper images are supported. See [P068](P068_QUOTIENTS_AND_HOMOMORPHISMS.md).
+
+`FiniteAlgebra.hpp/.cpp` own closed operation tables on two to six elements,
+identity/inverse and law witnesses, generated subgroups, left/right cosets and
+standard modular-ring analysis. The Finite Algebra Lab uses those results with
+existing selected-row controls and node picking. Its operation cells and numeric
+glyphs share one bounded triangle mesh. Subgroups require a verified group;
+the ring layer explicitly uses Z/nZ independently of the stored editable table.
+[P067](P067_FINITE_ALGEBRA.md) records conventions and reuse boundaries.
+
 `FiniteGraph.hpp/.cpp` own a six-node relation and its BFS, property witnesses,
 equivalence classes, and three-by-three matching analysis. The Relations and
 Graphs Lab constructs arrows, a binary adjacency mesh, property counterexamples,
@@ -271,8 +296,8 @@ the builders do not infer them. Zero vectors keep their labels while the existin
 primitive threshold omits zero-length arrows and segments. Part and label order,
 IDs and picker bindings are preserved.
 
-`MathParameterSpec::control` owns static inspector metadata for all 37 assets
-and 476 parameters: required group, optional short label, coordinate row and
+`MathParameterSpec::control` owns static inspector metadata for all 39 assets
+and 544 parameters: required group, optional short label, coordinate row and
 component labels, and selected-point or mode-slot binding. The inspector consumes
 those definitions directly; its separate metadata, tuple and selected-range
 registries are removed. New controls declare their bindings beside their limits

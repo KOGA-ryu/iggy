@@ -1,0 +1,26 @@
+{
+  "format": "paths_learning_authoring",
+  "format_version": 1,
+  "package_id": "pilot_linear_algebra_rows",
+  "package_version": 1,
+  "sources": [
+    {
+      "id": "pilot_linear_algebra_rows_original_v1",
+      "kind": "original",
+      "title": "Read and justify a complete row operation",
+      "uri": "paths:original/pilot_linear_algebra_rows/v1",
+      "revision": "1",
+      "attribution": "Original Paths lesson, examples, choices, explanations, and exact-rational certificate use. Definitions and elementary augmented-matrix row-operation conventions were checked against OpenStax College Algebra 2e, section 7.6, https://openstax.org/books/college-algebra-2e/pages/7-6-solving-systems-with-gaussian-elimination.",
+      "reuse": "Original project material. No external exercise text or prose copied; OpenStax was consulted for definitions and conventions only.",
+      "content_ids": [
+        "pilot_la_rows_v1_reading",
+        "pilot_la_rows_v1_read_notation",
+        "pilot_la_rows_v1_worked_check",
+        "pilot_la_rows_v1_choose_next_step",
+        "pilot_la_rows_v1_explain_step",
+        "pilot_la_rows_v1_repair_error",
+        "pilot_la_rows_v1_independent"
+      ]
+    }
+  ]
+}

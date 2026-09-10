@@ -1,0 +1,90 @@
+@block introduction | start | - | Understand the row before changing it
+@prose A system asks for values that make all its equations true at the same time. Row operations let us rewrite that system in a form that is easier to read. Before calculating, identify what each entry means, which row will change and why the change can be reversed.
+@prose These six questions move from interpreting notation to completing a calculation, choosing an operation, explaining its inverse, repairing an error and solving a fresh system. Each decision uses the same multiple-choice controls. Start with the definitions below; return to this reading whenever a symbol or step needs an explanation.
+@endblock
+
+@block definition | rows | 1.1 | Coefficients, constants and the augmented bar
+@prose A coefficient is a number multiplying an unknown. A right-hand constant is the number on the other side of the equality. An augmented matrix records both kinds of number. In this section the first column always holds coefficients of x, the second holds coefficients of y and the last holds right-hand constants. Keep that order in every row.
+@display
+ax+by=c\qquad\longleftrightarrow\qquad\left[\begin{array}{cc|c}a&b&c\end{array}\right]
+@prose The vertical bar separates the coefficient columns from the constant column. It is not division, and it does not create a third unknown. Each row represents one complete equation. A missing x term is recorded with coefficient zero; a y coefficient of -1 means subtract y.
+@display
+-y=6\qquad\longleftrightarrow\qquad\left[\begin{array}{cc|c}0&-1&6\end{array}\right]
+@prose A solution is an ordered pair: the first value is x and the second is y. The same pair must satisfy every original row. One satisfied equation is not enough to establish a solution of the whole system.
+@endblock
+
+@block definition | arrows | 1.2 | What the replacement arrow tells you
+@prose R1 names the first row and R2 names the second. The row on the left of a replacement arrow is the destination. Evaluate the expression on the right using the old rows, then replace the destination with that result. Other rows remain unchanged. A prime on R2 is a label for its new value; it is not a derivative here.
+@display
+R_2\leftarrow R_2+kR_1
+@prose This instruction adds k copies of row 1 to row 2. Apply it to the coefficients and the right-hand constant, column by column. If k is negative, the addition subtracts the corresponding positive multiple. The bar does not interrupt the calculation.
+@display
+\left[\begin{array}{cc|c}d&e&f\end{array}\right]+k\left[\begin{array}{cc|c}a&b&c\end{array}\right]=\left[\begin{array}{cc|c}d+ka&e+kb&f+kc\end{array}\right]
+@endblock
+
+@block proposition | inverse | 1.3 | Reversible operations preserve common solutions
+@prose Swapping two rows, multiplying a complete row by a nonzero number, and adding a multiple of a different row are reversible operations. Their inverses respectively swap back, divide by that same nonzero number, and subtract the added multiple. They preserve the set of common solutions. The multiple in row addition may be zero, although then nothing changes.
+@display
+R'_2=R_2+kR_1,\qquad R_2=R'_2-kR_1
+@prose The inverse uses the retained row 1. This is why both the destination and the unchanged row matter. Reversibility establishes both directions: original solutions remain solutions, and the operation introduces no extra solutions.
+@help proof
+@prose Write the original equations as ax+by=c and dx+ey=f. A pair satisfying both also satisfies their indicated combination: (d+ka)x+(e+kb)y=f+kc. Conversely, if a pair satisfies the retained first equation and this new second equation, subtracting k times the first recovers dx+ey=f. Thus the two systems have exactly the same solutions, including when there are no solutions or more than one.
+@help hint
+@prose An operation that preserves one example pair has not yet proved that it preserves every solution. Identify an inverse that recovers the original equations.
+@endblock
+
+@block example | zero | 1.4 | Why the nonzero condition matters
+@prose Multiplying an equation by zero can erase a restriction. For example, 3x=9 requires x=3, but multiplying both sides by zero produces 0=0, which every x satisfies. No multiplication can reconstruct the erased restriction from 0=0 alone. Division by zero is undefined.
+@display
+3x=9\quad\xrightarrow{\times0}\quad0=0
+@prose Row operations preserve solutions when their conditions are met; they do not guarantee that a system has exactly one solution. In a two-unknown system, a row [0, 0 | 0] imposes no additional restriction, whereas [0, 0 | 1] requires the impossible equality 0=1. The fresh system in these exercises has a unique solution, but that is a property of its givens.
+@endblock
+
+@block example | worked | 1.5 | A complete example, including the constant column
+@prose Consider the following separate teaching example. The goal is to find a pair satisfying both equations. Row 1 already has x coefficient 1, so two copies of that row will cancel the x coefficient 2 in row 2.
+@display
+\left[\begin{array}{cc|c}1&-2&1\\2&-3&4\end{array}\right]\qquad\begin{aligned}x-2y&=1\\2x-3y&=4\end{aligned}
+@help hint
+@prose Replace row 2 by row 2 minus twice row 1. Calculate all three new entries. Once row 2 gives y, use it to remove the y term from row 1, or substitute y into the original first equation.
+@help answer
+@display
+x=5,\qquad y=2
+@help solution
+@prose The first operation is a complete row subtraction. In particular, subtracting twice the negative y coefficient adds four to the old y coefficient.
+@display
+R_2\leftarrow R_2-2R_1
+@display
+\begin{aligned}2-2(1)&=0\\-3-2(-2)&=1\\4-2(1)&=2\end{aligned}
+@display
+\left[\begin{array}{cc|c}1&-2&1\\0&1&2\end{array}\right]
+@prose The second row now says y=2. Add twice this new row 2 to row 1 to cancel its coefficient -2. The constant in row 1 becomes 1+2(2)=5; the first coefficient remains 1 because row 2 has x coefficient zero.
+@display
+R_1\leftarrow R_1+2R_2\qquad\Longrightarrow\qquad\left[\begin{array}{cc|c}1&0&5\\0&1&2\end{array}\right]
+@prose The two rows now read x=5 and y=2. Check the pair in the original equations, since those equations state the problem we were asked to solve.
+@display
+5-2(2)=1,\qquad2(5)-3(2)=4
+@endblock
+
+@block definition | goal | 1.6 | A valid operation and a useful operation
+@prose Elimination means making a selected coefficient zero so that its unknown disappears from that equation. If the first entries of rows 1 and 2 are a and d, adding k times row 1 to row 2 changes the target entry to d+ka. When a is nonzero, choose k=-d/a to cancel it. If a is zero, that row cannot cancel a nonzero d by row addition alone; another pivot choice is needed.
+@display
+d+ka=0,\qquad k=-\frac{d}{a}\quad(a\ne0)
+@prose Several row operations may be mathematically valid, while only one of the offered choices achieves a particular target. An operation can change the wrong row or increase the target coefficient and still be reversible. Read the requested goal as well as the notation.
+@endblock
+
+@block example | errors | 1.7 | Find the first incomplete operation
+@prose When a solution is wrong, check its lines in order. Start with the translation of the givens. Next check the chosen destination and multiplier, then every coefficient and constant, then the interpretation of the resulting row. A later line may evaluate an already incorrect expression accurately.
+@help hint
+@prose For each changed row, write three small calculations: one for the x coefficient, one for the y coefficient, and one for the constant. If the last calculation is missing, correcting only the final claimed answer will not explain the mistake.
+@endblock
+
+@block exercise | fresh | 1.8 | Use the method with fewer cues
+@prose The last question provides a fresh system and three ordered pairs. Choose the pair that satisfies both equations. It has no supplied intermediate step. Fractions are valid values of real unknowns and should stay exact. This reading and the separate worked example remain available if you want guidance.
+@help hint
+@prose A pair is correct only if both original equalities hold with the same x and y. Keep the order of the unknowns fixed throughout your check.
+@endblock
+
+@block summary | summary | 1.9 | What to carry into further practice
+@prose Read each row as a complete equation, choose an operation for an explicit goal, apply it to every column, and know how to reverse it. Repair the earliest incorrect step. Finish by checking the same pair in all original equations. The numerical practice in this chapter gives further repetitions with integers, signs and fractions. This six-question sequence checks recognition and reasoning through choices; it does not establish independently written work or long-term mastery.
+@prose Augmented-matrix notation and row-operation conventions were checked against OpenStax, College Algebra 2e, section 7.6, Solving Systems with Gaussian Elimination. The examples, explanations, distractors and questions here are original Paths material.
+@endblock

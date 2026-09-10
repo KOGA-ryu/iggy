@@ -1,0 +1,128 @@
+{
+  "format": "paths_exercise_roles",
+  "format_version": 1,
+  "questions": [
+    {
+      "id": "pilot_la_rows_v1_read_notation",
+      "role": "read_notation",
+      "title": "01 Read an augmented row",
+      "objective": "Translate the augmented row into an equation in x and y.",
+      "prerequisites": "Read signed coefficients and the right-hand constant.",
+      "case": {
+        "row": [
+          -3,
+          2,
+          7
+        ]
+      }
+    },
+    {
+      "id": "pilot_la_rows_v1_worked_check",
+      "role": "worked_check",
+      "title": "02 Complete the constant column",
+      "objective": "Complete the missing constant in the worked row operation.",
+      "prerequisites": "Multiply and subtract integers in every column.",
+      "case": {
+        "rows": [
+          [
+            1,
+            -1,
+            2
+          ],
+          [
+            2,
+            -1,
+            7
+          ]
+        ],
+        "multiplier": -2
+      }
+    },
+    {
+      "id": "pilot_la_rows_v1_choose_next_step",
+      "role": "choose_next_step",
+      "title": "03 Choose the cancelling operation",
+      "objective": "Eliminate x from row 2 while leaving row 1 unchanged.",
+      "prerequisites": "Read a row replacement and choose a cancelling multiple.",
+      "case": {
+        "rows": [
+          [
+            1,
+            2,
+            4
+          ],
+          [
+            3,
+            1,
+            7
+          ]
+        ]
+      }
+    },
+    {
+      "id": "pilot_la_rows_v1_explain_step",
+      "role": "explain_step",
+      "title": "04 Explain reversibility",
+      "objective": "Choose the inverse row operation that restores the original system.",
+      "prerequisites": "A system requires the same pair to satisfy both equations.",
+      "case": {
+        "rows": [
+          [
+            1,
+            -2,
+            1
+          ],
+          [
+            2,
+            -3,
+            4
+          ]
+        ],
+        "multiplier": -2
+      }
+    },
+    {
+      "id": "pilot_la_rows_v1_repair_error",
+      "role": "repair_error",
+      "title": "05 Repair the first row error",
+      "objective": "Find the first incorrect line and correct the value of y.",
+      "prerequisites": "Check the constant column as well as the coefficient columns.",
+      "case": {
+        "rows": [
+          [
+            1,
+            -1,
+            1
+          ],
+          [
+            2,
+            -1,
+            5
+          ]
+        ],
+        "multiplier": -2
+      }
+    },
+    {
+      "id": "pilot_la_rows_v1_independent",
+      "role": "independent",
+      "title": "06 Solve a fresh system",
+      "objective": "Choose the ordered pair that solves both original equations.",
+      "prerequisites": "Use exact fractions and preserve the order of x and y.",
+      "case": {
+        "rows": [
+          [
+            3,
+            1,
+            5
+          ],
+          [
+            1,
+            -1,
+            1
+          ]
+        ]
+      }
+    }
+  ]
+}

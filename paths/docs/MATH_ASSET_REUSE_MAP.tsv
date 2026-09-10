@@ -1,0 +1,314 @@
+kind	id	subject	source_title	primary_route	readiness	source_checklist
+chapter	topic_0001	ALGEBRA	Algebraic Structures	R00	existing_first_example	docs/MATH_ASSET_TODO_ALGEBRA.md
+chapter	topic_0002	ALGEBRA	Number Systems and Divisibility	F03	foundation_extension_needed	docs/MATH_ASSET_TODO_ALGEBRA.md
+chapter	topic_0003	ALGEBRA	Equations and Relations	R00	existing_first_example	docs/MATH_ASSET_TODO_ALGEBRA.md
+chapter	topic_0004	ALGEBRA	Polynomials and Rational Expressions	F01	foundation_extension_needed	docs/MATH_ASSET_TODO_ALGEBRA.md
+chapter	topic_0005	ALGEBRA	Inequalities and Expressions	F10	foundation_extension_needed	docs/MATH_ASSET_TODO_ALGEBRA.md
+chapter	topic_0006	ALGEBRA	Symmetry and Group Actions	R00	existing_first_example	docs/MATH_ASSET_TODO_ALGEBRA.md
+chapter	topic_0007	ALGEBRA	Algebraic Methodology	F03	foundation_extension_needed	docs/MATH_ASSET_TODO_ALGEBRA.md
+chapter	topic_0008	ALGEBRA	Theorems	R00	existing_first_example	docs/MATH_ASSET_TODO_ALGEBRA.md
+chapter	topic_0009	ALGEBRA	Worked examples	R00	existing_first_example	docs/MATH_ASSET_TODO_ALGEBRA.md
+chapter	topic_0010	ALGEBRA	Proof sketches	F03	foundation_extension_needed	docs/MATH_ASSET_TODO_ALGEBRA.md
+chapter	topic_0011	ALGEBRA	Algebraic Structures and Quotients	F07	foundation_extension_needed	docs/MATH_ASSET_TODO_ALGEBRA.md
+chapter	topic_0012	ALGEBRA	Advanced Ring-Theoretic Terms	F07	foundation_extension_needed	docs/MATH_ASSET_TODO_ALGEBRA.md
+chapter	topic_0013	ALGEBRA	Algebraic and Module Extensions	F15	design_review_required	docs/MATH_ASSET_TODO_ALGEBRA.md
+chapter	topic_0014	ALGEBRA	Advanced Module Theory	F15	design_review_required	docs/MATH_ASSET_TODO_ALGEBRA.md
+chapter	topic_0015	ALGEBRA	Homological and Categorical Additions	F15	design_review_required	docs/MATH_ASSET_TODO_ALGEBRA.md
+chapter	topic_0016	ALGEBRA	Homological Constructions	F15	design_review_required	docs/MATH_ASSET_TODO_ALGEBRA.md
+chapter	topic_0017	ALGEBRA	Galois and Homological Structures	F15	design_review_required	docs/MATH_ASSET_TODO_ALGEBRA.md
+chapter	topic_0018	ALGEBRA	Category-Theoretic Extensions	F15	design_review_required	docs/MATH_ASSET_TODO_ALGEBRA.md
+chapter	topic_0019	ALGEBRA	Algebraic Geometry Bridges	F15	design_review_required	docs/MATH_ASSET_TODO_ALGEBRA.md
+chapter	topic_0020	ALGEBRA	Advanced Homological Algebra	F15	design_review_required	docs/MATH_ASSET_TODO_ALGEBRA.md
+chapter	topic_0021	ALGEBRA	Homological and Derived Structures	F15	design_review_required	docs/MATH_ASSET_TODO_ALGEBRA.md
+chapter	topic_0022	ALGEBRA	Spectral and Category Extensions	F15	design_review_required	docs/MATH_ASSET_TODO_ALGEBRA.md
+chapter	topic_0023	ALGEBRA	Adjunctions and Representability	F15	design_review_required	docs/MATH_ASSET_TODO_ALGEBRA.md
+chapter	topic_0024	ALGEBRA	Topos-like Limits and Constructions	F15	design_review_required	docs/MATH_ASSET_TODO_ALGEBRA.md
+chapter	topic_0025	ALGEBRA	Spectral Sequences and Filtrations	F15	design_review_required	docs/MATH_ASSET_TODO_ALGEBRA.md
+chapter	topic_0026	ALGEBRA	Derived Category Stability	F15	design_review_required	docs/MATH_ASSET_TODO_ALGEBRA.md
+chapter	topic_0027	ALGEBRA	Higher Categorical Constructions	F15	design_review_required	docs/MATH_ASSET_TODO_ALGEBRA.md
+chapter	topic_0028	ALGEBRA	Higher Homological and Noncommutative Constructions	F15	design_review_required	docs/MATH_ASSET_TODO_ALGEBRA.md
+chapter	topic_0029	ALGEBRA	Homological Stability and Higher Algebra	F15	design_review_required	docs/MATH_ASSET_TODO_ALGEBRA.md
+chapter	topic_0030	TRIGONOMETRY	Angle System	R00	existing_first_example	docs/MATH_ASSET_TODO_TRIGONOMETRY.md
+chapter	topic_0031	TRIGONOMETRY	Right Triangle Definitions	F13	foundation_extension_needed	docs/MATH_ASSET_TODO_TRIGONOMETRY.md
+chapter	topic_0032	TRIGONOMETRY	Unit Circle Framework	R00	existing_first_example	docs/MATH_ASSET_TODO_TRIGONOMETRY.md
+chapter	topic_0033	TRIGONOMETRY	Identities	R00	existing_first_example	docs/MATH_ASSET_TODO_TRIGONOMETRY.md
+chapter	topic_0034	TRIGONOMETRY	Graphs and Periodic Behavior	F04	foundation_extension_needed	docs/MATH_ASSET_TODO_TRIGONOMETRY.md
+chapter	topic_0035	TRIGONOMETRY	Inverse Trigonometry	F01	foundation_extension_needed	docs/MATH_ASSET_TODO_TRIGONOMETRY.md
+chapter	topic_0036	TRIGONOMETRY	Applications	F13	foundation_extension_needed	docs/MATH_ASSET_TODO_TRIGONOMETRY.md
+chapter	topic_0037	TRIGONOMETRY	Theorems	R00	existing_first_example	docs/MATH_ASSET_TODO_TRIGONOMETRY.md
+chapter	topic_0038	TRIGONOMETRY	Worked examples	R00	existing_first_example	docs/MATH_ASSET_TODO_TRIGONOMETRY.md
+chapter	topic_0039	TRIGONOMETRY	Proof sketches	R00	existing_first_example	docs/MATH_ASSET_TODO_TRIGONOMETRY.md
+chapter	topic_0040	TRIGONOMETRY	Trigonometric Identities and Extensions	F13	foundation_extension_needed	docs/MATH_ASSET_TODO_TRIGONOMETRY.md
+chapter	topic_0041	TRIGONOMETRY	Extended Function Identities	F04	foundation_extension_needed	docs/MATH_ASSET_TODO_TRIGONOMETRY.md
+chapter	topic_0042	TRIGONOMETRY	Hyperbolic and Inverse Extensions	F13	foundation_extension_needed	docs/MATH_ASSET_TODO_TRIGONOMETRY.md
+chapter	topic_0043	TRIGONOMETRY	Complex-Analytic Trigonometric Extensions	F11	design_review_required	docs/MATH_ASSET_TODO_TRIGONOMETRY.md
+chapter	topic_0044	TRIGONOMETRY	Transform Applications	F04	foundation_extension_needed	docs/MATH_ASSET_TODO_TRIGONOMETRY.md
+chapter	topic_0045	TRIGONOMETRY	Inverse and Parametric Identities	F01	foundation_extension_needed	docs/MATH_ASSET_TODO_TRIGONOMETRY.md
+chapter	topic_0046	TRIGONOMETRY	Advanced Triangle and Wave Identities	F04	foundation_extension_needed	docs/MATH_ASSET_TODO_TRIGONOMETRY.md
+chapter	topic_0047	TRIGONOMETRY	Advanced Transform Identities	F04	foundation_extension_needed	docs/MATH_ASSET_TODO_TRIGONOMETRY.md
+chapter	topic_0048	TRIGONOMETRY	Operator-Based Trig Tools	F04	foundation_extension_needed	docs/MATH_ASSET_TODO_TRIGONOMETRY.md
+chapter	topic_0049	TRIGONOMETRY	Fourier-Analytic Identities	F04	foundation_extension_needed	docs/MATH_ASSET_TODO_TRIGONOMETRY.md
+chapter	topic_0050	TRIGONOMETRY	Complex-Exponential Trig Synthesis	F01	foundation_extension_needed	docs/MATH_ASSET_TODO_TRIGONOMETRY.md
+chapter	topic_0051	TRIGONOMETRY	Orthogonality and Harmonics	F04	foundation_extension_needed	docs/MATH_ASSET_TODO_TRIGONOMETRY.md
+chapter	topic_0052	TRIGONOMETRY	Trigonometric Kernel Identities	F04	foundation_extension_needed	docs/MATH_ASSET_TODO_TRIGONOMETRY.md
+chapter	topic_0053	TRIGONOMETRY	Advanced Harmonic Function Expansions	F13	foundation_extension_needed	docs/MATH_ASSET_TODO_TRIGONOMETRY.md
+chapter	topic_0054	TRIGONOMETRY	Periodic Convolutions and Kernels	F04	foundation_extension_needed	docs/MATH_ASSET_TODO_TRIGONOMETRY.md
+chapter	topic_0055	TRIGONOMETRY	Asymptotic and Distributional Harmonics	F04	foundation_extension_needed	docs/MATH_ASSET_TODO_TRIGONOMETRY.md
+chapter	topic_0056	TRIGONOMETRY	Harmonic Signal Transformations	F04	foundation_extension_needed	docs/MATH_ASSET_TODO_TRIGONOMETRY.md
+chapter	topic_0057	TRIGONOMETRY	Harmonic Kernels and Special Trigonometric Systems	F04	foundation_extension_needed	docs/MATH_ASSET_TODO_TRIGONOMETRY.md
+chapter	topic_0058	TRIGONOMETRY	Convergence and Gibbs-Type Phenomena	F04	foundation_extension_needed	docs/MATH_ASSET_TODO_TRIGONOMETRY.md
+chapter	topic_0059	CALCULUS	Limits and Continuity	F01	foundation_extension_needed	docs/MATH_ASSET_TODO_CALCULUS.md
+chapter	topic_0060	CALCULUS	Differentiation	F06	foundation_extension_needed	docs/MATH_ASSET_TODO_CALCULUS.md
+chapter	topic_0061	CALCULUS	Applications of Derivatives	F01	foundation_extension_needed	docs/MATH_ASSET_TODO_CALCULUS.md
+chapter	topic_0062	CALCULUS	Integration	F08	foundation_extension_needed	docs/MATH_ASSET_TODO_CALCULUS.md
+chapter	topic_0063	CALCULUS	Integration Techniques	F06	foundation_extension_needed	docs/MATH_ASSET_TODO_CALCULUS.md
+chapter	topic_0064	CALCULUS	Sequences and Series	F01	foundation_extension_needed	docs/MATH_ASSET_TODO_CALCULUS.md
+chapter	topic_0065	CALCULUS	Multivariable Calculus	F06	foundation_extension_needed	docs/MATH_ASSET_TODO_CALCULUS.md
+chapter	topic_0066	CALCULUS	Differential Equations	F09	foundation_extension_needed	docs/MATH_ASSET_TODO_CALCULUS.md
+chapter	topic_0067	CALCULUS	Theorems	F01	foundation_extension_needed	docs/MATH_ASSET_TODO_CALCULUS.md
+chapter	topic_0068	CALCULUS	Worked examples	R00	existing_first_example	docs/MATH_ASSET_TODO_CALCULUS.md
+chapter	topic_0069	CALCULUS	Proof sketches	F03	foundation_extension_needed	docs/MATH_ASSET_TODO_CALCULUS.md
+chapter	topic_0070	CALCULUS	Calculus Convergence Extensions	F01	foundation_extension_needed	docs/MATH_ASSET_TODO_CALCULUS.md
+chapter	topic_0071	CALCULUS	Advanced Calculus Concepts	F01	foundation_extension_needed	docs/MATH_ASSET_TODO_CALCULUS.md
+chapter	topic_0072	CALCULUS	Transform Methods and Asymptotics	F04	foundation_extension_needed	docs/MATH_ASSET_TODO_CALCULUS.md
+chapter	topic_0073	CALCULUS	Laplace and Asymptotic Methods	F04	foundation_extension_needed	docs/MATH_ASSET_TODO_CALCULUS.md
+chapter	topic_0074	CALCULUS	Complex Integral Operators	F11	design_review_required	docs/MATH_ASSET_TODO_CALCULUS.md
+chapter	topic_0075	CALCULUS	Geometric and Asymptotic Analysis	F08	foundation_extension_needed	docs/MATH_ASSET_TODO_CALCULUS.md
+chapter	topic_0076	CALCULUS	Special Integrals and Advanced Asymptotics	F11	design_review_required	docs/MATH_ASSET_TODO_CALCULUS.md
+chapter	topic_0077	CALCULUS	Numerical Integration and Functional Expansions	F08	foundation_extension_needed	docs/MATH_ASSET_TODO_CALCULUS.md
+chapter	topic_0078	CALCULUS	Distribution and Variational Techniques	F14	design_review_required	docs/MATH_ASSET_TODO_CALCULUS.md
+chapter	topic_0079	CALCULUS	Measure and Distribution Techniques	F08	foundation_extension_needed	docs/MATH_ASSET_TODO_CALCULUS.md
+chapter	topic_0080	CALCULUS	Asymptotic Integral Methods	F11	design_review_required	docs/MATH_ASSET_TODO_CALCULUS.md
+chapter	topic_0081	CALCULUS	Advanced Variational and Integral Geometry	F14	design_review_required	docs/MATH_ASSET_TODO_CALCULUS.md
+chapter	topic_0082	CALCULUS	Stokes and Divergence Framework	F06	foundation_extension_needed	docs/MATH_ASSET_TODO_CALCULUS.md
+chapter	topic_0083	CALCULUS	Transform Kernels and PDE Links	F14	design_review_required	docs/MATH_ASSET_TODO_CALCULUS.md
+chapter	topic_0084	CALCULUS	Variational PDE and Distributional Calculus	F14	design_review_required	docs/MATH_ASSET_TODO_CALCULUS.md
+chapter	topic_0085	CALCULUS	Geometric Measure and Operator Theory	F06	foundation_extension_needed	docs/MATH_ASSET_TODO_CALCULUS.md
+chapter	topic_0086	CALCULUS	Functional-Analytic Differential Structure	F06	foundation_extension_needed	docs/MATH_ASSET_TODO_CALCULUS.md
+chapter	topic_0087	CALCULUS	Measure and Geometric Integration	F01	foundation_extension_needed	docs/MATH_ASSET_TODO_CALCULUS.md
+chapter	topic_0088	CALCULUS	Nonlinear Dynamics and PDE Invariants	F09	foundation_extension_needed	docs/MATH_ASSET_TODO_CALCULUS.md
+chapter	topic_0089	LINEAR_ALGEBRA	Vector Foundation	R00	existing_first_example	docs/MATH_ASSET_TODO_LINEAR_ALGEBRA.md
+chapter	topic_0090	LINEAR_ALGEBRA	Vector Spaces and Subspaces	F02	foundation_extension_needed	docs/MATH_ASSET_TODO_LINEAR_ALGEBRA.md
+chapter	topic_0091	LINEAR_ALGEBRA	Linear Maps	F02	foundation_extension_needed	docs/MATH_ASSET_TODO_LINEAR_ALGEBRA.md
+chapter	topic_0092	LINEAR_ALGEBRA	Matrix Algebra	F03	foundation_extension_needed	docs/MATH_ASSET_TODO_LINEAR_ALGEBRA.md
+chapter	topic_0093	LINEAR_ALGEBRA	Determinants	R00	existing_first_example	docs/MATH_ASSET_TODO_LINEAR_ALGEBRA.md
+chapter	topic_0094	LINEAR_ALGEBRA	Linear Systems	R00	existing_first_example	docs/MATH_ASSET_TODO_LINEAR_ALGEBRA.md
+chapter	topic_0095	LINEAR_ALGEBRA	Orthogonality	R00	existing_first_example	docs/MATH_ASSET_TODO_LINEAR_ALGEBRA.md
+chapter	topic_0096	LINEAR_ALGEBRA	Spectral Theory	F02	foundation_extension_needed	docs/MATH_ASSET_TODO_LINEAR_ALGEBRA.md
+chapter	topic_0097	LINEAR_ALGEBRA	Theorems	F02	foundation_extension_needed	docs/MATH_ASSET_TODO_LINEAR_ALGEBRA.md
+chapter	topic_0098	LINEAR_ALGEBRA	Worked examples	R00	existing_first_example	docs/MATH_ASSET_TODO_LINEAR_ALGEBRA.md
+chapter	topic_0099	LINEAR_ALGEBRA	Proof sketches	F03	foundation_extension_needed	docs/MATH_ASSET_TODO_LINEAR_ALGEBRA.md
+chapter	topic_0100	LINEAR_ALGEBRA	Extended Linear Concepts	F02	foundation_extension_needed	docs/MATH_ASSET_TODO_LINEAR_ALGEBRA.md
+chapter	topic_0101	LINEAR_ALGEBRA	Further Linear Algebra Terms	F03	foundation_extension_needed	docs/MATH_ASSET_TODO_LINEAR_ALGEBRA.md
+chapter	topic_0102	LINEAR_ALGEBRA	Advanced Linear Operators	R00	existing_first_example	docs/MATH_ASSET_TODO_LINEAR_ALGEBRA.md
+chapter	topic_0103	LINEAR_ALGEBRA	Advanced Linear Operator Extensions	F06	foundation_extension_needed	docs/MATH_ASSET_TODO_LINEAR_ALGEBRA.md
+chapter	topic_0104	LINEAR_ALGEBRA	Structured Linear Spaces	F02	foundation_extension_needed	docs/MATH_ASSET_TODO_LINEAR_ALGEBRA.md
+chapter	topic_0105	LINEAR_ALGEBRA	Operator Decompositions	F03	foundation_extension_needed	docs/MATH_ASSET_TODO_LINEAR_ALGEBRA.md
+chapter	topic_0106	LINEAR_ALGEBRA	High-Order Operator Structures	F02	foundation_extension_needed	docs/MATH_ASSET_TODO_LINEAR_ALGEBRA.md
+chapter	topic_0107	LINEAR_ALGEBRA	Spectral and Operator Analysis	F11	design_review_required	docs/MATH_ASSET_TODO_LINEAR_ALGEBRA.md
+chapter	topic_0108	LINEAR_ALGEBRA	Tensor, Bilinear and Multilinear Forms	F06	foundation_extension_needed	docs/MATH_ASSET_TODO_LINEAR_ALGEBRA.md
+chapter	topic_0109	LINEAR_ALGEBRA	Tensor and Factorization Structures	F03	foundation_extension_needed	docs/MATH_ASSET_TODO_LINEAR_ALGEBRA.md
+chapter	topic_0110	LINEAR_ALGEBRA	Operator Algebra and Geometry	F02	foundation_extension_needed	docs/MATH_ASSET_TODO_LINEAR_ALGEBRA.md
+chapter	topic_0111	LINEAR_ALGEBRA	Structured Transform Methods	F11	design_review_required	docs/MATH_ASSET_TODO_LINEAR_ALGEBRA.md
+chapter	topic_0112	LINEAR_ALGEBRA	Structured Decompositions and Stability	F02	foundation_extension_needed	docs/MATH_ASSET_TODO_LINEAR_ALGEBRA.md
+chapter	topic_0113	LINEAR_ALGEBRA	Geometric and Structured Factorizations	F03	foundation_extension_needed	docs/MATH_ASSET_TODO_LINEAR_ALGEBRA.md
+chapter	topic_0114	LINEAR_ALGEBRA	Functional-Analytic Spectral Tools	F11	design_review_required	docs/MATH_ASSET_TODO_LINEAR_ALGEBRA.md
+chapter	topic_0115	LINEAR_ALGEBRA	Operator Perturbation and Stability	F11	design_review_required	docs/MATH_ASSET_TODO_LINEAR_ALGEBRA.md
+chapter	topic_0116	LINEAR_ALGEBRA	Subspace Approximation and Geometry	F02	foundation_extension_needed	docs/MATH_ASSET_TODO_LINEAR_ALGEBRA.md
+chapter	topic_0117	LINEAR_ALGEBRA	Canonical Decompositions and Matrix Geometry	F03	foundation_extension_needed	docs/MATH_ASSET_TODO_LINEAR_ALGEBRA.md
+chapter	topic_0118	LINEAR_ALGEBRA	Unitary Orbits and Operator Geometry	F02	foundation_extension_needed	docs/MATH_ASSET_TODO_LINEAR_ALGEBRA.md
+chapter	topic_0119	DISCRETE_MATH	Logic and Proof	F07	foundation_extension_needed	docs/MATH_ASSET_TODO_DISCRETE_MATH.md
+chapter	topic_0120	DISCRETE_MATH	Set Theory Foundations	R00	existing_first_example	docs/MATH_ASSET_TODO_DISCRETE_MATH.md
+chapter	topic_0121	DISCRETE_MATH	Counting and Combinatorics	F07	foundation_extension_needed	docs/MATH_ASSET_TODO_DISCRETE_MATH.md
+chapter	topic_0122	DISCRETE_MATH	Graph Theory	R00	existing_first_example	docs/MATH_ASSET_TODO_DISCRETE_MATH.md
+chapter	topic_0123	DISCRETE_MATH	Number Theory	F03	foundation_extension_needed	docs/MATH_ASSET_TODO_DISCRETE_MATH.md
+chapter	topic_0124	DISCRETE_MATH	Recursion and Sequences	F03	foundation_extension_needed	docs/MATH_ASSET_TODO_DISCRETE_MATH.md
+chapter	topic_0125	DISCRETE_MATH	Algorithms and Complexity	F03	foundation_extension_needed	docs/MATH_ASSET_TODO_DISCRETE_MATH.md
+chapter	topic_0126	DISCRETE_MATH	Boolean Algebra and Logic Circuits	F07	foundation_extension_needed	docs/MATH_ASSET_TODO_DISCRETE_MATH.md
+chapter	topic_0127	DISCRETE_MATH	Theorems	R00	existing_first_example	docs/MATH_ASSET_TODO_DISCRETE_MATH.md
+chapter	topic_0128	DISCRETE_MATH	Worked examples	R00	existing_first_example	docs/MATH_ASSET_TODO_DISCRETE_MATH.md
+chapter	topic_0129	DISCRETE_MATH	Proof sketches	F07	foundation_extension_needed	docs/MATH_ASSET_TODO_DISCRETE_MATH.md
+chapter	topic_0130	DISCRETE_MATH	Advanced Discrete Topics	F07	foundation_extension_needed	docs/MATH_ASSET_TODO_DISCRETE_MATH.md
+chapter	topic_0131	DISCRETE_MATH	Discrete Extensions	F07	foundation_extension_needed	docs/MATH_ASSET_TODO_DISCRETE_MATH.md
+chapter	topic_0132	DISCRETE_MATH	Advanced Discrete Structures	F07	foundation_extension_needed	docs/MATH_ASSET_TODO_DISCRETE_MATH.md
+chapter	topic_0133	DISCRETE_MATH	Computability and Formal Systems	F07	foundation_extension_needed	docs/MATH_ASSET_TODO_DISCRETE_MATH.md
+chapter	topic_0134	DISCRETE_MATH	Advanced Counting Structures	F07	foundation_extension_needed	docs/MATH_ASSET_TODO_DISCRETE_MATH.md
+chapter	topic_0135	DISCRETE_MATH	Finite Construction Systems	F15	design_review_required	docs/MATH_ASSET_TODO_DISCRETE_MATH.md
+chapter	topic_0136	DISCRETE_MATH	Randomized and Finite Methodologies	F05	foundation_extension_needed	docs/MATH_ASSET_TODO_DISCRETE_MATH.md
+chapter	topic_0137	DISCRETE_MATH	Advanced Counting and Complexity	F07	foundation_extension_needed	docs/MATH_ASSET_TODO_DISCRETE_MATH.md
+chapter	topic_0138	DISCRETE_MATH	Advanced Probabilistic Counting	F05	foundation_extension_needed	docs/MATH_ASSET_TODO_DISCRETE_MATH.md
+chapter	topic_0139	DISCRETE_MATH	Probabilistic Method in Discrete Math	F07	foundation_extension_needed	docs/MATH_ASSET_TODO_DISCRETE_MATH.md
+chapter	topic_0140	DISCRETE_MATH	Randomized Algorithmic Counting	F05	foundation_extension_needed	docs/MATH_ASSET_TODO_DISCRETE_MATH.md
+chapter	topic_0141	DISCRETE_MATH	Extremal and Probabilistic Structures	F05	foundation_extension_needed	docs/MATH_ASSET_TODO_DISCRETE_MATH.md
+chapter	topic_0142	DISCRETE_MATH	Martingale Concentration Toolkit	F12	design_review_required	docs/MATH_ASSET_TODO_DISCRETE_MATH.md
+chapter	topic_0143	DISCRETE_MATH	Large Deviations and Random Structures	F05	foundation_extension_needed	docs/MATH_ASSET_TODO_DISCRETE_MATH.md
+chapter	topic_0144	DISCRETE_MATH	Combinatorial Probability at Scale	F05	foundation_extension_needed	docs/MATH_ASSET_TODO_DISCRETE_MATH.md
+chapter	topic_0145	DISCRETE_MATH	Derandomization and Pseudorandomness	F07	foundation_extension_needed	docs/MATH_ASSET_TODO_DISCRETE_MATH.md
+chapter	topic_0146	DISCRETE_MATH	Ramsey and Extremal Random Structures	F07	foundation_extension_needed	docs/MATH_ASSET_TODO_DISCRETE_MATH.md
+chapter	topic_0147	DISCRETE_MATH	Extremal Combinatorial Theorems	F07	foundation_extension_needed	docs/MATH_ASSET_TODO_DISCRETE_MATH.md
+chapter	topic_0148	DISCRETE_MATH	Advanced Extremal and Probabilistic Tools	F05	foundation_extension_needed	docs/MATH_ASSET_TODO_DISCRETE_MATH.md
+chapter	topic_0149	PROBABILITY_AND_STATISTICS	Probability Foundations	R00	existing_first_example	docs/MATH_ASSET_TODO_PROBABILITY_AND_STATISTICS.md
+chapter	topic_0150	PROBABILITY_AND_STATISTICS	Random Variables	F05	foundation_extension_needed	docs/MATH_ASSET_TODO_PROBABILITY_AND_STATISTICS.md
+chapter	topic_0151	PROBABILITY_AND_STATISTICS	Distribution Theory	F05	foundation_extension_needed	docs/MATH_ASSET_TODO_PROBABILITY_AND_STATISTICS.md
+chapter	topic_0152	PROBABILITY_AND_STATISTICS	Statistical Inference	F16	design_review_required	docs/MATH_ASSET_TODO_PROBABILITY_AND_STATISTICS.md
+chapter	topic_0153	PROBABILITY_AND_STATISTICS	Stochastic Processes	F12	design_review_required	docs/MATH_ASSET_TODO_PROBABILITY_AND_STATISTICS.md
+chapter	topic_0154	PROBABILITY_AND_STATISTICS	Foundational Probability and Inference	R00	existing_first_example	docs/MATH_ASSET_TODO_PROBABILITY_AND_STATISTICS.md
+chapter	topic_0155	PROBABILITY_AND_STATISTICS	Risk and Learning Core Terms	F04	foundation_extension_needed	docs/MATH_ASSET_TODO_PROBABILITY_AND_STATISTICS.md
+chapter	topic_0156	PROBABILITY_AND_STATISTICS	Decision and Concentration	F05	foundation_extension_needed	docs/MATH_ASSET_TODO_PROBABILITY_AND_STATISTICS.md
+chapter	topic_0157	PROBABILITY_AND_STATISTICS	Estimation and Testing Extensions	F16	design_review_required	docs/MATH_ASSET_TODO_PROBABILITY_AND_STATISTICS.md
+chapter	topic_0158	PROBABILITY_AND_STATISTICS	Bayesian Foundations	F16	design_review_required	docs/MATH_ASSET_TODO_PROBABILITY_AND_STATISTICS.md
+chapter	topic_0159	PROBABILITY_AND_STATISTICS	Time Series and Risk	F12	design_review_required	docs/MATH_ASSET_TODO_PROBABILITY_AND_STATISTICS.md
+chapter	topic_0160	PROBABILITY_AND_STATISTICS	Learning Geometry	F16	design_review_required	docs/MATH_ASSET_TODO_PROBABILITY_AND_STATISTICS.md
+chapter	topic_0161	PROBABILITY_AND_STATISTICS	Computational Methods	F12	design_review_required	docs/MATH_ASSET_TODO_PROBABILITY_AND_STATISTICS.md
+chapter	topic_0162	PROBABILITY_AND_STATISTICS	Estimator Quality	F16	design_review_required	docs/MATH_ASSET_TODO_PROBABILITY_AND_STATISTICS.md
+chapter	topic_0163	PROBABILITY_AND_STATISTICS	Dependence and Tail Risk	F05	foundation_extension_needed	docs/MATH_ASSET_TODO_PROBABILITY_AND_STATISTICS.md
+chapter	topic_0164	PROBABILITY_AND_STATISTICS	Stochastic Calculus Core	F12	design_review_required	docs/MATH_ASSET_TODO_PROBABILITY_AND_STATISTICS.md
+chapter	topic_0165	PROBABILITY_AND_STATISTICS	Mathematical Finance Mechanics	F12	design_review_required	docs/MATH_ASSET_TODO_PROBABILITY_AND_STATISTICS.md
+chapter	topic_0166	PROBABILITY_AND_STATISTICS	Inferential Learning for Time-Dependent Data	F12	design_review_required	docs/MATH_ASSET_TODO_PROBABILITY_AND_STATISTICS.md
+chapter	topic_0167	PROBABILITY_AND_STATISTICS	Decision and Estimation Tradeoffs	F10	foundation_extension_needed	docs/MATH_ASSET_TODO_PROBABILITY_AND_STATISTICS.md
+chapter	topic_0168	PROBABILITY_AND_STATISTICS	Sequential and Online Learning	F07	foundation_extension_needed	docs/MATH_ASSET_TODO_PROBABILITY_AND_STATISTICS.md
+chapter	topic_0169	PROBABILITY_AND_STATISTICS	Modern Risk Measures	F12	design_review_required	docs/MATH_ASSET_TODO_PROBABILITY_AND_STATISTICS.md
+chapter	topic_0170	PROBABILITY_AND_STATISTICS	Optimization and Risk Measures	F10	foundation_extension_needed	docs/MATH_ASSET_TODO_PROBABILITY_AND_STATISTICS.md
+chapter	topic_0171	PROBABILITY_AND_STATISTICS	Information and Generalization	F05	foundation_extension_needed	docs/MATH_ASSET_TODO_PROBABILITY_AND_STATISTICS.md
+chapter	topic_0172	PROBABILITY_AND_STATISTICS	Financial Time-Series Dynamics	F12	design_review_required	docs/MATH_ASSET_TODO_PROBABILITY_AND_STATISTICS.md
+chapter	topic_0173	PROBABILITY_AND_STATISTICS	Detection and Filtering	F12	design_review_required	docs/MATH_ASSET_TODO_PROBABILITY_AND_STATISTICS.md
+chapter	topic_0174	PROBABILITY_AND_STATISTICS	Robustness and Misspecification	F16	design_review_required	docs/MATH_ASSET_TODO_PROBABILITY_AND_STATISTICS.md
+chapter	topic_0175	PROBABILITY_AND_STATISTICS	Bayesian Computation	F16	design_review_required	docs/MATH_ASSET_TODO_PROBABILITY_AND_STATISTICS.md
+chapter	topic_0176	PROBABILITY_AND_STATISTICS	Extreme-Value Theory	F05	foundation_extension_needed	docs/MATH_ASSET_TODO_PROBABILITY_AND_STATISTICS.md
+chapter	topic_0177	PROBABILITY_AND_STATISTICS	Optimal Transport and Generative Learning	F17	design_review_required	docs/MATH_ASSET_TODO_PROBABILITY_AND_STATISTICS.md
+chapter	topic_0178	PROBABILITY_AND_STATISTICS	Stochastic Models for Finance and AI	F12	design_review_required	docs/MATH_ASSET_TODO_PROBABILITY_AND_STATISTICS.md
+exercise_card	001	EXERCISE_LANE	Matrix boards and factorization diagrams	F03	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	004	EXERCISE_LANE	Matrix boards and factorization diagrams	F03	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	007	EXERCISE_LANE	Matrix boards and factorization diagrams	F03	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	018	EXERCISE_LANE	Matrix boards and factorization diagrams	F03	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	019	EXERCISE_LANE	Matrix boards and factorization diagrams	F03	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	031	EXERCISE_LANE	Matrix boards and factorization diagrams	F03	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	032	EXERCISE_LANE	Matrix boards and factorization diagrams	F03	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	037	EXERCISE_LANE	Matrix boards and factorization diagrams	F03	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	041	EXERCISE_LANE	Matrix boards and factorization diagrams	F03	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	044	EXERCISE_LANE	Matrix boards and factorization diagrams	F03	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	048	EXERCISE_LANE	Matrix boards and factorization diagrams	F03	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	059	EXERCISE_LANE	Matrix boards and factorization diagrams	F03	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	060	EXERCISE_LANE	Matrix boards and factorization diagrams	F03	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	063	EXERCISE_LANE	Matrix boards and factorization diagrams	F03	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	069	EXERCISE_LANE	Matrix boards and factorization diagrams	F03	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	071	EXERCISE_LANE	Matrix boards and factorization diagrams	F03	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	074	EXERCISE_LANE	Matrix boards and factorization diagrams	F03	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	076	EXERCISE_LANE	Matrix boards and factorization diagrams	F03	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	077	EXERCISE_LANE	Matrix boards and factorization diagrams	F03	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	086	EXERCISE_LANE	Matrix boards and factorization diagrams	F03	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	006	EXERCISE_LANE	Vectors, bases, and linear maps	F02	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	010	EXERCISE_LANE	Vectors, bases, and linear maps	F02	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	011	EXERCISE_LANE	Vectors, bases, and linear maps	F02	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	014	EXERCISE_LANE	Vectors, bases, and linear maps	F02	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	015	EXERCISE_LANE	Vectors, bases, and linear maps	F02	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	016	EXERCISE_LANE	Vectors, bases, and linear maps	F02	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	033	EXERCISE_LANE	Vectors, bases, and linear maps	F02	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	043	EXERCISE_LANE	Vectors, bases, and linear maps	F02	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	046	EXERCISE_LANE	Vectors, bases, and linear maps	F02	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	047	EXERCISE_LANE	Vectors, bases, and linear maps	F02	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	049	EXERCISE_LANE	Vectors, bases, and linear maps	F02	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	050	EXERCISE_LANE	Vectors, bases, and linear maps	F02	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	051	EXERCISE_LANE	Vectors, bases, and linear maps	F02	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	053	EXERCISE_LANE	Vectors, bases, and linear maps	F02	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	055	EXERCISE_LANE	Vectors, bases, and linear maps	F02	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	056	EXERCISE_LANE	Vectors, bases, and linear maps	F02	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	057	EXERCISE_LANE	Vectors, bases, and linear maps	F02	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	078	EXERCISE_LANE	Vectors, bases, and linear maps	F02	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	079	EXERCISE_LANE	Vectors, bases, and linear maps	F02	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	082	EXERCISE_LANE	Vectors, bases, and linear maps	F02	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	089	EXERCISE_LANE	Vectors, bases, and linear maps	F02	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	130	EXERCISE_LANE	Vectors, bases, and linear maps	F02	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	002	EXERCISE_LANE	Functions, bases, and fits	F02	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	003	EXERCISE_LANE	Functions, bases, and fits	F02	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	005	EXERCISE_LANE	Functions, bases, and fits	F02	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	009	EXERCISE_LANE	Functions, bases, and fits	F02	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	038	EXERCISE_LANE	Functions, bases, and fits	F02	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	054	EXERCISE_LANE	Functions, bases, and fits	F02	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	081	EXERCISE_LANE	Functions, bases, and fits	F02	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	012	EXERCISE_LANE	Metrics, quadratic geometry, and distance	F10	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	013	EXERCISE_LANE	Metrics, quadratic geometry, and distance	F10	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	035	EXERCISE_LANE	Metrics, quadratic geometry, and distance	F10	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	039	EXERCISE_LANE	Metrics, quadratic geometry, and distance	F10	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	052	EXERCISE_LANE	Metrics, quadratic geometry, and distance	F10	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	096	EXERCISE_LANE	Metrics, quadratic geometry, and distance	F10	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	097	EXERCISE_LANE	Metrics, quadratic geometry, and distance	F10	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	098	EXERCISE_LANE	Metrics, quadratic geometry, and distance	F10	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	099	EXERCISE_LANE	Metrics, quadratic geometry, and distance	F10	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	131	EXERCISE_LANE	Metrics, quadratic geometry, and distance	F10	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	132	EXERCISE_LANE	Metrics, quadratic geometry, and distance	F10	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	133	EXERCISE_LANE	Metrics, quadratic geometry, and distance	F10	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	017	EXERCISE_LANE	Spectra and complex-plane diagrams	F11	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	024	EXERCISE_LANE	Spectra and complex-plane diagrams	F11	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	042	EXERCISE_LANE	Spectra and complex-plane diagrams	F11	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	058	EXERCISE_LANE	Spectra and complex-plane diagrams	F11	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	062	EXERCISE_LANE	Spectra and complex-plane diagrams	F11	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	068	EXERCISE_LANE	Spectra and complex-plane diagrams	F11	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	073	EXERCISE_LANE	Spectra and complex-plane diagrams	F11	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	125	EXERCISE_LANE	Spectra and complex-plane diagrams	F11	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	126	EXERCISE_LANE	Spectra and complex-plane diagrams	F11	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	127	EXERCISE_LANE	Spectra and complex-plane diagrams	F11	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	128	EXERCISE_LANE	Spectra and complex-plane diagrams	F11	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	129	EXERCISE_LANE	Spectra and complex-plane diagrams	F11	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	134	EXERCISE_LANE	Spectra and complex-plane diagrams	F11	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	135	EXERCISE_LANE	Spectra and complex-plane diagrams	F11	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	022	EXERCISE_LANE	Iteration and convergence	F03	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	023	EXERCISE_LANE	Iteration and convergence	F03	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	025	EXERCISE_LANE	Iteration and convergence	F03	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	061	EXERCISE_LANE	Iteration and convergence	F03	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	066	EXERCISE_LANE	Iteration and convergence	F03	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	088	EXERCISE_LANE	Iteration and convergence	F03	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	090	EXERCISE_LANE	Iteration and convergence	F03	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	020	EXERCISE_LANE	Precision and computational work	F03	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	021	EXERCISE_LANE	Precision and computational work	F03	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	030	EXERCISE_LANE	Precision and computational work	F03	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	064	EXERCISE_LANE	Precision and computational work	F03	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	067	EXERCISE_LANE	Precision and computational work	F03	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	070	EXERCISE_LANE	Precision and computational work	F03	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	087	EXERCISE_LANE	Precision and computational work	F03	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	026	EXERCISE_LANE	Spectral discretization	F08	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	028	EXERCISE_LANE	Spectral discretization	F08	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	029	EXERCISE_LANE	Spectral discretization	F08	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	091	EXERCISE_LANE	Spectral discretization	F08	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	092	EXERCISE_LANE	Spectral discretization	F08	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	093	EXERCISE_LANE	Spectral discretization	F08	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	008	EXERCISE_LANE	Incidence, parity, and dependency graphs	F07	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	036	EXERCISE_LANE	Incidence, parity, and dependency graphs	F07	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	045	EXERCISE_LANE	Incidence, parity, and dependency graphs	F07	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	065	EXERCISE_LANE	Incidence, parity, and dependency graphs	F07	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	075	EXERCISE_LANE	Incidence, parity, and dependency graphs	F07	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	040	EXERCISE_LANE	Meshes, coordinates, and physical fields	F06	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	080	EXERCISE_LANE	Meshes, coordinates, and physical fields	F06	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	083	EXERCISE_LANE	Meshes, coordinates, and physical fields	F06	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	084	EXERCISE_LANE	Meshes, coordinates, and physical fields	F06	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	094	EXERCISE_LANE	Meshes, coordinates, and physical fields	F06	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	095	EXERCISE_LANE	Meshes, coordinates, and physical fields	F06	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	027	EXERCISE_LANE	Proof and assumption diagrams	F07	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	072	EXERCISE_LANE	Proof and assumption diagrams	F07	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	034	EXERCISE_LANE	Composition and differentiation diagrams	F06	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	085	EXERCISE_LANE	Composition and differentiation diagrams	F06	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	100	EXERCISE_LANE	Convexity, information, and optimization	F10	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	101	EXERCISE_LANE	Convexity, information, and optimization	F10	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	102	EXERCISE_LANE	Convexity, information, and optimization	F10	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	103	EXERCISE_LANE	Convexity, information, and optimization	F10	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	104	EXERCISE_LANE	Convexity, information, and optimization	F10	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	105	EXERCISE_LANE	Convexity, information, and optimization	F10	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	106	EXERCISE_LANE	Convexity, information, and optimization	F10	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	107	EXERCISE_LANE	Convexity, information, and optimization	F10	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	108	EXERCISE_LANE	Convexity, information, and optimization	F10	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	109	EXERCISE_LANE	Convexity, information, and optimization	F10	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	110	EXERCISE_LANE	Brownian motion, SDEs, and arrivals	F12	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	111	EXERCISE_LANE	Brownian motion, SDEs, and arrivals	F12	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	112	EXERCISE_LANE	Brownian motion, SDEs, and arrivals	F12	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	113	EXERCISE_LANE	Brownian motion, SDEs, and arrivals	F12	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	114	EXERCISE_LANE	Brownian motion, SDEs, and arrivals	F12	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	115	EXERCISE_LANE	Brownian motion, SDEs, and arrivals	F12	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	116	EXERCISE_LANE	Brownian motion, SDEs, and arrivals	F12	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	117	EXERCISE_LANE	Brownian motion, SDEs, and arrivals	F12	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	118	EXERCISE_LANE	Brownian motion, SDEs, and arrivals	F12	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	124	EXERCISE_LANE	Brownian motion, SDEs, and arrivals	F12	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	119	EXERCISE_LANE	Tail asymptotics and order statistics	F05	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	120	EXERCISE_LANE	Tail asymptotics and order statistics	F05	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	121	EXERCISE_LANE	Tail asymptotics and order statistics	F05	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	122	EXERCISE_LANE	Tail asymptotics and order statistics	F05	card_level_spec_required	docs/MATH_ASSET_TODO.md
+exercise_card	123	EXERCISE_LANE	Tail asymptotics and order statistics	F05	card_level_spec_required	docs/MATH_ASSET_TODO.md

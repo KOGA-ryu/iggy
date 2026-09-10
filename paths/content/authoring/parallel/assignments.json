@@ -1,0 +1,120 @@
+{
+  "format": "paths_parallel_authoring",
+  "format_version": 1,
+  "recipe_version": "six_roles_1",
+  "status": "packets_ready_workers_not_started",
+  "reference_sha256": {
+    "AGENTS.md": "0af7fbe2fd3a3c8f19f1dcbf6ed3466d35cc56ef5e462516d6fb7332f6bef4fa",
+    "docs/PARALLEL_QUESTION_AUTHORING.md": "af61270bd1d6292afbe911b70b14ebc5246c897a0dc408b89a21f1a6abfa0e16",
+    "docs/EXERCISE_ROLES.md": "d59426f8dd9c20af3aef1722c9b903d5dc68b25162c18c68810a4fb1b9dbee4d",
+    "docs/QUESTION_PRACTICE_FORMAT.md": "5fe1afbb9cd6a55953c7b05ef4a66ca6b7e53749802fba58c70cab2a81a0fda3",
+    "docs/QUESTION_AUTHORING_WORKFLOW.md": "ba0daf89c1e32ae651df6a4780fc38b6d8ef64c20e06a87dae3d38780d03c111",
+    "docs/QUESTION_BATCHES.md": "9cf1ef776fb1bea1c8bf0d3417a7fd4f4c84c5d6bf7685736fa50058a6b1ce9a",
+    "docs/LEARNING_DOCUMENTS.md": "91a989714a1a468b0fe43341f1454821a93e9a4689f3fbb395b1ea015d1a22bc",
+    "docs/LEARNING_EXPORTS.md": "1eff9e7102fb5a1556af8c3eb13394533a38f46a38f72f1b16fd3a32fcd72109",
+    "content/authoring/parallel/AGENTS.md": "31ead7fe1036bdfd3847ac2896658a53c58ed7bbe683c45f2fc61e7475f6009e",
+    "tools/build_question_batch.py": "98e0c036a83d9125e8414851f10250987f6e585b44889a3904a36f70dac4af57",
+    "tools/check_authoring_pilot.py": "013b72d34e4c6ce964801c3ff3c04b31f959a4d99cec0801de34039d8b52577b",
+    "tools/export_learning.py": "a0dad77c78f432f5333e9cabbf66ff5539aded708388c6a31804860eb09cb926",
+    "tools/question_workflow.py": "b8918314ee53095c38a3143c1a3b540038c8286e564b7adf31402641a243b02d",
+    "content/authoring/learning/chapter.paths.md.in": "7306f4a5578dad4fe0bd80d661b94925ddf0a140d7e8784a2dbecefaac305e77",
+    "content/authoring/learning/matrix_reasoning/sequence.json": "d532e0c934de9516d4733da04a5ffec8412b840272865be503096aab3910973a",
+    "content/authoring/learning/matrix_reasoning/lesson.md.in": "a236d8cb49c22f431862ec9a90fe04c21cc6011bc745ca75efb6051c93da3470",
+    "content/authoring/learning/matrix_reasoning/questions.paths.md.in": "59a6d84872ebfb1eb215436caa683133d83dde71cc4978b304203a49f9a18b5e",
+    "content/authoring/learning/linear_reference/question.paths.md.in": "6931adae88b7bdc4cf7cadcc749cfb0d0f929cf231d2c7d3fa48a89052f3b751",
+    "content/authoring/parallel/algebra/AGENTS.md": "1170e8df782000702cc95bb4605b8393ada3f6bb3b21871ee7379c1ef44e49de",
+    "content/authoring/parallel/algebra/PILOT.md": "9d65d1058fb315aef9e58824b6357b743884a1a42aaf6c62667c9e8200f08f80",
+    "content/authoring/parallel/algebra/sequence.json": "2aaf7a118f43e6f97c8c728f55838b01bcedf89f491fae7e0a4d91d9afbbe569",
+    "content/authoring/parallel/trigonometry/AGENTS.md": "fda13f7ac63fe3648f484d838c244b0085589ef6e02ef71822560691a4091f3d",
+    "content/authoring/parallel/trigonometry/PILOT.md": "0e8f26ffc31c54ecaa1865d0286d411ac65a22fed59376c72f9aa4a210f426e0",
+    "content/authoring/parallel/trigonometry/sequence.json": "c9562854a75910f916ee3acb558c4ed31d622ba6bcc35c4f9adca0ad9e1f02af",
+    "content/authoring/parallel/calculus/AGENTS.md": "570fd93dac06c35950ea67bdc41d37e0f9d5a1c1990dd03c540708df77adb600",
+    "content/authoring/parallel/calculus/PILOT.md": "ad668c34494914c573362d0dacd1a3f9e8ce1cc23efc7484b7d4a1fc75756daa",
+    "content/authoring/parallel/calculus/sequence.json": "0f3e1a91ac51c6c7e5af55394e6d27849bf1fcaf626a7fec101af6411451ebfd",
+    "content/authoring/parallel/linear_algebra/AGENTS.md": "aa3244caa3576f6a964938418ca3e9150091d2c2d31fe6d6a371c96d4c827a9f",
+    "content/authoring/parallel/linear_algebra/PILOT.md": "616d1d45db2f50768ef9fa5c55b15787a57d3cfa6001392e29100cbebcdb399d",
+    "content/authoring/parallel/linear_algebra/sequence.json": "e614943661448bb87ffec9af116be57095237b20bcee95866c64a1a6a3bc296e"
+  },
+  "assignments": [
+    {
+      "subject": "algebra",
+      "folder": "content/authoring/parallel/algebra",
+      "package_id": "pilot_algebra_balance",
+      "question_prefix": "pilot_alg_balance_v1",
+      "taxonomy": {
+        "topic_id": "topic_0003",
+        "title": "Equations and Relations",
+        "status": "pilot_scope_reviewed_remaining_curriculum_unreviewed"
+      },
+      "status": "assigned_on_dispatch",
+      "values": {
+        "subject": "algebra",
+        "subject_title": "Algebra",
+        "chapter": "worked_linear_practice",
+        "chapter_title": "Worked linear practice",
+        "reading_id": "pilot_alg_balance_v1_reading",
+        "reading_title": "Understand each balanced move"
+      }
+    },
+    {
+      "subject": "trigonometry",
+      "folder": "content/authoring/parallel/trigonometry",
+      "package_id": "pilot_trigonometry_sine",
+      "question_prefix": "pilot_trig_sine_v1",
+      "taxonomy": {
+        "topic_id": "topic_0032",
+        "title": "Unit Circle Framework",
+        "status": "pilot_scope_reviewed_remaining_curriculum_unreviewed"
+      },
+      "status": "assigned_on_dispatch",
+      "values": {
+        "subject": "trigonometry",
+        "subject_title": "Trigonometry",
+        "chapter": "topic_0032",
+        "chapter_title": "Unit Circle Framework",
+        "reading_id": "pilot_trig_sine_v1_reading",
+        "reading_title": "Find every sine solution in one turn"
+      }
+    },
+    {
+      "subject": "calculus",
+      "folder": "content/authoring/parallel/calculus",
+      "package_id": "pilot_calculus_derivative",
+      "question_prefix": "pilot_calc_derivative_v1",
+      "taxonomy": {
+        "topic_id": "topic_0060",
+        "title": "Differentiation",
+        "status": "pilot_scope_reviewed_remaining_curriculum_unreviewed"
+      },
+      "status": "assigned_on_dispatch",
+      "values": {
+        "subject": "calculus",
+        "subject_title": "Calculus",
+        "chapter": "topic_0060",
+        "chapter_title": "Differentiation",
+        "reading_id": "pilot_calc_derivative_v1_reading",
+        "reading_title": "Build a derivative from a difference quotient"
+      }
+    },
+    {
+      "subject": "linear_algebra",
+      "folder": "content/authoring/parallel/linear_algebra",
+      "package_id": "pilot_linear_algebra_rows",
+      "question_prefix": "pilot_la_rows_v1",
+      "taxonomy": {
+        "topic_id": "topic_0094",
+        "title": "Linear Systems",
+        "status": "pilot_scope_reviewed_remaining_curriculum_unreviewed"
+      },
+      "status": "assigned_on_dispatch",
+      "values": {
+        "subject": "linear_algebra",
+        "subject_title": "Linear Algebra",
+        "chapter": "worked_matrix_practice",
+        "chapter_title": "Worked matrix practice",
+        "reading_id": "pilot_la_rows_v1_reading",
+        "reading_title": "Read and justify a complete row operation"
+      }
+    }
+  ]
+}

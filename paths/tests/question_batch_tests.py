@@ -16,6 +16,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
 import build_question_batch as batch
+import check_authoring_pilot as pilot
 import export_learning as export
 
 
@@ -28,6 +29,68 @@ class BatchTests(unittest.TestCase):
     def tearDown(self):
         self.temporary.cleanup()
 
+    def test_parallel_packet_reserves_four_subjects_and_detects_reference_drift(self):
+        plan=pilot.packet()
+        self.assertEqual(len(plan['assignments']),4)
+        local=copy.deepcopy(plan);local['reference_sha256']={'reference.md':export.sha(b'accepted recipe')}
+        (self.root/'reference.md').write_bytes(b'accepted recipe')
+        for a in local['assignments']:
+            folder=self.root/a['folder'];folder.mkdir(parents=True)
+            (folder/'sequence.json').write_bytes((ROOT/a['folder']/'sequence.json').read_bytes())
+        plan_path=self.root/'assignments.json';plan_path.write_bytes(export.encoded(local))
+        with patch.object(pilot,'ROOT',self.root),patch.object(pilot,'PLAN',plan_path):
+            self.assertEqual(pilot.packet(),local)
+            (self.root/'reference.md').write_bytes(b'changed recipe')
+            with self.assertRaises(export.ExportError) as caught:pilot.packet()
+            self.assertEqual(caught.exception.code,'pilot.reference_changed')
+            (self.root/'reference.md').write_bytes(b'accepted recipe')
+            with self.assertRaises(export.ExportError) as caught:
+                pilot.check_assignment(local['assignments'][0],OPTIONS.target,OPTIONS.model)
+            self.assertEqual(caught.exception.code,'pilot.incomplete')
+            self.assertFalse((self.root/'build').exists())
+
+    def test_parallel_candidate_uses_real_compiler_certificates_and_repeatable_output(self):
+        folder=self.root/'source';folder.mkdir()
+        for name in ('sequence.json','lesson.md.in','questions.paths.md.in'):
+            (folder/name).write_bytes((batch.MATRIX_REASONING_ROOT/name).read_bytes())
+        (folder/'certificates.py').write_text('from build_question_batch import MATRIX_ROLE_CHECKERS as CHECKERS\n')
+        author=batch.matrix_reasoning_batch(self.args(count=6,family='matrix-reasoning'))[3]
+        (folder/'authoring.json').write_bytes(export.encoded(author))
+        a=dict(subject='linear_algebra',folder='source',package_id=author['package_id'],
+               values=dict(subject='linear_algebra',subject_title='Linear Algebra',chapter='worked_matrix_practice',
+                           chapter_title='Worked matrix practice',reading_id='matrix_reasoning_v1_reading',
+                           reading_title='Reason about row operations'))
+        with patch.object(pilot,'ROOT',self.root),patch.object(pilot,'packet',return_value={}):
+            result=pilot.check_assignment(a,OPTIONS.target,OPTIONS.model)
+            self.assertTrue(result['accepted']);self.assertEqual(result['route_checks']['routes'],6)
+            self.assertEqual(result['publication'],'not_performed')
+            destination=Path(result['authoring']);before={p:p.read_bytes() for p in destination.rglob('*') if p.is_file()}
+            self.assertEqual(pilot.check_assignment(a,OPTIONS.target,OPTIONS.model),result)
+            self.assertEqual({p:p.read_bytes() for p in destination.rglob('*') if p.is_file()},before)
+            outputs={p:p.read_bytes() for p in (self.root/'build').rglob('*') if p.is_file()}
+            original=(folder/'questions.paths.md.in').read_text()
+            for old,new in (('@choice 11 | 2x-y=5','@choice 11 | 2x-y=6'),
+                            ('@after 2x-y=5','@after 2x-y=6')):
+                (folder/'questions.paths.md.in').write_text(original.replace(old,new,1))
+                with self.assertRaises(export.ExportError) as caught:pilot.check_assignment(a,OPTIONS.target,OPTIONS.model)
+                self.assertEqual(caught.exception.code,'batch.role')
+                self.assertIn('matrix_reasoning_v1_notation',str(caught.exception))
+                self.assertEqual({p:p.read_bytes() for p in (self.root/'build').rglob('*') if p.is_file()},outputs)
+            (folder/'questions.paths.md.in').write_text(original)
+            # Swap the key while keeping feedback structurally legal; the model
+            # can follow it, but the independent mathematics must reject it.
+            wrong_key=original.replace('@answer 11','@answer 12',1).replace('@feedback 12 |','@feedback 11 |',1)
+            (folder/'questions.paths.md.in').write_text(wrong_key)
+            with self.assertRaises(export.ExportError) as caught:pilot.check_assignment(a,OPTIONS.target,OPTIONS.model)
+            self.assertEqual(caught.exception.code,'batch.role')
+            self.assertEqual({p:p.read_bytes() for p in (self.root/'build').rglob('*') if p.is_file()},outputs)
+            (folder/'questions.paths.md.in').write_text(original)
+            frozen=pilot.fingerprint(folder)
+            with patch.object(pilot,'fingerprint',side_effect=[frozen,dict(frozen,changed='yes')]):
+                with self.assertRaises(export.ExportError) as caught:pilot.check_assignment(a,OPTIONS.target,OPTIONS.model)
+                self.assertEqual(caught.exception.code,'pilot.source_changed')
+            self.assertFalse(self.store.exists())
+
     def args(self, count=12, version=1, publish=False, format_version=1, family='matrix'):
         return argparse.Namespace(count=count, version=version, publish=publish, format_version=format_version, family=family,
             target=OPTIONS.target, model=OPTIONS.model, output=self.root / 'batches' / str(version),
@@ -38,7 +101,8 @@ class BatchTests(unittest.TestCase):
         expected={('matrix',1):'079b6e2590aa8b2454ae9ecd93b4c99ff22cfaf39513cb2f983dc57314c59c83',
                   ('matrix',2):'b49288700619c5bcb21959966a437c683a286787aa84ebeafbed3aba5caf1862',
                   ('linear',1):'58b9a20a486cb8d1ccac087b3f641dd342a55e018eb3836b15a2c37032297c9c',
-                  ('probability',1):'d82d29f1dbf3cf43d143f1cf60d4caac7f29e337e3a0a8020819027030fe6b7b'}
+                  ('probability',1):'d82d29f1dbf3cf43d143f1cf60d4caac7f29e337e3a0a8020819027030fe6b7b',
+                  ('probability',2):'fb7dcbe21aadb18e54a11e5698a1ca7df74fa68ff5571f47b1eb9b37970117f3'}
         for (family,fmt),fingerprint in expected.items():
             _,_,docs,author,audit=batch.BUILDERS[family](self.args(family=family,format_version=fmt,version=fmt))
             files={**docs,'authoring.json':export.encoded(author),'audit.json':export.encoded(audit)}
@@ -48,8 +112,8 @@ class BatchTests(unittest.TestCase):
         marker='@block introduction | common_marker | - | Shared teaching note\n@prose One chapter assembly serves all three subjects.\n@endblock\n'
         shared=self.root/'shared-chapter.md.in'
         shared.write_text(batch.CHAPTER_TEMPLATE.read_text().replace('{{lesson_blocks}}',marker+'{{lesson_blocks}}'))
-        for family,fmt in (('matrix',2),('linear',1),('probability',1)):
-            args=self.args(family=family,version=fmt,format_version=fmt)
+        for family,fmt in (('matrix',2),('linear',1),('probability',1),('matrix-reasoning',1)):
+            args=self.args(family=family,count=6 if family=='matrix-reasoning' else 12,version=fmt,format_version=fmt)
             original=batch.BUILDERS[family](args)[2]
             with patch.object(batch,'CHAPTER_TEMPLATE',shared):docs=batch.BUILDERS[family](args)[2]
             for name,text in docs.items():
@@ -180,7 +244,9 @@ class BatchTests(unittest.TestCase):
             self.assertTrue(all(by_id[row['id']]==row for row in rows))
         self.assertEqual(len(after['questions']),len(before['questions'])+6)
         self.assertEqual(len(after['readings']),len(before['readings'])+1)
-        questions,certificates,_,_,_=batch.reasoning_documents()
+        source=batch.REASONING_ROOT/'sequence.json'
+        questions=batch.validate_role_sequence(export.decoded(source.read_bytes()),source)
+        certificates=[c for c in result['mathematical_checks'] if 'role' in c]
         roles={q['id'] for q in questions};compiled=[q for q in result['route_checks']['questions'] if q['id'] in roles]
         batch.verify_role_content(questions,compiled,certificates)
         positions=[next(i for i,o in enumerate(q['question']['steps'][0]['options']) if o['id'] in q['question']['steps'][0]['accepted_option_ids']) for q in compiled]
@@ -206,6 +272,105 @@ class BatchTests(unittest.TestCase):
         with self.assertRaisesRegex(export.ExportError,'Existing question must remain unchanged'):
             batch.run(self.args(family='probability',count=24,version=4,format_version=1,publish=True))
         self.assertEqual((self.store/'active.json').read_bytes(),active)
+
+    def test_matrix_role_cases_and_original_row_checks(self):
+        q,checks,docs,_,audit=batch.matrix_reasoning_batch(self.args(family='matrix-reasoning',count=6))
+        by_role={c['role']:c['evidence']['facts'] for c in checks}
+        self.assertEqual(by_role['read_notation']['equation'],'2x-y=5')
+        self.assertEqual(by_role['worked_check']['new_row'],['0','1','3'])
+        self.assertEqual(by_role['choose_next_step']['target_entries'],['6','3','0'])
+        self.assertEqual(by_role['explain_step']['recovered_rows'],[['1','1','4'],['2','-1','5']])
+        self.assertEqual(by_role['repair_error']['first_error'],'L_1')
+        self.assertEqual(by_role['repair_error']['incorrect_pair'],['-7','11'])
+        self.assertEqual(by_role['independent']['solution'],['3/2','1'])
+        self.assertEqual(by_role['independent']['choice_residuals'],[['-1/2','-3/2'],['0','0'],['3','3']])
+        self.assertEqual(audit['exercise_roles'],list(batch.EXERCISE_ROLES))
+        self.assertEqual(sum(c['steps_checked'] for c in checks),7)
+        for index,change in ((0,{'row':[True,-1,5]}),(1,{'multiplier':0}),
+                             (2,{'rows':[[0,1,2],[3,1,10]]}),
+                             (3,{'rows':[[1,1,4],[2,2,8]]}),
+                             (4,{'rows':[[1,1,0],[2,3,11]]}),
+                             (5,{'rows':[[21,1,4],[2,-1,2]]})):
+            damaged=copy.deepcopy(q[index]);damaged['case'].update(change)
+            with self.subTest(role=damaged['role']),self.assertRaises(export.ExportError) as caught:
+                batch.reasoning_certificate(damaged,batch.MATRIX_ROLE_CHECKERS)
+            self.assertIn(damaged['id'],str(caught.exception))
+        for count in (0,3,12,True):
+            with self.assertRaisesRegex(export.ExportError,'six-question sequence'):
+                batch.matrix_reasoning_batch(self.args(family='matrix-reasoning',count=count))
+        # Independent fixed arithmetic for the separate reading example, not a question answer.
+        text=docs['matrix_reasoning.paths.md'].decode()
+        states=([[1,-2,1],[2,-3,4]],[[1,-2,1],[0,1,2]],[[1,0,5],[0,1,2]])
+        for rows in states:
+            self.assertIn(batch.matrix_tex(rows),text)
+            self.assertTrue(all(a*5+b*2==c for a,b,c in rows))
+        self.assertIn('@help solution',text);self.assertIn('@help proof',text)
+
+    def test_matrix_roles_publish_into_existing_chapter_and_preserve_progress(self):
+        old=batch.run(self.args(format_version=2,version=2,publish=True))
+        before=export.Target(OPTIONS.target).inspect(store=self.store)['catalogue']
+        args=self.args(family='matrix-reasoning',count=6,publish=True)
+        result=batch.run(args);self.assertEqual(result['count'],6)
+        self.assertEqual(result['route_checks']['routes'],6);self.assertEqual(result['route_checks']['wrong_choices'],14)
+        self.assertTrue(result['route_checks']['save_replay'])
+        compiled=result['route_checks']['questions'];positions=[]
+        for q in compiled:
+            step=q['question']['steps'][0]
+            positions.append(next(i for i,o in enumerate(step['options']) if o['id'] in step['accepted_option_ids']))
+        self.assertEqual(positions,[0,1,2,2,0,1])
+        after=export.Target(OPTIONS.target).inspect(store=self.store)['catalogue']
+        self.assertEqual(after['chapters'],before['chapters']);self.assertEqual(after['subjects'],before['subjects'])
+        for key in ('questions','readings'):
+            by_id={q['id']:q for q in after[key]};self.assertTrue(all(by_id[q['id']]==q for q in before[key]))
+        active=(self.store/'active.json').read_bytes()
+        self.assertTrue(batch.run(args)['publication']['unchanged']);self.assertEqual((self.store/'active.json').read_bytes(),active)
+        combined=self.root/'combined-documents'
+        old_docs=Path(old['generated_authoring'])/'documents';new_docs=Path(result['generated_authoring'])/'documents'
+        export.write_tree(combined,{**export.capture(old_docs),**export.capture(new_docs)})
+        check=subprocess.run([str(OPTIONS.model),'--question-batch-upgrade',str(old_docs),str(combined)],capture_output=True,text=True,timeout=30)
+        self.assertEqual(check.returncode,0,check.stderr);self.assertTrue(json.loads(check.stdout)['save_replay'])
+        # The same compiled-content boundary catches a changed key, working, or certificate.
+        questions=result['mathematical_checks']
+        manifest=batch.validate_role_sequence(export.decoded((batch.MATRIX_REASONING_ROOT/'sequence.json').read_bytes()),batch.MATRIX_REASONING_ROOT/'sequence.json')
+        for defect in ('key','working','certificate'):
+            content=copy.deepcopy(compiled);certificates=copy.deepcopy(questions)
+            if defect=='key':content[0]['question']['steps'][0]['accepted_option_ids']=[12]
+            elif defect=='working':content[0]['question']['working_states'][1]['display']='2x+y=5'
+            else:certificates[0]['evidence']['kind']='worked_example'
+            with self.subTest(defect=defect),self.assertRaises(export.ExportError):batch.verify_role_content(manifest,content,certificates)
+
+    def test_matrix_role_source_defects_do_not_replace_a_good_publication(self):
+        batch.run(self.args(family='matrix-reasoning',count=6,publish=True))
+        active=(self.store/'active.json').read_bytes()
+        edited=self.root/'matrix-role-sources';export.write_tree(edited,export.capture(batch.MATRIX_REASONING_ROOT))
+        source=edited/'questions.paths.md.in';original=source.read_text()
+        defects=[('@choice 11 | 2x-y=5','@choice 11 | 2x+y=6','batch.role'),
+                 ('0&1&3','0&1&13','batch.role'),
+                 ('@answer 11','@answer 12','target.rejected'),
+                 ('@template choices.v1','@template choices.v99','target.rejected')]
+        for old,new,code in defects:
+            source.write_text(original.replace(old,new,1))
+            with self.subTest(defect=old),patch.object(batch,'MATRIX_REASONING_ROOT',edited),self.assertRaises(export.ExportError) as caught:
+                batch.run(self.args(family='matrix-reasoning',count=6,version=2,publish=True))
+            self.assertEqual(caught.exception.code,code,str(caught.exception))
+            if code=='target.rejected':
+                self.assertEqual(caught.exception.diagnostics[0]['file'],'matrix_reasoning.paths.md');self.assertGreater(caught.exception.diagnostics[0]['line'],0)
+            else:self.assertIn('matrix_reasoning_v1_',str(caught.exception))
+            self.assertEqual((self.store/'active.json').read_bytes(),active);self.assertFalse((self.root/'batches/2').exists())
+        source.write_text(original)
+        raw=export.decoded((edited/'sequence.json').read_bytes());raw['questions'][5]['case']['rows'][0][2]=5
+        (edited/'sequence.json').write_bytes(export.encoded(raw))
+        with patch.object(batch,'MATRIX_REASONING_ROOT',edited),self.assertRaisesRegex(export.ExportError,'given/after'):
+            batch.run(self.args(family='matrix-reasoning',count=6,version=2,publish=True))
+        self.assertEqual((self.store/'active.json').read_bytes(),active)
+
+    def test_matrix_reasoning_cli_defaults_to_one_six_question_sequence(self):
+        command=[sys.executable,'-B',str(ROOT/'tools/build_question_batch.py'),'--family','matrix-reasoning',
+                 '--target',str(OPTIONS.target),'--model',str(OPTIONS.model),'--output',str(self.root/'cli-output'),
+                 '--store',str(self.store),'--base-documents',str(ROOT/'content/write')]
+        result=subprocess.run(command,capture_output=True,text=True,timeout=30)
+        self.assertEqual(result.returncode,0,result.stderr);report=json.loads(result.stdout)
+        self.assertEqual(report['format_version'],1);self.assertEqual(report['count'],6);self.assertFalse(report['publication']['published'])
 
     def test_probability_cli_defaults_to_six_roles_with_the_twelve_repetitions(self):
         command=[sys.executable,'-B',str(ROOT/'tools/build_question_batch.py'),'--family','probability',

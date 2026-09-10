@@ -1,0 +1,123 @@
+@question {{read_notation_id}} | {{read_notation_title}}
+@template choices.v1
+@version 1
+@goal {{read_notation_objective}}
+@given 0\le\theta<2\pi
+@domain Theta is a real angle measured in radians. Zero is included; 2pi is excluded, even though it points in the same direction as zero after one complete turn.
+@read {{reading_id}}
+@step 10 | Which inequality means exactly the same thing?
+@choice 11 | 0\le\theta<2\pi
+@choice 12 | 0<\theta\le2\pi
+@choice 13 | 0<\theta<2\pi
+@answer 11
+@feedback 12 | This reverses both endpoint decisions: it excludes zero and includes 2pi. The stated interval does the opposite so the repeated direction appears once.
+@feedback 13 | This excludes zero. The left endpoint in the given uses <=, so theta=0 is permitted.
+@after 0\le\theta<2\pi
+@wrong Read the inequality signs separately: <= includes its endpoint and < excludes its endpoint.
+@why The first choice repeats both inequalities without changing either endpoint. It permits theta=0 and excludes theta=2pi, which is the stated radian interval.
+@end
+
+@question {{worked_check_id}} | {{worked_check_title}}
+@template choices.v1
+@version 1
+@goal {{worked_check_objective}}
+@given \sin\theta=\frac{1}{2},\quad\theta=\frac{\pi}{6}
+@domain Theta is a real angle in radians with 0<=theta<2pi. Sine is unit-circle height. The displayed pi/6 is one known angle, not yet the complete solution set.
+@read {{reading_id}}
+@step 10 | Which other permitted angle has the same sine height?
+@choice 11 | \frac{\pi}{6}
+@choice 12 | \frac{5\pi}{6}
+@choice 13 | \frac{7\pi}{6}
+@answer 12
+@feedback 11 | Pi/6 is the angle already supplied. The question asks for the other point at height 1/2, so reflect pi/6 across the vertical axis instead of repeating it.
+@feedback 13 | Seven pi over six lies below the horizontal axis, where sine is -1/2. The required height is positive 1/2.
+@after \theta\in\left\{\frac{\pi}{6},\frac{5\pi}{6}\right\}
+@wrong Keep the sine height positive and find the second unit-circle point in the same turn.
+@why Reflection across the vertical axis sends pi/6 to pi-pi/6=5pi/6 and keeps the vertical coordinate. Both pi/6 and 5pi/6 are in [0,2pi), and sin of each is 1/2.
+@end
+
+@question {{choose_next_step_id}} | {{choose_next_step_title}}
+@template choices.v1
+@version 1
+@goal {{choose_next_step_objective}}
+@given 2\sin\theta-1=0
+@domain Theta is a real angle measured in radians. The coefficient 2 is nonzero, so division by 2 is defined. The requested move should isolate sine while preserving the original solutions.
+@read {{reading_id}}
+@step 10 | Which equation isolates sine without changing the solutions?
+@choice 11 | \sin\theta=1
+@choice 12 | \sin\theta=-\frac{1}{2}
+@choice 13 | \sin\theta=\frac{1}{2}
+@answer 13
+@feedback 11 | After adding 1, the equation is 2sin(theta)=1. Stopping there as sin(theta)=1 drops the nonzero coefficient 2 without dividing the right side.
+@feedback 12 | Dividing 1 by the positive number 2 gives positive 1/2, not negative 1/2. No sign change has occurred.
+@after \sin\theta=\frac{1}{2}
+@wrong Add 1 to both sides first, then divide both complete sides by the nonzero coefficient 2.
+@why Adding 1 gives 2sin(theta)=1. Dividing both sides by 2 gives sin(theta)=1/2. Reversing those moves recovers the original equation, so no solution has changed.
+@end
+
+@question {{explain_step_id}} | {{explain_step_title}}
+@template choices.v1
+@version 1
+@goal {{explain_step_objective}}
+@given \alpha=\frac{\pi}{6},\quad\sin\alpha=\frac{1}{2}
+@domain Alpha is a radian angle. Sine is the vertical coordinate on the unit circle. Reflection across the vertical axis preserves height while changing a point's horizontal coordinate.
+@read {{reading_id}}
+@step 10 | Which reflected angle has the same sine as alpha?
+@choice 11 | \alpha+\pi
+@choice 12 | 2\pi-\alpha
+@choice 13 | \pi-\alpha
+@answer 13
+@feedback 11 | Alpha+pi moves the point to the opposite side of the circle, reversing its vertical coordinate. With alpha=pi/6, its sine is -1/2 rather than 1/2.
+@feedback 12 | Two pi-alpha reflects across the horizontal axis for this point, so it also has height -1/2. It is not the vertical-axis reflection that preserves sine.
+@after \sin(\pi-\alpha)=\sin(\alpha)=\frac{1}{2}
+@wrong Identify the reflection that keeps vertical height unchanged, not one that moves the point below the horizontal axis.
+@why The vertical-axis reflection of an angle alpha is pi-alpha. It changes the horizontal coordinate's sign but leaves the vertical coordinate unchanged, so sin(pi-alpha)=sin(alpha)=1/2.
+@end
+
+@question {{repair_error_id}} | {{repair_error_title}}
+@template choices.v1
+@version 1
+@goal {{repair_error_objective}}
+@given \begin{gathered}\sin\theta=0,\quad0\le\theta<2\pi\\\text{Deliberately incorrect attempt:}\\L_1:\ \theta=k\pi,\ k\text{ an integer}\\L_2:\ k\in\{0,1,2\}\\L_3:\ \theta\in\{0,\pi,2\pi\}\end{gathered}
+@domain Theta is a real radian angle. The displayed L1-L3 are a deliberately incorrect student attempt, not accepted working. The right endpoint 2pi is excluded; zero is included.
+@read {{reading_id}}
+@step 10 | Which line is the first one that violates the stated interval?
+@choice 11 | L_2
+@choice 12 | L_1
+@choice 13 | L_3
+@answer 11
+@feedback 12 | L1 is the correct all-real-angle description for sine zero: theta=kpi for integer k. The interval restriction has not yet been applied there.
+@feedback 13 | L3 faithfully substitutes the already incorrect list from L2. The first error is earlier, when L2 includes k=2 and therefore the excluded endpoint 2pi.
+@after L_2:\quad k\in\{0,1\}
+@wrong Start with the general branch, then test each integer against both interval endpoints before checking its substitution.
+@why L1 is valid for every real sine zero. In 0<=theta<2pi, theta=kpi requires 0<=k<2, so the integer choices are k=0 and k=1 only. L2 first wrongly includes k=2.
+@step 20 | After correcting the integer values, which repaired solution set is complete?
+@choice 21 | \left\{\pi\right\}
+@choice 22 | \left\{0,\pi,2\pi\right\}
+@choice 23 | \left\{0,\pi\right\}
+@answer 23
+@feedback 21 | This loses theta=0. Zero is a sine zero and the left endpoint includes it because 0<=theta.
+@feedback 22 | This retains the excluded endpoint 2pi. The right inequality is strict, theta<2pi, so a complete set must omit it.
+@after \theta\in\left\{0,\pi\right\}
+@wrong Substitute each allowed integer into theta=kpi, then include zero and exclude the repeated endpoint 2pi.
+@why k=0 gives theta=0 and k=1 gives theta=pi. Both have sine zero and satisfy the interval. k=2 would give 2pi, which is not permitted, so the repaired set is {0,pi}.
+@end
+
+@question {{independent_id}} | {{independent_title}}
+@template choices.v1
+@version 1
+@goal {{independent_objective}}
+@given 2\sin\theta+1=0,\quad0\le\theta<2\pi
+@domain Theta is a real angle measured in radians. Choose the set that contains every permitted solution of the original equation; each displayed set is proposed as a complete answer.
+@read {{reading_id}}
+@step 10 | Which set is exactly the complete solution set?
+@choice 11 | \left\{\frac{\pi}{6},\frac{5\pi}{6}\right\}
+@choice 12 | \left\{\frac{7\pi}{6},\frac{11\pi}{6}\right\}
+@choice 13 | \left\{\frac{7\pi}{6}\right\}
+@answer 12
+@feedback 11 | Both listed angles have sine 1/2, giving 2(1/2)+1=2 rather than 0. The original equation requires a negative sine height.
+@feedback 13 | Seven pi over six is one valid angle, but eleven pi over six has the same required height and is also inside the interval. A one-angle set is incomplete.
+@after \theta\in\left\{\frac{7\pi}{6},\frac{11\pi}{6}\right\}
+@wrong Check each proposed angle in the original equation and make sure the proposed set has not missed another unit-circle point at the same height.
+@why The equation gives sin(theta)=-1/2. The two unit-circle points with that height in [0,2pi) are 7pi/6 and 11pi/6. Each checks: 2(-1/2)+1=0. The horizontal line at height -1/2 has only these two intersections in one turn, so no other interval solutions remain.
+@end

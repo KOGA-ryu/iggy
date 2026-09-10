@@ -7,6 +7,23 @@ probability chapter now supplies 12 numerical repetitions, six reasoning
 questions and four readings. The earlier linear, matrix and probability
 format-1 documents, manifests and audits reproduce byte for byte.
 
+**Worked matrix practice → Reason about row operations** adds the same six roles
+for matrices, with a separate numbered reading. Its `matrix_reasoning_practice`
+package adds six questions to the existing chapter. Matrix and probability
+sequences share `reasoning_documents()` and the certificate boundary; each
+supplies its own cases, Markdown and mathematical checks. The existing
+probability format-2 package also reproduces byte for byte.
+
+```sh
+python3 -B tools/build_question_batch.py --family matrix-reasoning --publish
+```
+
+This command defaults to six questions, package version 1 and format version 1.
+The cards use the existing prepared multiple-choice route; numerical matrix
+repetitions retain their four support levels. The [matrix role contract and
+answer sheet](EXERCISE_ROLES.md#matrix-row-operation-sequence) specify case bounds,
+source locations, checking responsibilities and the preview workflow.
+
 The [exercise-role contract](EXERCISE_ROLES.md) makes the six decisions reusable
 across authoring families: read notation, follow a worked example, choose a
 step, explain a step, repair a mistake and solve in a fresh setting. The contract
@@ -116,6 +133,12 @@ Draft creation refuses an existing destination. Saving its Markdown refreshes
 the preview; the preview uses no personal progress and does not publish.
 
 ## Contract for the next family builder
+
+For an assigned parallel subject pilot, use the
+[parallel authoring packet](PARALLEL_QUESTION_AUTHORING.md). The worker authors
+and checks its isolated candidate; the coordinator performs shared registration,
+upgrade checks and publication in steps 5–6 below. Do not have four workers
+edit this tool's registry or activate packages concurrently.
 
 1. Name one learning outcome and the existing response checker. Supply the
    domain, exact inputs, ordinary/contrast/boundary cases, expected answers and

@@ -1,0 +1,123 @@
+@question {{read_notation_id}} | {{read_notation_title}}
+@template choices.v1
+@version 1
+@goal {{read_notation_objective}}
+@given \left[\begin{array}{cc|c}-3&2&7\end{array}\right]
+@domain The columns are x, y, then the right-hand constant. The vertical bar separates the constant column; it is not division. x and y are real unknowns.
+@read {{reading_id}}
+@step 10 | Which equation does this augmented row represent?
+@choice 11 | -3x+2y=7
+@choice 12 | -3x-2y=7
+@choice 13 | -3x-7y=2
+@answer 11
+@feedback 12 | The coefficient in the y column is positive 2. This choice changes it to negative 2.
+@feedback 13 | The 2 is the y coefficient before the bar, while 7 is the constant after the bar. This choice puts those entries in the wrong roles.
+@after -3x+2y=7
+@wrong Read the entries from left to right as the x coefficient, the y coefficient, and the right-hand constant.
+@why The row says (-3)x+(2)y=7, conventionally written -3x+2y=7. It is one equation; translating it alone does not determine an ordered pair.
+@end
+
+@question {{worked_check_id}} | {{worked_check_title}}
+@template choices.v1
+@version 1
+@goal {{worked_check_objective}}
+@given \begin{gathered}\left[\begin{array}{cc|c}1&-1&2\\2&-1&7\end{array}\right]\\R_2\leftarrow R_2-2R_1\\R'_2=\left[\begin{array}{cc|c}0&1&\square\end{array}\right]\end{gathered}
+@domain R2 is replaced using the old rows; R1 remains unchanged. The three columns are x, y, and the right-hand constant, so the operation must reach the entry after the bar.
+@read {{reading_id}}
+@step 10 | The new coefficients are 2-2(1)=0 and -1-2(-1)=1. What is the new constant, 7-2(2)?
+@choice 11 | 7
+@choice 12 | 3
+@choice 13 | 11
+@answer 12
+@feedback 11 | Seven is the old constant. The stated subtraction also applies to the constant column: 7-2(2).
+@feedback 13 | Eleven results from adding 2(2) to 7. The multiplier is -2, so the calculation is 7-4, not 7+4.
+@after \left[\begin{array}{cc|c}1&-1&2\\0&1&3\end{array}\right]
+@wrong Apply the replacement to all three entries of row 2, including the constant after the bar.
+@why The completed row is [0,1|3], because 7-2(2)=3. It reads y=3. The unchanged first row and the new second row have the same common solution as the original pair of rows.
+@end
+
+@question {{choose_next_step_id}} | {{choose_next_step_title}}
+@template choices.v1
+@version 1
+@goal {{choose_next_step_objective}}
+@given \left[\begin{array}{cc|c}1&2&4\\3&1&7\end{array}\right]
+@domain The destination is the row on the left of \leftarrow. The goal requires the x coefficient in row 2 to become zero while row 1 remains unchanged. All rows use x, y, constant order.
+@read {{reading_id}}
+@step 10 | Which operation cancels x in row 2 and retains row 1?
+@choice 11 | R_2\leftarrow R_2+3R_1
+@choice 12 | R_1\leftarrow R_1-3R_2
+@choice 13 | R_2\leftarrow R_2-3R_1
+@answer 13
+@feedback 11 | This is reversible, but its target entry is 3+3(1)=6 rather than zero. It misses the requested elimination goal.
+@feedback 12 | This changes row 1, not row 2, so row 2 still has x coefficient 3. A row operation may be valid while failing the stated destination and goal.
+@after \left[\begin{array}{cc|c}1&2&4\\0&-5&-5\end{array}\right]
+@wrong Name the destination and set its new x coefficient to zero: 3+k(1)=0.
+@why k=-3 gives [3-3(1),1-3(2)|7-3(4)]=[0,-5|-5] in row 2. Row 1 remains [1,2|4]. Adding three copies of row 1 back would reverse the replacement.
+@end
+
+@question {{explain_step_id}} | {{explain_step_title}}
+@template choices.v1
+@version 1
+@goal {{explain_step_objective}}
+@given \begin{gathered}\left[\begin{array}{cc|c}1&-2&1\\2&-3&4\end{array}\right]\\R_2\leftarrow R_2-2R_1\\\left[\begin{array}{cc|c}1&-2&1\\0&1&2\end{array}\right]\end{gathered}
+@domain Row 1 is retained. To show that a row replacement preserves the common solutions, recover the original row 2 from the changed row 2 and that retained row.
+@read {{reading_id}}
+@step 10 | Which operation restores the original second row?
+@choice 11 | R_2\leftarrow R_2-2R_1
+@choice 12 | R_2\leftarrow 0R_2
+@choice 13 | R_2\leftarrow R_2+2R_1
+@answer 13
+@feedback 11 | Repeating the subtraction does not undo it: the first entry would be 0-2(1)=-2, not 2. Undo subtraction by adding the same multiple back.
+@feedback 12 | Multiplying row 2 by zero erases its equation and cannot recover its original entries. Scaling is reversible only for a nonzero factor.
+@after \left[\begin{array}{cc|c}1&-2&1\\2&-3&4\end{array}\right]
+@wrong Reverse the earlier row addition with the opposite multiple, using the unchanged row 1.
+@why Add twice row 1 to the changed row 2: [0+2(1),1+2(-2)|2+2(1)]=[2,-3|4]. The forward and reverse combinations show both directions of common-solution preservation.
+@end
+
+@question {{repair_error_id}} | {{repair_error_title}}
+@template choices.v1
+@version 1
+@goal {{repair_error_objective}}
+@given \begin{gathered}\left[\begin{array}{cc|c}1&-1&1\\2&-1&5\end{array}\right]\\\begin{aligned}L_1 &: R'_2=[2-2(1),\,-1-2(-1)\mid5]\\L_2 &: R'_2=[0,\,1\mid5]\\L_3 &: y=5\end{aligned}\end{gathered}
+@domain The displayed L1, L2, and L3 are a deliberately incorrect student attempt, not accepted working. The intended replacement is R2\leftarrow R2-2R1; it must operate on x, y, and constant columns.
+@read {{reading_id}}
+@step 10 | Which line first fails to apply the intended operation to the complete row?
+@choice 11 | L_1
+@choice 12 | L_2
+@choice 13 | L_3
+@answer 11
+@feedback 12 | L2 correctly evaluates the two coefficient calculations written in L1. The earlier failure is that L1 leaves the constant unchanged.
+@feedback 13 | L3 accurately reads y=5 from the student’s already incorrect row in L2. It carries forward an earlier incomplete operation.
+@after L_1:\quad 5\ \mathrm{must\ become}\ 5-2(1)
+@wrong Inspect the attempt from its first line. A row replacement has no exception for the constant column.
+@why L1 subtracts twice row 1 from both coefficients but omits the constant calculation. The constant must be 5-2(1). Later lines follow the faulty row, so L1 is the first error.
+@step 20 | Repair the constant. The corrected second row is [0,1|5-2(1)]. What is y?
+@choice 21 | 5
+@choice 22 | 4
+@choice 23 | 3
+@answer 23
+@feedback 21 | This retains the omitted constant operation. Compute 5-2(1) before reading the row as an equation.
+@feedback 22 | Four subtracts only one copy of the first-row constant. The indicated multiplier is two, so the subtraction is 5-2.
+@after \left[\begin{array}{cc|c}1&-1&1\\0&1&3\end{array}\right],\quad y=3
+@wrong The y coefficient is already 1; calculate the corrected constant exactly and then read the row.
+@why The corrected constant is 3, so y=3. The original first row gives x-3=1, hence x=4. Check both originals: 4-3=1 and 2(4)-3=5. The wrong pair (6,5) satisfies row 1 but gives 2(6)-5=7, not 5, in row 2.
+@end
+
+@question {{independent_id}} | {{independent_title}}
+@template choices.v1
+@version 1
+@goal {{independent_objective}}
+@given \left[\begin{array}{cc|c}3&1&5\\1&-1&1\end{array}\right]
+@domain x and y are real unknowns. Each choice is an ordered pair (x,y), so its first coordinate substitutes for x and its second coordinate substitutes for y. Keep fractions exact.
+@read {{reading_id}}
+@step 10 | Which ordered pair solves both original equations?
+@choice 11 | (x,y)=\left(\frac{1}{2},\frac{3}{2}\right)
+@choice 12 | (x,y)=\left(\frac{3}{2},\frac{1}{2}\right)
+@choice 13 | (x,y)=\left(3,\frac{1}{2}\right)
+@answer 12
+@feedback 11 | This reverses the two values. Its residuals in the original rows are -2 and -2, so it satisfies neither equality.
+@feedback 13 | This uses x=3 rather than x=3/2. Its residuals are 9/2 and 3/2, so it does not satisfy either original equality.
+@after x=\frac{3}{2},\quad y=\frac{1}{2}
+@wrong Substitute the same ordered pair into both original equations; one successful row is not enough for a system.
+@why For x=3/2 and y=1/2, 3(3/2)+1/2=5 and 3/2-1/2=1. The pair therefore satisfies both original rows. The reading offers optional guidance, but this fresh card does not prescribe an intermediate operation.
+@end

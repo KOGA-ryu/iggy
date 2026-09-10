@@ -1,0 +1,70 @@
+@block introduction | purpose | 1 | Six decisions behind a probability calculation
+@prose These six exercises ask you to read notation, complete a worked example, choose an appropriate calculation, explain a rule, repair a mistake and solve in a fresh setting. Every question uses buttons. The first three readings in this chapter practise equally likely labels; this section adds one explicitly unequal-chance contrast to explain the counting rule's limits.
+@prose Before starting, you should be able to count a finite list and add or simplify small fractions. The definitions below explain the set symbols and the distinction between labels and physical outcomes. You can return to Reading whenever you need it. A completed question stays until Next; Again starts a fresh attempt and retains the earlier run.
+@endblock
+@block definition | symbols | 1.1 | Sets, membership and counting
+@prose Capital omega denotes the sample space, the complete list of possible outcomes. E names an event: the outcomes satisfying the stated condition. Braces enclose a set. Membership means that a particular outcome belongs to that set; crossed membership means that it does not. Two bars around a set mean its number of distinct members.
+@display
+\Omega=\{1,2,\ldots,n\},\qquad j\in E,\qquad j\notin E,\qquad |E|=k
+@prose Between integers, a single vertical bar means divides. A crossed bar means does not divide. A label is divisible by d if it is a whole-number multiple of d. These symbols describe the event; they are different from the two bars that count a set's members.
+@display
+4\mid8,\qquad 4\nmid9,\qquad |\{4,8\}|=2
+@prose In the notation exercise, identify the event before trying to calculate its probability. A list containing a forbidden label is not a valid event, even if that label satisfies the divisibility condition.
+@endblock
+@block example | counting_example | 1.2 | A worked denominator example
+@prose Draw one card from four equally likely cards labelled u, v, w and z. Event A is drawing u. There is one favourable outcome, but every card is possible. The denominator therefore counts all four cards. It is neither the favourable count nor the count outside the event.
+@display
+\Omega=\{u,v,w,z\},\qquad A=\{u\},\qquad P(A)=\frac{|A|}{|\Omega|}
+@help answer
+@display
+P(A)=\frac{1}{4}
+@help solution
+@prose The event has one member; the sample space has four. Each card contributes one quarter of the total probability. Three cards lie outside A, so the complement has probability three quarters. Both parts sum to one.
+@display
+|A|=1,\qquad |\Omega|=4,\qquad \frac{1}{4}+\frac{3}{4}=1
+@endblock
+@block proposition | chances | 1.3 | Check the equal-chance assumption
+@prose Dividing event size by sample-space size works when each outcome has the same probability. If their probabilities are supplied and differ, add the probabilities of the outcomes in the event. The experiment here has exactly one result, so distinct outcomes cannot occur together. This addition does not require independence between separate trials.
+@display
+P(E)=\sum_{j\in E}P(j),\qquad P(j)=\frac{1}{n}\ \text{for every }j\ \Longrightarrow\ P(E)=\frac{|E|}{n}
+@help proof
+@prose Events consisting of distinct individual outcomes have no overlap. Finite additivity lets us sum their probabilities. Equal chances replace each contribution by one divided by n; adding k such contributions yields k divided by n. Unequal chances require retaining the actual contributions.
+@endblock
+@block example | weighted_example | 1.4 | A separate unequal-chance example
+@prose Suppose a single result is u, v or w, with the probabilities shown. Event A contains u and w. There are two labels in A, but the three labels do not have the same probability. Work from the supplied probabilities.
+@display
+P(u)=\frac{1}{5},\qquad P(v)=\frac{3}{10},\qquad P(w)=\frac{1}{2},\qquad A=\{u,w\}
+@help hint
+@prose Identify which outcomes belong to A, and add only their supplied probabilities. Convert the fractions to a common denominator if necessary.
+@help answer
+@display
+P(A)=\frac{7}{10}
+@help solution
+@display
+P(A)=P(u)+P(w)=\frac{1}{5}+\frac{1}{2}=\frac{2}{10}+\frac{5}{10}=\frac{7}{10}
+@prose The remaining outcome v has probability three tenths. Together, seven tenths and three tenths make one. Counting two of three labels would give two thirds, a different number.
+@endblock
+@block definition | complement | 1.5 | Explain overlap and coverage
+@prose The complement of E, written E with a superscript c, contains all outcomes in the sample space outside E. Intersection, shown by a cap, means outcomes in both sets. Union, shown by a cup, means outcomes in either set, counted only once. The empty-set symbol denotes a set with no members. A subset symbol says that every member of its left-hand set also belongs to its right-hand set.
+@display
+E^c=\Omega\setminus E,\qquad E\cap E^c=\varnothing,\qquad E\cup E^c=\Omega
+@prose The event and its complement have no overlap and leave out no possible outcome. Their probabilities add to the total probability of the sample space, which is one. Their numbers of members need not be equal.
+@display
+P(E)+P(E^c)=1,\qquad P(E^c)=1-P(E)
+@help proof
+@prose Split the finite list of outcome probabilities into those inside E and those outside E. Every outcome appears in exactly one list. Adding both lists restores the total of one. Subtract the first list's sum to obtain the complement rule. Equal outcome probabilities are not required for this argument.
+@endblock
+@block example | errors | 1.6 | Repair the first broken link
+@prose A solution can have a wrong final answer because of an earlier mistaken set. Read from the givens forward. First check that the event contains only permitted outcomes and meets the requested condition; then check the count; finally check the fraction. The line labels L1, L2 and L3 identify statements, not outcomes of the experiment.
+@help hint
+@prose A later line may correctly count an incorrect list. Find the first statement that disagrees with the original problem, repair it, and carry that correction forward. Do not change the sample space to make a mistaken event fit.
+@endblock
+@block exercise | fresh | 1.7 | Take the method to physical tokens
+@prose When drawing from a bag, identify what has equal chances. If every individual token is equally likely, count individual tokens. Colour names describe groups of outcomes. Groups with different numbers of tokens generally have different probabilities. In the final question, the givens and choices are supplied without a counting step cue. Reading remains available if you want it.
+@help hint
+@prose Interpret the event carefully, identify every group satisfying it, and check which objects are equally likely. An answer obtained by a shortcut should still agree with the original physical outcomes.
+@endblock
+@block summary | summary | 1.8 | What this sequence checks
+@prose A useful probability calculation starts with the meaning of its symbols and the original outcomes. Decide whether counting is justified, explain why a chosen rule applies, and repair the earliest incorrect assumption. These questions offer different decisions through the same multiple-choice controls. Fewer cues do not turn recognition into independently written work, and completing the sequence does not by itself establish mastery or long-term retention.
+@prose The definitions and finite counting/complement rules follow the terminology checked against OpenStax, Introductory Statistics 2e, section 3.1. Addition of disjoint outcome probabilities was also checked against section 3.3. All examples, questions and explanations here are original Paths material.
+@endblock

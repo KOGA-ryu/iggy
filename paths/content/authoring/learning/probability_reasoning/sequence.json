@@ -1,0 +1,54 @@
+{
+  "format": "paths_exercise_roles",
+  "format_version": 1,
+  "questions": [
+    {
+      "id": "probability_reasoning_v1_notation",
+      "role": "read_notation",
+      "title": "01 Read the event",
+      "objective": "Identify the outcomes described by E.",
+      "prerequisites": "Read a finite set; distinguish divisible from not divisible.",
+      "case": {"n": 8, "divisor": 2}
+    },
+    {
+      "id": "probability_reasoning_v1_worked",
+      "role": "worked_check",
+      "title": "02 Complete a worked fraction",
+      "objective": "Complete the denominator in the worked probability calculation.",
+      "prerequisites": "Count event outcomes and all possible outcomes; read a fraction.",
+      "case": {"n": 6, "event": [2, 5]}
+    },
+    {
+      "id": "probability_reasoning_v1_method",
+      "role": "choose_next_step",
+      "title": "03 Check the counting rule",
+      "objective": "Choose the calculation that uses the supplied outcome probabilities.",
+      "prerequisites": "Add exact fractions; distinguish equal from unequal chances.",
+      "case": {"weights": {"a": "1/2", "b": "1/4", "c": "1/4"}, "event": ["a", "b"]}
+    },
+    {
+      "id": "probability_reasoning_v1_explanation",
+      "role": "explain_step",
+      "title": "04 Explain the complement",
+      "objective": "Choose the set facts that justify the complement rule.",
+      "prerequisites": "Read complement, intersection, union and the empty set.",
+      "case": {"n": 10, "event": [1, 2, 3]}
+    },
+    {
+      "id": "probability_reasoning_v1_repair",
+      "role": "repair_error",
+      "title": "05 Repair a counting error",
+      "objective": "Find the first incorrect line, then correct the probability.",
+      "prerequisites": "Read line labels; test set membership; count multiples of three.",
+      "case": {"n": 9, "divisor": 3}
+    },
+    {
+      "id": "probability_reasoning_v1_transfer",
+      "role": "independent",
+      "title": "06 Try a fresh token problem",
+      "objective": "Find the exact probability of drawing a token that is not red.",
+      "prerequisites": "Count individual tokens; combine disjoint colour groups; simplify a fraction.",
+      "case": {"blue": 5, "red": 3, "green": 4}
+    }
+  ]
+}

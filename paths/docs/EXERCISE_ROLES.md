@@ -1,7 +1,8 @@
 # Reusable exercise roles
 
 This is the authoring contract for a six-card sequence alongside a chapter's
-numerical repetitions. The first implementation is **Probability and Statistics
+numerical repetitions. It is implemented for probability and matrix row
+operations. The first implementation is **Probability and Statistics
 → Finite probability: count and compare → Reason about probability**. The
 sequence uses the accepted native textbook and existing multiple-choice owner.
 No runtime role field, parser, renderer, save format or scoring policy is added.
@@ -95,7 +96,94 @@ case of the addition rule in
 [OpenStax 3.3, Two Basic Rules of Probability](https://openstax.org/books/introductory-statistics-2e/pages/3-3-two-basic-rules-of-probability).
 Examples, wording and exercises here are original Paths material.
 
-## Pilot answer and route sheet
+## Matrix row-operation sequence
+
+**Library → Linear Algebra → Worked matrix practice → Reason about row
+operations → Exercise** contains the second six-role sequence. It is packaged
+as `matrix_reasoning_practice` version 1, alongside existing matrix practice.
+Its six questions use `choices.v1`; the earlier matrix questions retain their
+four support levels. This sequence has seven checked decisions, because the
+error-repair card first identifies the line and then repairs its value.
+
+| Card | Decision and checked result | Accepted choice IDs |
+| --- | --- | --- |
+| 01 Read an augmented row | `[2, -1 \| 5]` means `2x-y=5` | 11 |
+| 02 Complete the constant column | `R2 ← R2-2R1` changes `[2, 5 \| 13]` to `[0, 1 \| 3]` | 12 |
+| 03 Choose the cancelling operation | Subtract three copies of row 1 from row 2; new row `[0, 4 \| 4]` | 13 |
+| 04 Explain reversibility | Add two copies of the retained row 1 back; recover `[2, -1 \| 5]` | 13 |
+| 05 Repair the first row error | L1 omitted the constant subtraction; corrected `y=11-2(4)=3` | 11, 23 |
+| 06 Solve a fresh system | `(x,y)=(3/2,1)` satisfies both original rows | 12 |
+
+The correct first button occurs twice in each position. Every incorrect option
+has a correction addressing its actual error. An operation that fails the
+requested elimination goal may still be reversible; its feedback makes that
+distinction. Deliberately wrong student lines remain labelled as an attempt in
+the gold givens; accepted working contains only the reached diagnosis/correction.
+
+The reading defines coefficients, constants, the augmented bar, ordered pairs,
+row labels, replacement arrows and primes. It explains whole-row arithmetic,
+inverse operations, nonzero scaling, and the difference between validity and an
+elimination goal. A separate example solves `x-2y=1`, `2x-3y=4`, with
+`(x,y)=(5,2)`. Hint, Answer and Solution are separately closed; the reversibility
+proposition has its own proof. Conventions were checked against
+[OpenStax College Algebra 2e, section 7.6](https://openstax.org/books/college-algebra-2e/pages/7-6-solving-systems-with-gaussian-elimination).
+All examples and prose are original; no external exercise text was copied.
+
+Author these three files:
+
+- [`sequence.json`](../content/authoring/learning/matrix_reasoning/sequence.json): identities, roles, objectives, prerequisites and original numeric cases.
+- [`questions.paths.md.in`](../content/authoring/learning/matrix_reasoning/questions.paths.md.in): literal mathematics, wording, choices, corrections and reached working.
+- [`lesson.md.in`](../content/authoring/learning/matrix_reasoning/lesson.md.in): native numbered reading blocks and optional disclosures.
+
+The shared `reasoning_documents(root, checkers, values, filename)` supplies
+manifest validation, field substitution, practice ordering and chapter assembly
+to probability and matrices. `reasoning_certificate()` packages evidence and
+prefixes arithmetic failures with the card ID and role. `verify_role_content()`
+compares actual compiled questions to certificates. The matrix family supplies
+`MATRIX_ROLE_CHECKERS`; it introduces no runtime solver or grading route.
+
+Matrix certificates use exact rational row operations and their inverses.
+Cramer's rule independently obtains the unique pair from the original system,
+and substitution checks both original rows. Method candidates must meet the
+destination/cancellation goal; the inverse must restore every entry. The repair
+certificate identifies the omitted constant operation and checks that the
+student's resulting pair fails the original system. The final card's three pairs
+are checked by their residuals in both equations.
+
+The version-1 case contract is deliberately bounded:
+
+| Role | Original fields and additional conditions |
+| --- | --- |
+| `read_notation` | `row`: three integer entries, each with magnitude at most 20 |
+| `worked_check` | `rows`, `multiplier`; replacement row coefficients must be `[0,1]` |
+| `choose_next_step` | `rows`; both original x coefficients nonzero; multiplier derived from cancellation |
+| `explain_step` | `rows`, `multiplier`; exactly the inverse restores the original matrix |
+| `repair_error` | `rows`, negative `multiplier`; new coefficients `[0,1]`, source constant nonzero, omitted constant must change the solution |
+| `independent` | `rows`; only one checked candidate pair satisfies both equations |
+
+`rows` is exactly two augmented rows of three bounded integers in `(x,y,constant)`
+order. A supplied multiplier is a nonzero integer with magnitude at most six.
+These five system cases require a nonzero coefficient determinant. Each decision
+must have three distinct choices and one correct result. Unsupported cases fail;
+this is not an arbitrary matrix-question generator. New numbers must agree
+between the manifest and Markdown and still support each explanation. Automatic
+arithmetic checks do not establish the truth of free-form prose.
+
+From the Paths root, verify and export with:
+
+```sh
+python3 -B tools/build_question_batch.py --family matrix-reasoning
+```
+
+Add `--publish` to activate through the existing publisher. Defaults are package
+version 1, role format 1 and exactly six questions. Other counts are rejected.
+Generated source is under
+`build/question-batches/matrix_reasoning_practice/1/authoring`. Immutable exports
+and installed store files must not be edited. Use the three authoring sources
+above, or create a fresh preview with the existing draft command. Changing a
+published question still requires a new identity and a package retaining it.
+
+## Probability answer and route sheet
 
 | Card | Checked decision/result | Accepted choice IDs |
 | --- | --- | --- |
@@ -107,6 +195,11 @@ Examples, wording and exercises here are original Paths material.
 | 06 | Nine non-red tokens among twelve; P(not red) = 3/4 | 12 |
 
 ## Builder handoff
+
+Assigned subject workers use the [parallel packet](PARALLEL_QUESTION_AUTHORING.md)
+for exact cases, writable files and the shared headless candidate command.
+The coordinator owns shared checker registration, builds and publication in
+steps 4–6 below; the worker stops with checked content and a teaching review.
 
 1. Pick one mathematical family and specify original inputs, domains,
    prerequisites and exact expected decisions for all six roles. Use the closest

@@ -1,0 +1,54 @@
+{
+  "format": "paths_exercise_roles",
+  "format_version": 1,
+  "questions": [
+    {
+      "id": "matrix_reasoning_v1_notation",
+      "role": "read_notation",
+      "title": "01 Read an augmented row",
+      "objective": "Translate the augmented row into an equation in x and y.",
+      "prerequisites": "Read signed numbers; identify coefficients and a right-hand constant.",
+      "case": {"row": [2, -1, 5]}
+    },
+    {
+      "id": "matrix_reasoning_v1_worked",
+      "role": "worked_check",
+      "title": "02 Complete the constant column",
+      "objective": "Complete the missing constant in the worked row operation.",
+      "prerequisites": "Multiply and subtract integers; apply an operation to all three entries.",
+      "case": {"rows": [[1, 2, 5], [2, 5, 13]], "multiplier": -2}
+    },
+    {
+      "id": "matrix_reasoning_v1_method",
+      "role": "choose_next_step",
+      "title": "03 Choose the cancelling operation",
+      "objective": "Eliminate x from row 2 while leaving row 1 unchanged.",
+      "prerequisites": "Read the destination of a row-operation arrow; find an additive inverse.",
+      "case": {"rows": [[1, -1, 2], [3, 1, 10]]}
+    },
+    {
+      "id": "matrix_reasoning_v1_explanation",
+      "role": "explain_step",
+      "title": "04 Explain reversibility",
+      "objective": "Choose the reverse operation that recovers the original system.",
+      "prerequisites": "Read an old and new row; understand that a system requires both equations.",
+      "case": {"rows": [[1, 1, 4], [2, -1, 5]], "multiplier": -2}
+    },
+    {
+      "id": "matrix_reasoning_v1_repair",
+      "role": "repair_error",
+      "title": "05 Repair the first row error",
+      "objective": "Find the first incorrect line, then correct the value of y.",
+      "prerequisites": "Follow a labelled calculation; distinguish the constant from the coefficients.",
+      "case": {"rows": [[1, 1, 4], [2, 3, 11]], "multiplier": -2}
+    },
+    {
+      "id": "matrix_reasoning_v1_transfer",
+      "role": "independent",
+      "title": "06 Solve a fresh system",
+      "objective": "Choose the pair that solves both original equations.",
+      "prerequisites": "Read an augmented matrix; use exact fractions; check a pair by substitution.",
+      "case": {"rows": [[2, 1, 4], [2, -1, 2]]}
+    }
+  ]
+}

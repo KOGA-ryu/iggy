@@ -1,0 +1,123 @@
+@question {{read_notation_id}} | {{read_notation_title}}
+@template choices.v1
+@version 1
+@goal {{read_notation_objective}}
+@given -4x+7=19
+@domain The unknown x is real. In ax+b=c, a is the coefficient multiplying x, b is the signed added constant, and c is the right-hand constant. Read the ordered triple in the order (a,b,c).
+@read {{reading_id}}
+@step 10 | Which ordered triple gives (a,b,c) for this equation?
+@choice 11 | (-4,7,19)
+@choice 12 | (4,7,19)
+@choice 13 | (-4,19,7)
+@answer 11
+@feedback 12 | The coefficient includes its sign. Because the term is -4x, a is -4, not 4.
+@feedback 13 | Nineteen is the right-hand constant c. The added constant b is 7, the separate term on the left.
+@after (a,b,c)=(-4,7,19)
+@wrong Read each place in ax+b=c: coefficient of x first, signed added constant second, right-hand constant third.
+@why The equation has the form ax+b=c with a=-4, b=7 and c=19. This records notation only; it does not yet solve for x. The nonzero coefficient means the equation has one real solution after balanced operations.
+@end
+
+@question {{worked_check_id}} | {{worked_check_title}}
+@template choices.v1
+@version 1
+@goal {{worked_check_objective}}
+@given 5x-6=9
+@domain The unknown x is real. The added constant is -6, so adding 6 to both complete sides removes it. Equality requires the same operation on each side.
+@read {{reading_id}}
+@step 10 | After adding 6 to both sides, 5x=9+6. What is the right side?
+@choice 11 | 9
+@choice 12 | 15
+@choice 13 | 3
+@answer 12
+@feedback 11 | Nine is the original right side. The balanced move adds 6 there too, so calculate 9+6.
+@feedback 13 | Three comes from subtracting 6 from 9. Here the added constant is -6, so removing it means adding 6.
+@after 5x=15
+@wrong Keep the negative added constant visible. To cancel -6, add 6 to both complete sides and calculate the right side exactly.
+@why Adding 6 to 5x-6 and to 9 gives 5x=15. Adding -6 back to both sides recovers the original equation, so this balanced move preserves its solutions. The coefficient 5 is still present; a later division by nonzero 5 would isolate x.
+@end
+
+@question {{choose_next_step_id}} | {{choose_next_step_title}}
+@template choices.v1
+@version 1
+@goal {{choose_next_step_objective}}
+@given -3x+4=13
+@domain The unknown x is real. The coefficient is -3 and the added constant is 4. The requested goal is to remove that added constant while keeping the coefficient and equality.
+@read {{reading_id}}
+@step 10 | Which operation achieves the stated goal?
+@choice 11 | +4\ \text{ to both sides}
+@choice 12 | -4\ \text{ on the left only}
+@choice 13 | -4\ \text{ to both sides}
+@answer 13
+@feedback 11 | Adding 4 to both sides is reversible, so it preserves equality, but it reaches -3x+8=17. It does not remove the added 4 and therefore misses this goal.
+@feedback 12 | Subtracting 4 only on the left changes one side without the other. It reaches -3x=13, which is not equivalent to the original equation.
+@after -3x=9
+@wrong Use the inverse of the added +4 on both complete sides. A valid operation can still fail a stated goal.
+@why Subtracting 4 from both sides gives -3x+4-4=13-4, hence -3x=9. Adding 4 to both sides reverses this exact step. The coefficient remains -3, ready for a later division by -3.
+@end
+
+@question {{explain_step_id}} | {{explain_step_title}}
+@template choices.v1
+@version 1
+@goal {{explain_step_objective}}
+@given -4x=12
+@domain The unknown x is real. This equation came from division by -4. To explain that division, choose the operation that restores the original equation from x=-3. The divisor -4 is nonzero.
+@read {{reading_id}}
+@step 10 | Which inverse restores -4x=12 from x=-3?
+@choice 11 | \div -4\ \text{ on both sides}
+@choice 12 | \times 0\ \text{ on both sides}
+@choice 13 | \times -4\ \text{ on both sides}
+@answer 13
+@feedback 11 | Dividing by -4 repeats the earlier division. It would change x=-3 into x/(-4)=3/4, not restore -4x=12.
+@feedback 12 | Multiplying by zero erases the restriction and gives 0=0. It cannot recover the original nonzero coefficient or right side.
+@after -4x=12
+@wrong Undo division by multiplying both complete sides by the same nonzero divisor.
+@why Multiplying x=-3 by -4 on both sides gives (-4)x=(-4)(-3), so -4x=12. This inverse operation proves the division did not change the solution set. Multiplication by zero has no inverse and would erase the equation's restriction.
+@end
+
+@question {{repair_error_id}} | {{repair_error_title}}
+@template choices.v1
+@version 1
+@goal {{repair_error_objective}}
+@given \begin{gathered}3x-5=7\\\begin{aligned}L_1 &: 3x=7-5\\L_2 &: 3x=2\\L_3 &: x=\frac{2}{3}\end{aligned}\end{gathered}
+@domain The original unknown x is real. L1, L2 and L3 are a student's deliberately incorrect attempt, not accepted working. The added constant is -5, so a balanced removal uses 7-(-5), not 7-5.
+@read {{reading_id}}
+@step 10 | Which line is the first invalid line in the attempt?
+@choice 11 | L_1
+@choice 12 | L_2
+@choice 13 | L_3
+@answer 11
+@feedback 12 | L2 correctly evaluates the already-written expression 7-5 as 2. The sign error occurred earlier, when L1 wrote the wrong expression.
+@feedback 13 | L3 correctly divides the already-wrong equation 3x=2 by 3. It carries forward the earlier error rather than introducing the first one.
+@after L_1:\quad 7-(-5)=12
+@wrong Read the lines from the original given downward. First check whether the signed added constant was removed with its inverse.
+@why L1 first fails because b=-5. Removing b requires subtracting -5 from both sides, so the right side must be 7-(-5)=12. The later lines follow the mistaken L1 and cannot be the first error.
+@step 20 | With the right side corrected to 7-(-5), what number completes 3x=?
+@choice 21 | 2
+@choice 22 | 7
+@choice 23 | 12
+@answer 23
+@feedback 21 | Two repeats the value from the sign error. Subtracting -5 adds 5, so 7-(-5) is 12.
+@feedback 22 | Seven is the original right side before the balancing operation. The operation must be applied to that side as well.
+@after 3x=12
+@wrong Subtracting a negative adds its opposite: 7-(-5)=7+5. Keep the repaired equation before dividing.
+@why The repaired equation is 3x=12, so division by nonzero 3 gives x=4. Checking the original given gives 3(4)-5=12-5=7. The student's x=2/3 gives 3(2/3)-5=-3, so it does not solve the original equation.
+@end
+
+@question {{independent_id}} | {{independent_title}}
+@template choices.v1
+@version 1
+@goal {{independent_objective}}
+@given -6x+5=14
+@domain The unknown x is real. Each choice is a candidate value for x in the original equation. No intermediate step is supplied.
+@read {{reading_id}}
+@step 10 | Which value solves the equation?
+@choice 11 | x=\frac{3}{2}
+@choice 12 | x=-\frac{3}{2}
+@choice 13 | x=-9
+@answer 12
+@feedback 11 | Substituting 3/2 gives -6(3/2)+5=-9+5=-4, not 14. The coefficient's negative sign changes the needed solution sign.
+@feedback 13 | Substituting -9 gives -6(-9)+5=59, not 14. This value does not make the original equality true.
+@after x=-\frac{3}{2}
+@wrong Test a candidate in the original equality exactly. The related reading remains available if you want to revisit balanced operations.
+@why Substitution checks the selected value: -6(-3/2)+5=9+5=14. The other choices have original-equation residuals -18 and 45, while this choice has residual 0. Since -6 is nonzero, balanced inverse operations also show that no other real value can solve this equation.
+@end

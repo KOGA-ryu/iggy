@@ -41,6 +41,8 @@ add_library(paths_math_objects
   src/runtime/math_objects/QrLeastSquares.cpp
   src/runtime/math_objects/FiniteMaps.cpp
   src/runtime/math_objects/FiniteGraph.cpp
+  src/runtime/math_objects/FiniteAlgebra.cpp
+  src/runtime/math_objects/FiniteQuotient.cpp
   src/runtime/math_objects/RigidBody.cpp
   src/runtime/math_objects/Membrane.cpp
   src/runtime/math_objects/MembraneGeometry.cpp
@@ -239,6 +241,14 @@ if(BUILD_TESTING)
   target_compile_definitions(paths_corpus_tests PRIVATE CORPUS_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/toc.json"
     SORTER_STUDY_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/sorter/study_practice_v1.json")
   add_test(NAME paths_corpus_tests COMMAND paths_corpus_tests)
+  add_executable(paths_math_quotient_tests tests/math_quotient_tests.cpp)
+  target_link_libraries(paths_math_quotient_tests PRIVATE paths_math_object_layout)
+  add_test(NAME paths_math_quotient_tests COMMAND paths_math_quotient_tests)
+
+  add_executable(paths_math_finite_algebra_tests tests/math_finite_algebra_tests.cpp)
+  target_link_libraries(paths_math_finite_algebra_tests PRIVATE paths_math_object_layout)
+  add_test(NAME paths_math_finite_algebra_tests COMMAND paths_math_finite_algebra_tests)
+
   add_executable(paths_math_graph_tests tests/math_graph_tests.cpp)
   target_link_libraries(paths_math_graph_tests PRIVATE paths_math_object_layout)
   add_test(NAME paths_math_graph_tests COMMAND paths_math_graph_tests)
@@ -512,6 +522,26 @@ if(BUILD_TESTING)
     add_test(NAME paths_math_spherical_cli COMMAND math_lab --validate --object spherical --level 3 --set heat_time=0.5 --check)
     add_test(NAME paths_math_quadratic_cli COMMAND math_lab --validate --object quadratic --level 3 --set form_yaw=0 --set form_pitch=0 --set form_x=0 --set form_y=0 --set form_z=1 --check)
     add_test(NAME paths_math_roots_cli COMMAND math_lab --validate --object roots --level 3 --set root_n=8 --set root_auto=5 --check)
+    add_test(NAME paths_math_quotient_map_cli COMMAND math_lab --validate --object quotient --object-preset 0 --check)
+    set_tests_properties(paths_math_quotient_map_cli PROPERTIES PASS_REGULAR_EXPRESSION "feedback=2")
+    add_test(NAME paths_math_quotient_fibers_cli COMMAND math_lab --validate --object quotient --level 1 --object-preset 0 --advance 4 --check)
+    set_tests_properties(paths_math_quotient_fibers_cli PROPERTIES PASS_REGULAR_EXPRESSION "feedback=2")
+    add_test(NAME paths_math_quotient_group_cli COMMAND math_lab --validate --object quotient --level 2 --object-preset 0 --advance 4 --check)
+    set_tests_properties(paths_math_quotient_group_cli PROPERTIES PASS_REGULAR_EXPRESSION "feedback=2")
+    add_test(NAME paths_math_quotient_ring_cli COMMAND math_lab --validate --object quotient --level 3 --object-preset 8 --advance 4 --check)
+    set_tests_properties(paths_math_quotient_ring_cli PROPERTIES PASS_REGULAR_EXPRESSION "feedback=2")
+    add_test(NAME paths_math_quotient_nonnormal_cli COMMAND math_lab --validate --object quotient --level 2 --object-preset 3)
+    set_tests_properties(paths_math_quotient_nonnormal_cli PROPERTIES PASS_REGULAR_EXPRESSION "Normal subgroup = 0")
+    add_test(NAME paths_math_quotient_nonideal_cli COMMAND math_lab --validate --object quotient --level 3 --object-preset 9)
+    set_tests_properties(paths_math_quotient_nonideal_cli PROPERTIES PASS_REGULAR_EXPRESSION "Ideal = 0")
+    add_test(NAME paths_math_finite_order_cli COMMAND math_lab --validate --object finite --object-preset 6 --check)
+    set_tests_properties(paths_math_finite_order_cli PROPERTIES PASS_REGULAR_EXPRESSION "feedback=2")
+    add_test(NAME paths_math_finite_witness_cli COMMAND math_lab --validate --object finite --level 1 --object-preset 7 --check)
+    set_tests_properties(paths_math_finite_witness_cli PROPERTIES PASS_REGULAR_EXPRESSION "feedback=2")
+    add_test(NAME paths_math_finite_cosets_cli COMMAND math_lab --validate --object finite --level 2 --object-preset 4 --set fa_group=1 --advance 6 --check)
+    set_tests_properties(paths_math_finite_cosets_cli PROPERTIES PASS_REGULAR_EXPRESSION "feedback=2")
+    add_test(NAME paths_math_finite_ring_cli COMMAND math_lab --validate --object finite --level 3 --object-preset 9 --check)
+    set_tests_properties(paths_math_finite_ring_cli PROPERTIES PASS_REGULAR_EXPRESSION "feedback=2")
     add_test(NAME paths_math_graph_edges_cli COMMAND math_lab --validate --object graph --object-preset 0 --check)
     add_test(NAME paths_math_graph_paths_cli COMMAND math_lab --validate --object graph --level 1 --object-preset 0 --advance 6 --check)
     add_test(NAME paths_math_graph_classes_cli COMMAND math_lab --validate --object graph --level 2 --object-preset 3 --set graph_group=1 --check)

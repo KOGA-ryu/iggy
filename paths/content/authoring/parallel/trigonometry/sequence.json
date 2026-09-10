@@ -1,0 +1,91 @@
+{
+  "format": "paths_exercise_roles",
+  "format_version": 1,
+  "questions": [
+    {
+      "id": "pilot_trig_sine_v1_read_notation",
+      "role": "read_notation",
+      "title": "01 Read the angle interval",
+      "objective": "Interpret the endpoints of the permitted angle interval.",
+      "prerequisites": "Read inequalities and know that one turn is 2 pi radians.",
+      "case": {
+        "lower_pi": "0",
+        "upper_pi": "2",
+        "lower_closed": true,
+        "upper_closed": false
+      }
+    },
+    {
+      "id": "pilot_trig_sine_v1_worked_check",
+      "role": "worked_check",
+      "title": "02 Complete a sine solution set",
+      "objective": "Find the second permitted angle for the given sine value.",
+      "prerequisites": "Read exact radian angles and recognize unit-circle height.",
+      "case": {
+        "sine": "1/2",
+        "known_pi": "1/6",
+        "lower_pi": "0",
+        "upper_pi": "2",
+        "lower_closed": true,
+        "upper_closed": false
+      }
+    },
+    {
+      "id": "pilot_trig_sine_v1_choose_next_step",
+      "role": "choose_next_step",
+      "title": "03 Isolate the sine value",
+      "objective": "Choose the equivalent equation with sine isolated.",
+      "prerequisites": "Apply the same addition and nonzero division to both sides.",
+      "case": {
+        "coefficient": 2,
+        "constant": -1,
+        "rhs": 0,
+        "lower_pi": "0",
+        "upper_pi": "2",
+        "lower_closed": true,
+        "upper_closed": false
+      }
+    },
+    {
+      "id": "pilot_trig_sine_v1_explain_step",
+      "role": "explain_step",
+      "title": "04 Explain the matching height",
+      "objective": "Choose the transformation that preserves the given sine value.",
+      "prerequisites": "Understand sine as height and reflection across the vertical axis.",
+      "case": {
+        "alpha_pi": "1/6",
+        "sine": "1/2"
+      }
+    },
+    {
+      "id": "pilot_trig_sine_v1_repair_error",
+      "role": "repair_error",
+      "title": "05 Repair the first interval error",
+      "objective": "Find the first incorrect line and repair the complete solution set.",
+      "prerequisites": "Read an integer parameter and apply both interval endpoints.",
+      "case": {
+        "sine": "0",
+        "lower_pi": "0",
+        "upper_pi": "2",
+        "lower_closed": true,
+        "upper_closed": false
+      }
+    },
+    {
+      "id": "pilot_trig_sine_v1_independent",
+      "role": "independent",
+      "title": "06 Solve a fresh sine equation",
+      "objective": "Choose all solutions in the stated interval.",
+      "prerequisites": "Use exact angles, sine signs and interval membership.",
+      "case": {
+        "coefficient": 2,
+        "constant": 1,
+        "rhs": 0,
+        "lower_pi": "0",
+        "upper_pi": "2",
+        "lower_closed": true,
+        "upper_closed": false
+      }
+    }
+  ]
+}

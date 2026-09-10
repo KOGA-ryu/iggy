@@ -81,7 +81,7 @@ void controlChecks(){
       require(rows.count==0||open,"all controls initially hidden");
       for(const auto& p:mathParameterSpecs())if(model.parameterAvailable(p.id)){
         bool expected=!(p.matrixEntry&&level>0);
-        if((p.owner==K::Maps||p.owner==K::Graph)&&p.control.selector!=P::Count)expected=expected&&model.parameter(p.control.selector)==p.control.selectedValue;
+        if((p.owner==K::Maps||p.owner==K::Graph||p.owner==K::FiniteAlgebra||p.owner==K::Quotient)&&p.control.selector!=P::Count)expected=expected&&model.parameter(p.control.selector)==p.control.selectedValue;
         if(p.id>=P::QrA0X&&p.id<=P::QrBZ)expected=expected&&(static_cast<unsigned>(p.id)-static_cast<unsigned>(P::QrA0X))/3==static_cast<unsigned>(model.parameter(P::QrVector));
         if(p.id>=P::TrussP0X&&p.id<=P::TrussP5Y)expected=expected&&(static_cast<unsigned>(p.id)-static_cast<unsigned>(P::TrussP0X))/2==static_cast<unsigned>(model.parameter(P::TrussJoint));
         if(p.id>=P::MembraneM0&&p.id<=P::MembraneV3)expected=expected&&(static_cast<unsigned>(p.id)-static_cast<unsigned>(P::MembraneM0))/4==static_cast<unsigned>(model.parameter(P::MembraneSlot));

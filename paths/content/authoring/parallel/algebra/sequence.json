@@ -1,0 +1,77 @@
+{
+  "format": "paths_exercise_roles",
+  "format_version": 1,
+  "questions": [
+    {
+      "id": "pilot_alg_balance_v1_read_notation",
+      "role": "read_notation",
+      "title": "01 Read coefficients and constants",
+      "objective": "Identify the coefficient, added constant and right-hand side.",
+      "prerequisites": "Read signed integers and multiplication by a variable.",
+      "case": {
+        "a": -4,
+        "b": 7,
+        "c": 19
+      }
+    },
+    {
+      "id": "pilot_alg_balance_v1_worked_check",
+      "role": "worked_check",
+      "title": "02 Complete a balanced calculation",
+      "objective": "Complete the right-hand side after removing the added constant.",
+      "prerequisites": "Add integers and interpret equality.",
+      "case": {
+        "a": 5,
+        "b": -6,
+        "c": 9
+      }
+    },
+    {
+      "id": "pilot_alg_balance_v1_choose_next_step",
+      "role": "choose_next_step",
+      "title": "03 Choose the cancelling move",
+      "objective": "Remove the added constant while preserving the coefficient of x and equality.",
+      "prerequisites": "Distinguish a reversible operation from one that meets a stated goal.",
+      "case": {
+        "a": -3,
+        "b": 4,
+        "c": 13
+      }
+    },
+    {
+      "id": "pilot_alg_balance_v1_explain_step",
+      "role": "explain_step",
+      "title": "04 Explain the inverse operation",
+      "objective": "Choose the inverse that recovers the original equation after division.",
+      "prerequisites": "Multiply and divide signed numbers; a divisor must be nonzero.",
+      "case": {
+        "a": -4,
+        "rhs": 12
+      }
+    },
+    {
+      "id": "pilot_alg_balance_v1_repair_error",
+      "role": "repair_error",
+      "title": "05 Repair the first balance error",
+      "objective": "Find the first incorrect line and correct the right-hand side.",
+      "prerequisites": "Follow labelled algebra lines and distinguish a first error from its consequences.",
+      "case": {
+        "a": 3,
+        "b": -5,
+        "c": 7
+      }
+    },
+    {
+      "id": "pilot_alg_balance_v1_independent",
+      "role": "independent",
+      "title": "06 Solve a fresh equation",
+      "objective": "Choose the value that solves the original equation.",
+      "prerequisites": "Use exact fractions and substitute into a linear equation.",
+      "case": {
+        "a": -6,
+        "b": 5,
+        "c": 14
+      }
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+@block introduction | start | 1.1 | Read every entry as part of one equation
+@prose A system is two or more equations considered together. Here its unknowns are real numbers x and y, and a solution is one ordered pair (x,y): x is the first value and y is the second. The pair must make every original equation true. An augmented matrix records the system compactly so that we can change complete equations without losing their common solutions.
+@display (1)
+\left[\begin{array}{cc|c}a&b&c\\d&e&f\end{array}\right]\quad\Longleftrightarrow\quad\begin{aligned}ax+by&=c\\dx+ey&=f\end{aligned}
+@prose In this lesson the column order is always x, y, then the constant. The vertical augmented bar separates the coefficient columns from the right-hand constants; it is not a division sign.
+@endblock
+
+@block definition | terms | 1.2 | Names in an augmented row
+@prose A coefficient is the number multiplying an unknown. In the row [a,b|c], a is the coefficient of x, b is the coefficient of y, and c is the constant on the right side of the equality. A row label, such as R1 or R2, names a complete row. The replacement arrow in R2\leftarrow R2-2R1 says to calculate a new row 2 from the old rows and then replace row 2; the row not named on the left stays unchanged. A prime, as in R'_2, labels the changed row. It is not a derivative.
+@display (2)
+[a,b\mid c]\quad\text{means}\quad ax+by=c
+@prose For example, [-3,2|7] means -3x+2y=7. The negative sign belongs to the coefficient of y only if it appears before the bar; the entry after the bar remains the right-hand constant.
+@endblock
+
+@block proposition | rule | 1.3 | Replace a complete row
+@prose A row replacement has the form R2\leftarrow R2+kR1, where k is a real multiplier. Start with the old row 2, add k copies of the old row 1 entry by entry, and only then write the new row 2. The operation applies to all three columns, including the constant column.
+@display (3)
+\left[\begin{array}{cc|c}d&e&f\end{array}\right]+k\left[\begin{array}{cc|c}a&b&c\end{array}\right]=\left[\begin{array}{cc|c}d+ka&e+kb&f+kc\end{array}\right]
+@prose If k is negative, adding k copies is subtraction. Keep the old rows available while calculating: a simultaneous-looking replacement is evaluated from the old row values, not from a partly changed destination.
+@endblock
+
+@block proposition | condition | 1.4 | Why this operation preserves the system
+@prose Row addition is reversible. If R'_2=R_2+kR_1 while row 1 is retained, then R_2=R'_2-kR_1. Thus any pair satisfying both old equations satisfies the retained equation and their stated combination; conversely, any pair satisfying the retained equation and the new equation can subtract k times the retained equation to recover the old second equation. The two systems have exactly the same common solutions, not merely one matching example pair.
+@display (4)
+R'_2=R_2+kR_1\qquad\Longleftrightarrow\qquad R_2=R'_2-kR_1
+@help proof
+@prose Let row 1 mean ax+by=c and the old row 2 mean dx+ey=f. A common solution has (d+ka)x+(e+kb)y=f+kc after we add k times the first equality to the second. In reverse, subtract k(ax+by=c) from that new equality and obtain dx+ey=f. Each direction uses both equations, so the common-solution set is preserved.
+@help hint
+@prose To undo an addition of k copies of a retained row, add -k copies of that same retained row to the changed destination.
+@endblock
+
+@block example | scaling | 1.5 | The nonzero condition for scaling
+@prose Scaling a complete row by a nonzero number is also reversible: multiply by m\ne0, then multiply by 1/m. The restriction matters. Multiplying 3x=9 by zero yields 0=0, which every real x satisfies, so the original restriction cannot be recovered. A reversible operation also need not meet a particular elimination goal: an addition can preserve solutions while leaving the requested coefficient nonzero.
+@display (5)
+3x=9\xrightarrow{\times 0}0=0
+@prose This pilot uses unique two-equation systems. A row [0,0|0] places no additional restriction, while [0,0|1] says the impossible equality 0=1. Those boundaries help us read a row, but this pilot does not solve singular, inconsistent, or free-variable systems.
+@endblock
+
+@block example | worked | 1.6 | Worked example: eliminate, then check
+@prose This separate example begins with [1,1|3] and [2,3|8]. It represents x+y=3 and 2x+3y=8. Replace row 2 by row 2 minus twice row 1 so its x coefficient becomes zero. Calculate every column.
+@display (6)
+R_2\leftarrow R_2-2R_1\qquad\begin{aligned}2-2(1)&=0\\3-2(1)&=1\\8-2(3)&=2\end{aligned}
+@display
+\left[\begin{array}{cc|c}1&1&3\\0&1&2\end{array}\right]
+@prose The new second row says y=2. Now replace row 1 by row 1 minus row 2. Again the operation reaches all three entries: 1-0=1, 1-1=0, and 3-2=1.
+@display (7)
+R_1\leftarrow R_1-R_2\qquad\left[\begin{array}{cc|c}1&0&1\\0&1&2\end{array}\right]
+@prose Therefore x=1 and y=2. Check against the original givens, not just the transformed rows: 1+2=3 and 2(1)+3(2)=8.
+@help hint
+@prose In the first replacement, subtract twice each entry of row 1 from the corresponding old entry of row 2, including 8-2(3).
+@help answer
+@display
+(x,y)=(1,2)
+@help solution
+@prose After the first complete replacement, [0,1|2] reads y=2. Subtracting that row from [1,1|3] gives [1,0|1], which reads x=1. The inverse of the first operation is R2\leftarrow R2+2R1; the inverse of the second is R1\leftarrow R1+R2. The two original-equation substitutions confirm the same ordered pair.
+@endblock
+
+@block example | errors | 1.7 | Repair the earliest error
+@prose Inspect a proposed row operation in order: its destination, its multiplier, the x column, the y column, and the constant column. If the operation skips the constant, later arithmetic may follow the wrong row correctly but still describe a different system. A solution of one original equation is not yet a solution of the system; substitute the same pair into both original equations.
+@display
+R_2\leftarrow R_2-2R_1\quad\text{requires}\quad c'_2=c_2-2c_1
+@endblock
+
+@block exercise | practice | 1.8 | Six short decisions
+@prose The exercises ask you to translate a row, complete a shown operation, choose a cancelling move, explain an inverse, repair an omitted constant calculation, and test a fresh ordered pair. Each response is multiple choice. The gold given and cyan working retain the original order x, y, constant; correct work advances one checked step, while a wrong choice retains the working and explains its specific issue.
+@endblock
+
+@block summary | summary | 1.9 | Carry these checks forward
+@prose Read an augmented row as a complete equation. For a row replacement, name the destination, use old rows, and calculate every coefficient and the constant. Reversibility explains why common solutions are preserved; an elimination goal separately tells you which valid operation is useful. Keep fractions exact, preserve the ordered pair (x,y), and finish by checking both original equations. This reading prepares bounded multiple-choice decisions; it does not claim a general solver or independently written proof.
+@prose Definitions, augmented-row conventions, and the listed elementary row operations were checked against OpenStax, College Algebra 2e, section 7.6, “Solving Systems with Gaussian Elimination.” All wording, examples, questions, and distractor explanations here are original Paths material.
+@endblock

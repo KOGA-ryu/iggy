@@ -1,0 +1,123 @@
+@question {{read_notation_id}} | {{read_notation_title}}
+@template choices.v1
+@version 1
+@goal {{read_notation_objective}}
+@given \Omega=\{1,2,\ldots,8\},\quad E=\{j\in\Omega:2\nmid j\}
+@domain Draw one label from 1 through 8 with equal chances. The crossed divisibility bar means 2 does not divide j. Braces enclose a set of labels.
+@read {{reading_id}}
+@step 10 | Which set contains exactly the permitted labels not divisible by 2?
+@choice 11 | \{1,3,5,7\}
+@choice 12 | \{2,4,6,8\}
+@choice 13 | \{0,2,4,6\}
+@answer 11
+@feedback 12 | These are the multiples of 2. The crossed bar asks for the labels outside those multiples.
+@feedback 13 | Zero is not in the stated sample space, and the remaining labels are divisible by 2. Check both membership and the word not.
+@after E=\{1,3,5,7\}
+@wrong Check every label against both conditions: it is in the sample space, and division by 2 leaves a remainder.
+@why The odd labels 1, 3, 5 and 7 meet both conditions. The even labels do not. This question establishes the event; it does not yet ask for a probability.
+@end
+
+@question {{worked_check_id}} | {{worked_check_title}}
+@template choices.v1
+@version 1
+@goal {{worked_check_objective}}
+@given \Omega=\{1,2,\ldots,6\},\quad E=\{2,5\},\quad P(E)=\frac{2}{\square}
+@domain One equally likely label is drawn. The worked example has already counted the two favourable labels, 2 and 5. The square is the one missing value.
+@read {{reading_id}}
+@step 10 | Count every possible label. Which number belongs in the denominator?
+@choice 11 | 4
+@choice 12 | 6
+@choice 13 | 2
+@answer 12
+@feedback 11 | Four labels are outside the event. They do not make up the whole sample space; the two favourable labels also remain possible.
+@feedback 13 | Two is the number of favourable labels, already used in the numerator. The denominator must include all possible labels.
+@after P(E)=\frac{2}{6}=\frac{1}{3}
+@wrong The denominator counts the whole sample space, including both favourable and unfavourable labels.
+@why The six possible labels are 1 through 6, so the worked fraction is two sixths. Dividing numerator and denominator by 2 gives one third. This is a guided check of the denominator, with the event count supplied.
+@end
+
+@question {{choose_next_step_id}} | {{choose_next_step_title}}
+@template choices.v1
+@version 1
+@goal {{choose_next_step_objective}}
+@given P(a)=\frac{1}{2},\quad P(b)=\frac{1}{4},\quad P(c)=\frac{1}{4},\quad E=\{a,b\}
+@domain Exactly one of a, b or c occurs. Their chances are explicitly unequal and sum to one. E occurs when the result is a or b.
+@read {{reading_id}}
+@step 10 | Which calculation gives P(E) for these supplied chances?
+@choice 11 | \frac{2}{3}
+@choice 12 | \frac{1}{4}
+@choice 13 | \frac{1}{2}+\frac{1}{4}
+@answer 13
+@feedback 11 | Two of the three labels belong to E, but the labels are not equally likely. Counting labels alone cannot replace their supplied probabilities here.
+@feedback 12 | One quarter is the probability of c, which is outside E. Include both a and b when calculating the requested event.
+@after P(E)=\frac{1}{2}+\frac{1}{4}=\frac{3}{4}
+@wrong Use the probability assigned to each outcome in E. Different labels need not have equal chances.
+@why Outcomes a and b cannot occur together in this single result, so their probabilities add: one half plus one quarter is three quarters. The remaining outcome c has probability one quarter, completing a total of one. The count-only value two thirds is different from three quarters.
+@end
+
+@question {{explain_step_id}} | {{explain_step_title}}
+@template choices.v1
+@version 1
+@goal {{explain_step_objective}}
+@given \Omega=\{1,2,\ldots,10\},\quad E=\{1,2,3\},\quad P(E^c)=1-P(E)
+@domain Draw one label with equal chances. Superscript c means complement. Intersection means shared outcomes; union means outcomes in either set. The empty-set symbol means no outcomes.
+@read {{reading_id}}
+@step 10 | Which facts explain why the two probabilities add to one?
+@choice 11 | |E|=|E^c|
+@choice 12 | E^c\subseteq E
+@choice 13 | E\cap E^c=\varnothing,\quad E\cup E^c=\Omega
+@answer 13
+@feedback 11 | An event and its complement need not have equal sizes. Here E contains three labels and its complement contains seven.
+@feedback 12 | The complement contains labels outside E, not a subset of E. None of its seven labels belongs to E.
+@after P(E^c)=1-\frac{3}{10}=\frac{7}{10}
+@wrong Account for every possible outcome exactly once: check overlap and coverage of the whole sample space.
+@why An outcome is either in E or outside it. The two sets have no overlap, and their union is the whole sample space. Their probabilities therefore sum to one. Here three tenths belongs to E, leaving seven tenths for its complement. Equal chances let us calculate those fractions, but the complement rule itself also holds with unequal chances.
+@end
+
+@question {{repair_error_id}} | {{repair_error_title}}
+@template choices.v1
+@version 1
+@goal {{repair_error_objective}}
+@given \begin{gathered}\Omega=\{1,2,\ldots,9\},\quad E=\{j\in\Omega:3\mid j\}\\\begin{aligned}L_1 &: E=\{0,3,6,9\}\\L_2 &: |E|=4\\L_3 &: P(E)=\frac{4}{9}\end{aligned}\end{gathered}
+@domain A label from 1 through 9 is drawn with equal chances. E means the label is divisible by 3. Lines L1, L2 and L3 are a student's deliberately incorrect attempt, not established working.
+@read {{reading_id}}
+@step 10 | Which line introduces the first error?
+@choice 11 | L_1
+@choice 12 | L_2
+@choice 13 | L_3
+@answer 11
+@feedback 12 | Line 2 correctly counts the four entries written in line 1. The problem began earlier, when that list included a label outside the sample space.
+@feedback 13 | Line 3 carries forward the earlier wrong count. Inspect how the event was listed before changing the fraction.
+@after L_1:\quad 0\notin\Omega
+@wrong Find the earliest statement that disagrees with the givens. A later line can consistently carry an earlier mistake forward.
+@why Zero is divisible by 3, but the sample space starts at 1. Line 1 is the first error because it includes zero. Lines 2 and 3 use that mistaken event, so changing only the final denominator would not repair the reasoning.
+@step 20 | Remove the forbidden label. Which value is the corrected P(E)?
+@choice 21 | \frac{4}{9}
+@choice 22 | \frac{1}{4}
+@choice 23 | \frac{1}{3}
+@answer 23
+@feedback 21 | This retains all four listed entries, including zero. Count only the permitted multiples 3, 6 and 9.
+@feedback 22 | One quarter does not represent the three favourable labels among nine possible labels. Removing a forbidden entry does not create a four-outcome sample space.
+@after E=\{3,6,9\},\quad P(E)=\frac{3}{9}=\frac{1}{3}
+@wrong Repair the event first. The original sample space still has nine labels.
+@why The corrected event is 3, 6 and 9: three outcomes out of nine. Three ninths simplifies to one third. The event definition, its count and the final fraction now agree with the original givens.
+@end
+
+@question {{independent_id}} | {{independent_title}}
+@template choices.v1
+@version 1
+@goal {{independent_objective}}
+@given B=5,\quad R=3,\quad G=4
+@domain A bag contains five blue tokens, three red tokens and four green tokens. B, R and G are token counts. Draw one token; every individual token has the same chance of being drawn.
+@read {{reading_id}}
+@step 10 | Choose the exact probability that the token is not red.
+@choice 11 | \frac{1}{4}
+@choice 12 | \frac{3}{4}
+@choice 13 | \frac{5}{12}
+@answer 12
+@feedback 11 | One quarter describes the three red tokens among twelve. The question asks for the event outside red.
+@feedback 13 | Five twelfths counts only the blue tokens. Green tokens also satisfy not red.
+@after P(\mathrm{not\ red})=\frac{9}{12}=\frac{3}{4}
+@wrong Re-read the event and account for every colour satisfying it. Related reading is available if you want guidance.
+@why There are twelve individual tokens. The event contains the five blue and four green tokens, so it has nine outcomes. Nine twelfths simplifies to three quarters. The red probability is three twelfths, and together they sum to one. The colours themselves are not three equally likely outcomes; the individual tokens are.
+@end

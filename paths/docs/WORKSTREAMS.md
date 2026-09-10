@@ -1,5 +1,172 @@
 # Paths workstreams
 
+## A reusable teaching brief with a checked linear family
+
+**Built as an authoring example and editable preview; not published.** The
+[reusable family brief](templates/QUESTION_FAMILY.md) and
+[completed linear design](../content/authoring/learning/linear_family/DESIGN.md)
+connect learning claims, prerequisites, mathematical conditions, deliberate
+variations, distractors, disclosure and separate review evidence. Existing
+parallel-pilot instructions and source files remain unchanged.
+
+One bounded generator prepares sample, practice and fresh-check sets, each with
+one lesson.v2 reading and six choices.v1 questions. Each set has seven decisions
+and fourteen specific wrong-choice corrections. All three use the existing
+native textbook layout and question session. The sample covers positive and
+negative constants, negative coefficients, a valid move that misses the goal,
+an inverse operation, first-error repair and a fresh fractional answer with
+the equality reversed. Its answer/variation sheet is in the completed design.
+
+The producer supplies original equations from constrained seed solutions;
+independent certificates derive solutions from those equations and check the
+actual operation/candidate meanings. Existing `reasoning_certificate`, chapter
+assembly and `check_authoring_pilot.check_assignment` remain the compilation,
+certificate, provenance, model-replay and immutable-candidate route. Generated
+original cases retain the existing six-role schema. No parser, renderer,
+mathematical runtime, save schema or review scheduler is added.
+
+Release builds of sorter and paths_learning_document_tests pass. Five focused
+family tests pass: the known sample answers; all 512 declared seed combinations
+(3,072 role instances checked arithmetically); out-of-domain/ambiguous-case
+refusal; identity behavior; and all three sets through the actual compiler and
+model. The 18 model routes include 42 wrong choices and save replay. Six injected
+false-key/false-working documents compile and replay but are rejected by the
+independent certificate boundary. All 55 protected writer/reference files
+compare unchanged, including the 30 pinned references.
+
+The existing draft exporter creates
+`content/authoring/drafts/linear_family_example/documents/chapter.paths.md` from
+the checked sample. Open it with:
+
+```sh
+b/sorter --documents content/authoring/drafts/linear_family_example/documents --watch-documents
+```
+
+Choose **Algebra → Worked linear practice → Balanced equations: sample**.
+Inspect the **gold original problem** and **cyan working**. In question 03,
+`-6x+16=-2` should receive a valid-but-misses-the-goal correction. In 05, choosing
+L1 should retain a separate arithmetic decision. In 06, the fraction choices
+should typeset clearly; **green completion** remains until Next. Preview has
+session-only working. Personal saved progress and the published library are
+unchanged by this work.
+
+Runtime C++ delta: zero files and lines. One 270-line authoring generator and
+one 102-line focused test are added, with the recipe, two Markdown templates,
+completed brief, reusable brief and exported sample draft. Evidence:
+`build/linear-family-evidence/verification.json`. All work is uncommitted.
+No screenshots, images, windows, font or ImGui probes were used. Mathematical
+and template review is complete; native visual/teaching acceptance and learner
+effectiveness evidence remain separate. Next candidate: coordinator review of
+the returned subject pilots against this teaching brief before scaling them.
+
+## Parallel subject authoring packets
+
+**Prepared and verified; no subject workers have been launched.** The
+[shared contract](PARALLEL_QUESTION_AUTHORING.md) and four subject-local
+AGENTS.md/PILOT.md packets reserve one reading and six choice questions each
+for algebra, trigonometry, calculus and linear algebra. Fixed sequence manifests
+supply all 24 original cases and stable identities. Each pilot names its exact
+decisions, answers, distractors, separate worked example, conditions, independent
+checks and eventual manual review. The user approved the current presentation
+recipe; the future cards and their teaching remain unauthored and unaccepted.
+
+The coordinator owns shared tools, builds, checker review and serial publication.
+Each worker gets six writable authoring files in its own subject folder and an
+isolated evidence directory. Thirty selected instruction/example/tool inputs are
+pinned by hash. Startup requires the current prepared checkout, because a default
+branch worktree would omit uncommitted work. No agent launch or scheduler is added.
+
+`check_authoring_pilot.py` supplies one shared headless candidate command. Existing
+`reasoning_documents`, role certificates, chapter assembly, the real compiler,
+model replay and provenance validation remain canonical. The command verifies
+input/executable stability and writes an immutable candidate only after its
+gates pass. It does not export, install or activate a store. Packet readiness is
+explicitly separate from content verification. Trig/calculus still need their
+assigned bounded certificate providers and independent review; the importer is
+not a general mathematical or natural-language fact checker.
+
+The older workflow now scopes written support to the implemented linear/matrix
+templates, identifies its coverage counts as historical and directs parallel
+workers to return candidates to the coordinator. New role sequences remain
+multiple choice. All four pilots reuse existing chapter IDs without collisions.
+
+Verification: `sorter` and `paths_learning_document_tests` build successfully.
+Three focused tests pass, including the existing historical byte-preservation
+check. An additional focused rerun passes after adding an explicit wrong-key
+regression. The real six-question matrix fixture proves repeated candidate
+creation, wrong-label/key/working rejection, source-drift refusal and preservation
+of the earlier good candidate. The packet check, 73 local links, four chapter
+bindings and fixed-case arithmetic checks pass. The live catalogue compares
+unchanged: 389 questions, 955 readings, 190 chapters and eight subjects.
+
+Runtime C++ changes: zero. One new authoring tool has 143 lines; the existing
+batch test gains 63 lines. Fourteen packet files and one shared documentation
+file are added. Existing authoring/ownership instructions are reconciled. All
+changes remain uncommitted; concurrent 3D/runtime work is preserved. Evidence:
+`build/parallel-authoring-evidence/verification.json`. No images, screenshots,
+native windows, ImGui contexts or font probes were used. No visual check is
+needed for this instruction/tool checkpoint. Next candidate: dispatch the four
+bounded pilots when the user asks to start the subject workers.
+
+## Matrix reasoning through the shared six-role contract
+
+**Built and locally published; visual and teaching acceptance remain with the
+user.** **Linear Algebra → Worked matrix practice → Reason about row operations**
+adds six multiple-choice questions and a numbered reading to the existing
+chapter. The roles cover row interpretation, a missing constant, the cancelling
+operation, its inverse, the first error in an incomplete row operation, and a
+fresh system with solution `(x,y)=(3/2,1)`. Error repair has two decisions;
+the other cards have one each. All 14 distractors have specific corrections.
+
+The reading defines the notation before use, explains reversibility and nonzero
+scaling, distinguishes validity from an elimination goal, and provides a
+separate complete example. Proof, Hint, Answer and Solution remain closed until
+requested. A deliberately wrong student attempt is identified in the gold
+givens. The native textbook, existing `choices.v1` session, progress and explicit
+Next remain the runtime owners.
+
+Probability and matrices now share `reasoning_documents()` as well as role
+validation, certificates, chapter assembly, the actual compiler and publication.
+The matrix certificate table checks exact row operations and inverses against
+the original solution, using independent Cramer's-rule and substitution checks.
+The existing row-operation arithmetic helper is reused. Mathematical case
+failures name the question and role; document errors retain source/line
+diagnostics. The builder contract, bounded cases and answer sheet are in
+[EXERCISE_ROLES.md](EXERCISE_ROLES.md#matrix-row-operation-sequence).
+
+Package `matrix_reasoning_practice` version 1 adds six new identities. The live
+Library now contains **389 questions, 955 readings, 190 chapters and eight
+subjects**, mapped to **1,266 native textbook sections**. All **383** previous
+question records, **954** readings and all chapter/subject records compare
+unchanged. Existing matrix packages and probability format 2 also reproduce
+their historical document/manifest/audit bytes. Generation:
+`53260d2f3e59a8ad2950da8762a255bdcde9589348bad6efd3a6745963ed0cdf`.
+
+Release builds of `sorter`, the pure document model and textbook adapter pass.
+All **29** batch tests pass. Two certificate tests pass after card-specific error
+context was added. The new package completes **six solving routes, seven checked
+decisions and 14 wrong-choice checks**, including save/reopen, catalogue reordering,
+archived runs and explicit Next. Isolated publication checks prove repeat
+activation, rejection without replacing a good package, and retention of old
+matrix saves with drafts and Undo branches. The installed textbook adapter
+passes reachability, closed-disclosure, copy-source and bookmark checks.
+
+There are **zero runtime C++ edits and zero new runtime files**. The existing
+authoring tool changes by +155/-21 lines (net +134); the existing batch test file
+grows by 102 net lines. Three authoring sources are added, and existing builder
+and ownership documents are updated. No native UI, renderer or 3D asset was
+changed. Work remains uncommitted. Evidence:
+`build/matrix-roles-evidence/verification.json`. No windows, screenshots, images,
+ImGui contexts or font probes were used. Actual typesetting, pointer use and
+teaching clarity await the user's check.
+
+Manual check: launch `b/sorter`, open the reading above and enter Exercise.
+In 03, try adding three copies of row 1: feedback should explain why it is valid
+but misses the goal, with **cyan working** retained. In 05, inspect **gold L1-L3**,
+choose L1 and then 3. **Green completion** stays until Next. Close/reopen during
+the sequence to confirm the same question returns. The next candidate is a
+six-role linear-equation sequence using the same authoring contract.
+
 ## Copy textbook text to other applications
 
 **Built; automated checks pass; the user confirmed copying reading text into
@@ -810,6 +977,78 @@ One production file changes, with no new production files and 12 fewer lines.
 Changes stay uncommitted. All verification is CPU/text only; no images, native
 windows, screenshots, captures or font probes are used. The vector-construction
 checkpoint below follows this consolidation.
+
+## Reusable asset foundation and batch planning
+
+The user requested an audit of missing reusable assets across the text and a
+path to multiple Terra workers producing bounded examples. The audit verifies
+39 registered assets and routes all 178 chapters plus 135 exercise cards to an
+existing starting point or one of 17 proposed capabilities. Six initial priorities
+are function families/domains, subspaces, computation stages, signals/convolution,
+distributions/ensembles and coordinate cells. Most extend existing geometry.
+
+[MATH_ASSET_REUSE_PLAN.md](MATH_ASSET_REUSE_PLAN.md) contains bounded scopes,
+dependencies, checks and downstream recipe ideas. [MATH_ASSET_REUSE_MAP.tsv](MATH_ASSET_REUSE_MAP.tsv)
+contains validated primary routes, not chapter-completion claims.
+[MATH_ASSET_BATCH_WORKFLOW.md](MATH_ASSET_BATCH_WORKFLOW.md) defines source freezing,
+disjoint worker outputs, one owner for shared registration, and an existing-asset
+pilot with fixed ordinary/contrast/failure inputs. Current source is substantially
+untracked; HEAD-only worker checkouts would omit assets. Builder extraction and
+family contracts are preparation work, not completed architecture changes.
+
+Three pilot configurations were verified with the existing text-only CLI:
+C6 -> C2 has kernel size 3/image size 2; doubling C4 -> C4 has kernel size 2 and
+image size 2 inside a four-element target; changing its final destination breaks
+preservation at (1,2), yielding 3 versus 2 and an undefined kernel. All planning
+IDs, source titles, links and Markdown fences were checked. No workers, model
+changes, new mathematical implementations, builds or image paths were started.
+Production code and textbook-owned content are unchanged; edits are uncommitted.
+
+## P068 — Quotients and Homomorphisms Lab
+
+The 39th asset (`quotient`) supplies editable group maps, kernel/fiber collapse,
+subgroup quotient operations and finite-ring ideals. Twenty-two controls and
+12 presets use existing inspector, picker and playback contracts. Numeric table
+cells now share `SnapshotBuilder::operationCell` with Finite Algebra. A bounded
+kernel retains every representative outcome and exposes ambiguity, supports
+one-class quotients, and distinguishes additive subgroups from ideals.
+
+Release `math_lab` and `sorter` builds pass with the existing duplicate
+`libpaths_imgui.a` linker warning. All 19 selected checks pass: seven CPU suites
+and twelve text-only CLI cases. New coverage includes 82,238 maps, all 204 group
+subsets, all 156 ring subsets and 1,793 fresh CPU scenes. Geometry maxima are
+45 parts, 3,242 vertices and 11,970 indices. Prior Finite Algebra checks pass
+unchanged; layout coverage reaches 6,480 layouts and 144 object/layer states.
+No images, screenshots, captures, native windows or font probes are used.
+
+[P068_QUOTIENTS_AND_HOMOMORPHISMS.md](P068_QUOTIENTS_AND_HOMOMORPHISMS.md) records
+interfaces, conventions and manual launch commands. Algebra checklists mark
+bounded foundations while leaving full chapters open. Source cards, learner
+state and textbook integration are untouched. User visual confirmation is
+pending, and changes are uncommitted.
+
+## P067 — Finite Algebra Lab
+
+The 38th asset (`finite`) supplies editable operation tables on two to six
+elements, group-law witnesses, generated subgroups and left/right cosets, and
+standard rings Z/nZ. Forty-six controls and ten presets use existing metadata,
+node picking, tables and playback. Exact mathematical analysis lives in
+`FiniteAlgebra.hpp/.cpp`; numeric table glyphs share the indexed cell mesh.
+Invalid group laws disable subgroup constructions; the modular-ring layer
+retains the editable table separately and never labels it as a ring.
+
+Release `math_lab` and `sorter` builds pass with the existing duplicate
+`libpaths_imgui.a` warning. All 13 selected checks pass (six CPU suites and seven
+text-only CLI cases). The new suite covers 20,432 operation tables, including
+all two- and three-element tables, and 1,971 fresh CPU scenes. Geometry maxima:
+57 parts, 3,236 vertices and 10,404 indices. Existing inspector/layout checks
+cover 6,480 layouts and 140 object/layer states. No images, captures, native
+windows or font probes are generated or inspected.
+
+[P067_FINITE_ALGEBRA.md](P067_FINITE_ALGEBRA.md) records launch instructions,
+interfaces and scope. Algebra checklist entries mark delivered foundations;
+ideals, quotient rings, modules and chapter integration remain open. User visual
+confirmation is pending. Changes are uncommitted.
 
 ## P066 — Relations and Graphs Lab
 

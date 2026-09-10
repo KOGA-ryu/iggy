@@ -1,0 +1,96 @@
+{
+  "format": "paths_exercise_roles",
+  "format_version": 1,
+  "questions": [
+    {
+      "id": "pilot_calc_derivative_v1_read_notation",
+      "role": "read_notation",
+      "title": "01 Read derivative notation",
+      "objective": "Identify the limit that defines the derivative at the stated point.",
+      "prerequisites": "Read function evaluation, a nonzero increment and a limit.",
+      "case": {
+        "coefficients": [
+          1,
+          0,
+          0
+        ],
+        "at": 3
+      }
+    },
+    {
+      "id": "pilot_calc_derivative_v1_worked_check",
+      "role": "worked_check",
+      "title": "02 Complete a derivative calculation",
+      "objective": "Evaluate the limit of the simplified difference quotient.",
+      "prerequisites": "Understand that h approaches zero through nonzero values.",
+      "case": {
+        "coefficients": [
+          1,
+          0,
+          0
+        ],
+        "at": 2
+      }
+    },
+    {
+      "id": "pilot_calc_derivative_v1_choose_next_step",
+      "role": "choose_next_step",
+      "title": "03 Choose the factorization",
+      "objective": "Factor the numerator so the common nonzero increment can cancel.",
+      "prerequisites": "Expand a square and factor a polynomial.",
+      "case": {
+        "coefficients": [
+          1,
+          0,
+          0
+        ],
+        "at": 3
+      }
+    },
+    {
+      "id": "pilot_calc_derivative_v1_explain_step",
+      "role": "explain_step",
+      "title": "04 Explain the cancellation condition",
+      "objective": "State when cancelling the common increment is valid.",
+      "prerequisites": "Division by zero is undefined; a limit may use nearby nonzero inputs.",
+      "case": {
+        "coefficients": [
+          1,
+          0,
+          0
+        ],
+        "at": 3
+      }
+    },
+    {
+      "id": "pilot_calc_derivative_v1_repair_error",
+      "role": "repair_error",
+      "title": "05 Repair the first expansion error",
+      "objective": "Find the first incorrect expansion line and correct the derivative.",
+      "prerequisites": "Expand a binomial square and collect like powers of h.",
+      "case": {
+        "coefficients": [
+          2,
+          1,
+          0
+        ],
+        "at": 1
+      }
+    },
+    {
+      "id": "pilot_calc_derivative_v1_independent",
+      "role": "independent",
+      "title": "06 Find a fresh derivative value",
+      "objective": "Choose the derivative of the given function at the stated point.",
+      "prerequisites": "Distinguish a function value from a derivative value.",
+      "case": {
+        "coefficients": [
+          3,
+          -2,
+          1
+        ],
+        "at": 2
+      }
+    }
+  ]
+}

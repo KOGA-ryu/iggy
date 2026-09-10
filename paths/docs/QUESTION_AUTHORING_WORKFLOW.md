@@ -1,13 +1,13 @@
 # Creating trustworthy practice in every area
 
-Status: **authoring workflow, one four-level linear family and one checked
-matrix batch family**. The 25 linear runtime questions include the golden
-example and 24 varied repetitions. The [batch workflow](QUESTION_BATCHES.md)
-adds 12 matrix repetitions through the existing document compiler and publisher,
-with independent arithmetic and model/save gates. Its three arithmetic groups
-are one task family. The linear coverage ledger below still counts only its
-own 25 questions; it does not yet aggregate external published packages.
-Visual acceptance is pending. This does not complete the question bank. Read
+Status: **general authoring workflow with a historical linear coverage ledger**.
+Current checked batch families and six-role matrix/probability sequences are
+listed in the [batch workflow](QUESTION_BATCHES.md). The
+[parallel authoring contract](PARALLEL_QUESTION_AUTHORING.md) supplies current
+instructions for four new subject pilots, all using multiple choice. The
+linear coverage ledger below counts only its original 25 questions; it does
+not aggregate published packages or establish current library totals.
+This does not complete the question bank. Read
 [QUESTION_PRACTICE_FORMAT.md](QUESTION_PRACTICE_FORMAT.md) for the learner-facing
 contract. The user prioritizes this foundation before more interactive 3D work.
 
@@ -32,9 +32,9 @@ bulk conversion of Claude's source cards.
 
 ## Coverage unit and quantity
 
-The current source map has six subjects, 178 chapters and 94 named
+The original source-map baseline has six subjects, 178 chapters and 94 named
 subcategories. Forty-three chapters have named children; the other 135 do not.
-Therefore there are **229 practice leaves**: 94 named subcategories and 135
+That baseline has **229 practice leaves**: 94 named subcategories and 135
 terminal chapters. Track every leaf, and roll totals up to its chapter and
 subject without counting the same instance twice. Track conceptual skills
 within each leaf. The hastily drafted taxonomy is provisional, not a verified
@@ -56,7 +56,8 @@ parameter variety separately from task variety and support level.
 
 Each coverage row must include: taxonomy review; mapped skills; families;
 drafted instances; mathematically checked instances; formatted instances;
-integrated four-level instances; and unresolved gaps. Avoid a single green
+integrated instances with their actual response template; and unresolved gaps.
+Record four-level support only where implemented. Avoid a single green
 "done" flag. `tools/question_workflow.py` emits `coverage.json` for all 229
 leaves. It counts 25 integrated repetitions only when the runtime pack matches
 the checked generator; all other leaves retain zero integrated counts. A pack
@@ -81,12 +82,13 @@ leaf or provide four different task families.
    or rubric, complete worked reasoning and an independent verification.
    Every step gets the teaching fields from the format contract. Explain
    definitions at first use and state side conditions where they matter.
-4. **Derive all four views.** Use the same immutable mathematical instance.
-   Learn exposes the current goal/rule/why/definitions; Practice keeps the same
-   validated symbolic choices with teaching available on demand and an optional
-   typed blank; Solve removes the prescribed method; Independent starts with a
-   blank work area. Prevent clues in titles,
-   filenames, status text, examples and figure captions as well as answer tiles.
+4. **Use the assigned response contract.** New role sequences use multiple
+   choice throughout, with optional reading and separate help disclosures.
+   Their final role removes the prescribed intermediate step while retaining
+   choices; it does not claim independent written work. Existing `linear.v1`
+   and `matrix.v1` tasks can also expose their implemented four support levels.
+   Use the same immutable instance when changing support. Prevent unintended
+   clues in titles, status text, examples and figure captions.
 5. **Check the golden problem independently.** Use arithmetic, a separately
    implemented algorithm, enumeration or a proof/counterexample review suitable
    for the domain. Test alternative correct forms/routes. List unsupported
@@ -101,10 +103,12 @@ leaf or provide four different task families.
    arbitrary wrong string just to get enough tiles; choose another instance or
    a diagnosed misconception that applies to it.
 8. **Check teaching and layout separately.** Verify that symbols are defined,
-   reasoning contains no unstated leap, level 4 receives no future answer, and
+   reasoning contains no unstated leap, the uncued role receives no future answer, and
    long equations and reading remain reachable at the supported window sizes.
    Native typesetting success is not mathematical validation.
-9. **Publish a bounded reviewed pack.** Use the existing content loader and
+9. **Integrate a bounded reviewed pack.** In a parallel assignment, return the
+   verified candidate to the coordinator; only the coordinator publishes.
+   Use the existing content loader and
    canonical question owner after that family's checker is available.
    Freeze math IDs/versions; retain source attribution and evidence. Do not
    overwrite current playable cards or infer that authoring JSON is loadable.
@@ -129,7 +133,7 @@ attach the executable check or the explicit mathematical argument.
 | Discrete mathematics | Build a small explicit finite set, graph or sample space alongside the task | Compare enumeration with the counting argument. Vary order/replacement/identifications deliberately; test a counterexample to an overbroad claim. Proof tasks need checked arguments, not just a true/false key. |
 | Probability/statistics | Start from bounded integer counts or an explicit finite model; normalize exactly | Enumerate the model or apply an independent formula; check mass sums, conditioning denominators, dependence and rounding. Distinguish population and sample definitions. |
 
-Each recipe needs its own degeneracy rules and oracle. The pilot checker covers
+Each recipe needs its own degeneracy rules and oracle. The original linear pilot checker covers
 only real linear equations `ax+b=c` with nonzero bounded integer a and b. A new
 subject cannot be enabled by changing its label or routing it through a scalar
 answer matcher. Reuse the content fields and four projections; add the required

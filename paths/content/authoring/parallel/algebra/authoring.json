@@ -1,0 +1,26 @@
+{
+  "format": "paths_learning_authoring",
+  "format_version": 1,
+  "package_id": "pilot_algebra_balance",
+  "package_version": 1,
+  "sources": [
+    {
+      "id": "pilot_algebra_balance_original_v1",
+      "kind": "original",
+      "title": "Understand each balanced move: original algebra pilot",
+      "uri": "paths:original/pilot_algebra_balance/v1",
+      "revision": "1",
+      "attribution": "Original Paths lesson prose, worked example, exercises, mathematical certificates and misconception feedback. Definitions and conditions were checked against OpenStax, Elementary Algebra 2e, sections 2.1 and 2.2 (accessed 2026-09-10): https://openstax.org/books/elementary-algebra-2e/pages/2-1-solve-equations-using-the-subtraction-and-addition-properties-of-equality and https://openstax.org/books/elementary-algebra-2e/pages/2-2-solve-equations-using-the-division-and-multiplication-properties-of-equality",
+      "reuse": "Original project material. OpenStax was used as a reference for definitions and equality conditions; no textbook exercises or prose were copied.",
+      "content_ids": [
+        "pilot_alg_balance_v1_reading",
+        "pilot_alg_balance_v1_read_notation",
+        "pilot_alg_balance_v1_worked_check",
+        "pilot_alg_balance_v1_choose_next_step",
+        "pilot_alg_balance_v1_explain_step",
+        "pilot_alg_balance_v1_repair_error",
+        "pilot_alg_balance_v1_independent"
+      ]
+    }
+  ]
+}
