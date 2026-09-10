@@ -40,6 +40,7 @@ add_library(paths_math_objects
   src/runtime/math_objects/PolarDecomposition.cpp
   src/runtime/math_objects/QrLeastSquares.cpp
   src/runtime/math_objects/FiniteMaps.cpp
+  src/runtime/math_objects/FiniteGraph.cpp
   src/runtime/math_objects/RigidBody.cpp
   src/runtime/math_objects/Membrane.cpp
   src/runtime/math_objects/MembraneGeometry.cpp
@@ -238,6 +239,9 @@ if(BUILD_TESTING)
   target_compile_definitions(paths_corpus_tests PRIVATE CORPUS_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/toc.json"
     SORTER_STUDY_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/sorter/study_practice_v1.json")
   add_test(NAME paths_corpus_tests COMMAND paths_corpus_tests)
+  add_executable(paths_math_graph_tests tests/math_graph_tests.cpp)
+  target_link_libraries(paths_math_graph_tests PRIVATE paths_math_object_layout)
+  add_test(NAME paths_math_graph_tests COMMAND paths_math_graph_tests)
   add_executable(paths_math_maps_tests tests/math_maps_tests.cpp)
   target_link_libraries(paths_math_maps_tests PRIVATE paths_math_object_layout)
   add_test(NAME paths_math_maps_tests COMMAND paths_math_maps_tests)
@@ -508,6 +512,15 @@ if(BUILD_TESTING)
     add_test(NAME paths_math_spherical_cli COMMAND math_lab --validate --object spherical --level 3 --set heat_time=0.5 --check)
     add_test(NAME paths_math_quadratic_cli COMMAND math_lab --validate --object quadratic --level 3 --set form_yaw=0 --set form_pitch=0 --set form_x=0 --set form_y=0 --set form_z=1 --check)
     add_test(NAME paths_math_roots_cli COMMAND math_lab --validate --object roots --level 3 --set root_n=8 --set root_auto=5 --check)
+    add_test(NAME paths_math_graph_edges_cli COMMAND math_lab --validate --object graph --object-preset 0 --check)
+    add_test(NAME paths_math_graph_paths_cli COMMAND math_lab --validate --object graph --level 1 --object-preset 0 --advance 6 --check)
+    add_test(NAME paths_math_graph_classes_cli COMMAND math_lab --validate --object graph --level 2 --object-preset 3 --set graph_group=1 --check)
+    add_test(NAME paths_math_graph_matching_cli COMMAND math_lab --validate --object graph --level 3 --object-preset 6 --advance 3 --check)
+    add_test(NAME paths_math_graph_hall_cli COMMAND math_lab --validate --object graph --level 3 --object-preset 7 --advance 3)
+    add_test(NAME paths_math_graph_empty_cli COMMAND math_lab --validate --object graph --level 2 --object-preset 5)
+    set_tests_properties(paths_math_graph_edges_cli paths_math_graph_paths_cli paths_math_graph_classes_cli paths_math_graph_matching_cli PROPERTIES PASS_REGULAR_EXPRESSION "feedback=2")
+    set_tests_properties(paths_math_graph_hall_cli PROPERTIES PASS_REGULAR_EXPRESSION "Hall deficiency = 1")
+    set_tests_properties(paths_math_graph_empty_cli PROPERTIES PASS_REGULAR_EXPRESSION "Reflexive = 0")
     add_test(NAME paths_math_maps_injection_cli COMMAND math_lab --validate --object maps --level 0 --object-preset 1 --check)
     add_test(NAME paths_math_maps_fibers_cli COMMAND math_lab --validate --object maps --level 1 --object-preset 3 --check)
     add_test(NAME paths_math_maps_composition_cli COMMAND math_lab --validate --object maps --level 2 --object-preset 4 --advance 4 --check)

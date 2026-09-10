@@ -11,6 +11,7 @@
 #include "runtime/math_objects/PolarDecomposition.hpp"
 #include "runtime/math_objects/QrLeastSquares.hpp"
 #include "runtime/math_objects/FiniteMaps.hpp"
+#include "runtime/math_objects/FiniteGraph.hpp"
 #include "runtime/math_objects/Membrane.hpp"
 #include "runtime/math_objects/MembraneGeometry.hpp"
 #include "runtime/math_objects/BooleanGeometry.hpp"
@@ -461,7 +462,49 @@ constexpr std::array<MathParameterSpec,static_cast<std::size_t>(MathParameter::C
   {MathParameter::MapsW3,MathObjectKind::Maps,"maps_w3","Weight of A3",0,12,0.1,1,0,false,{},{.group=MathControlGroup::Sampling, .selector=MathParameter::MapsSource, .selectedValue=3, .layers=8}},
   {MathParameter::MapsGroup,MathObjectKind::Maps,"maps_group","Group by common output",0,1,0.01,0,0,false,{},{.group=MathControlGroup::Display, .layers=2}},
   {MathParameter::MapsTime,MathObjectKind::Maps,"maps_time","Follow the maps",0,2,0.01,0,0,false,{},{.group=MathControlGroup::Animation, .layers=4, .playbackLayers=4}},
-  {MathParameter::MapsCondition,MathObjectKind::Maps,"maps_condition","Probability view",0,1,1,0,0,false,"All outcomes\0Condition on f(A)=selected B\0",{.group=MathControlGroup::Operation, .layers=8}}
+  {MathParameter::MapsCondition,MathObjectKind::Maps,"maps_condition","Probability view",0,1,1,0,0,false,"All outcomes\0Condition on f(A)=selected B\0",{.group=MathControlGroup::Operation, .layers=8}},
+  {MathParameter::GraphNode,MathObjectKind::Graph,"graph_node","Edit row / search source",0,5,1,0,0,false,"N0\0N1\0N2\0N3\0N4\0N5\0",{.group=MathControlGroup::Probe}},
+  {MathParameter::GraphTarget,MathObjectKind::Graph,"graph_target","Path destination",0,5,1,5,0,false,"N0\0N1\0N2\0N3\0N4\0N5\0",{.group=MathControlGroup::Probe, .layers=2}},
+  {MathParameter::GraphTime,MathObjectKind::Graph,"graph_time","Search distance frontier",0,6,0.01,0,0,false,{},{.group=MathControlGroup::Animation, .layers=2, .playbackLayers=2}},
+  {MathParameter::GraphProperty,MathObjectKind::Graph,"graph_property","Property witness",0,2,1,2,0,false,"Reflexive\0Symmetric\0Transitive\0",{.group=MathControlGroup::Operation, .layers=4}},
+  {MathParameter::GraphGroup,MathObjectKind::Graph,"graph_group","Group equivalence classes",0,1,0.01,0,0,false,{},{.group=MathControlGroup::Operation, .layers=4}},
+  {MathParameter::GraphMatchTime,MathObjectKind::Graph,"graph_match_time","Matching construction",0,3,0.01,0,0,false,{},{.group=MathControlGroup::Animation, .layers=8, .playbackLayers=8}},
+  {MathParameter::GraphE00,MathObjectKind::Graph,"graph_e00","N0 to N0",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=0}},
+  {MathParameter::GraphE01,MathObjectKind::Graph,"graph_e01","N0 to N1",0,1,1,1,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=0}},
+  {MathParameter::GraphE02,MathObjectKind::Graph,"graph_e02","N0 to N2",0,1,1,1,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=0}},
+  {MathParameter::GraphE03,MathObjectKind::Graph,"graph_e03","N0 to N3",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=0}},
+  {MathParameter::GraphE04,MathObjectKind::Graph,"graph_e04","N0 to N4",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=0}},
+  {MathParameter::GraphE05,MathObjectKind::Graph,"graph_e05","N0 to N5",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=0}},
+  {MathParameter::GraphE10,MathObjectKind::Graph,"graph_e10","N1 to N0",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=1}},
+  {MathParameter::GraphE11,MathObjectKind::Graph,"graph_e11","N1 to N1",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=1}},
+  {MathParameter::GraphE12,MathObjectKind::Graph,"graph_e12","N1 to N2",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=1}},
+  {MathParameter::GraphE13,MathObjectKind::Graph,"graph_e13","N1 to N3",0,1,1,1,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=1}},
+  {MathParameter::GraphE14,MathObjectKind::Graph,"graph_e14","N1 to N4",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=1}},
+  {MathParameter::GraphE15,MathObjectKind::Graph,"graph_e15","N1 to N5",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=1}},
+  {MathParameter::GraphE20,MathObjectKind::Graph,"graph_e20","N2 to N0",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=2}},
+  {MathParameter::GraphE21,MathObjectKind::Graph,"graph_e21","N2 to N1",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=2}},
+  {MathParameter::GraphE22,MathObjectKind::Graph,"graph_e22","N2 to N2",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=2}},
+  {MathParameter::GraphE23,MathObjectKind::Graph,"graph_e23","N2 to N3",0,1,1,1,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=2}},
+  {MathParameter::GraphE24,MathObjectKind::Graph,"graph_e24","N2 to N4",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=2}},
+  {MathParameter::GraphE25,MathObjectKind::Graph,"graph_e25","N2 to N5",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=2}},
+  {MathParameter::GraphE30,MathObjectKind::Graph,"graph_e30","N3 to N0",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=3}},
+  {MathParameter::GraphE31,MathObjectKind::Graph,"graph_e31","N3 to N1",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=3}},
+  {MathParameter::GraphE32,MathObjectKind::Graph,"graph_e32","N3 to N2",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=3}},
+  {MathParameter::GraphE33,MathObjectKind::Graph,"graph_e33","N3 to N3",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=3}},
+  {MathParameter::GraphE34,MathObjectKind::Graph,"graph_e34","N3 to N4",0,1,1,1,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=3}},
+  {MathParameter::GraphE35,MathObjectKind::Graph,"graph_e35","N3 to N5",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=3}},
+  {MathParameter::GraphE40,MathObjectKind::Graph,"graph_e40","N4 to N0",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=4}},
+  {MathParameter::GraphE41,MathObjectKind::Graph,"graph_e41","N4 to N1",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=4}},
+  {MathParameter::GraphE42,MathObjectKind::Graph,"graph_e42","N4 to N2",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=4}},
+  {MathParameter::GraphE43,MathObjectKind::Graph,"graph_e43","N4 to N3",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=4}},
+  {MathParameter::GraphE44,MathObjectKind::Graph,"graph_e44","N4 to N4",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=4}},
+  {MathParameter::GraphE45,MathObjectKind::Graph,"graph_e45","N4 to N5",0,1,1,1,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=4}},
+  {MathParameter::GraphE50,MathObjectKind::Graph,"graph_e50","N5 to N0",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=5}},
+  {MathParameter::GraphE51,MathObjectKind::Graph,"graph_e51","N5 to N1",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=5}},
+  {MathParameter::GraphE52,MathObjectKind::Graph,"graph_e52","N5 to N2",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=5}},
+  {MathParameter::GraphE53,MathObjectKind::Graph,"graph_e53","N5 to N3",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=5}},
+  {MathParameter::GraphE54,MathObjectKind::Graph,"graph_e54","N5 to N4",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=5}},
+  {MathParameter::GraphE55,MathObjectKind::Graph,"graph_e55","N5 to N5",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::GraphNode, .selectedValue=5}}
 }};
 constexpr std::array<MathObjectSpec,static_cast<std::size_t>(MathObjectKind::Count)> objects{{
   {MathObjectKind::Algebra,"algebra","Algebra","A cube full of algebra",
@@ -619,7 +662,11 @@ constexpr std::array<MathObjectSpec,static_cast<std::size_t>(MathObjectKind::Cou
   {MathObjectKind::Maps,"maps","Sets & Maps Lab","Follow elements through sets and maps",
    "f: A -> B; (g o f)(a) = g(f(a)); P(B=j) = sum[f(i)=j] P(A=i)","Make f injective without being surjective.",
    "Finite labelled sets contain one to four elements. Every active input has exactly one output. Set sizes and destinations are editable; shrinking a codomain clamps removed destinations to its last element. Trays are a diagram layout, not metric spaces. Zero total weight and conditioning on a zero-weight fiber are undefined.",
-   {"Edit arrows and distinguish injection from surjection.","Group fibers and compare composed maps.","Push probability mass through a map and condition on a fiber."},{.25F,.3F,1},.5,"Restart route","Route complete. Restart or scrub to follow it again."}
+   {"Edit arrows and distinguish injection from surjection.","Group fibers and compare composed maps.","Push probability mass through a map and condition on a fiber."},{.25F,.3F,1},.5,"Restart route","Route complete. Restart or scrub to follow it again."},
+  {MathObjectKind::Graph,"graph","Relations & Graphs Lab","Connect nodes and expose the structure",
+   "A[i,j]=1 iff i R j; paths follow arrows; a matching shares no endpoints","Add a directed connection and inspect its adjacency row.",
+   "Six labelled nodes and a binary directed relation, including self-loops. Gold selects the edited row. Lit matrix cells mean one; dark cells mean zero. Paths use unit edge lengths. The matching layer uses only links from nodes 0..2 to nodes 3..5; other stored links are retained for the other layers.",
+   {"Edit a relation and read its adjacency matrix.","Trace shortest paths and inspect property counterexamples.","Group equivalence classes and grow a bipartite matching."},{.18F,.22F,1},1,"Restart search / matching","Construction complete. Restart or scrub to inspect each stage."}
 }};
 constexpr std::array<MathLesson,4> functionLessons{{
   {"Inputs and roots","y = f(x)","Find an input where f(x) = 0.","Move the point or scrub a graph. The selected function owns every linked value."},
@@ -759,6 +806,12 @@ constexpr std::array<MathLesson,4> booleanLessons{{
   {"Blends and surface normals","smin(a,b)=h*a+(1-h)*b-k*h*(1-h); h=clamp(1/2+(b-a)/(2k),0,1)","Use a positive smooth blend to add material outside both inputs; find a regular surface on the probe line.","Blend width k rounds the meeting region; k=0 gives ordinary union. The gradient points toward increasing field values. A unit surface normal is shown at the nearest detected crossing on the x-directed probe line, when regular. Sharp switches, primitive ridges and zero gradients do not have a unique normal. The table keeps the gradient magnitude instead of treating the field as an exact distance."},
   {"Sampling solids","V_n = occupied midpoint cells * cell volume","Request at least 24 cells per axis for a nonzero solid; make the 48- and 64-cell volume estimates agree within 3 percent.","The mesh and the midpoint volume sum are separate approximations in the same fixed domain. The table compares increasingly fine grids with the 64-cell estimate. Agreement is evidence, not a certified error bound, and errors need not decrease at every count. A gold cell follows the probe. Requested and actual mesh counts are shown if the fixed mesh budget reduces resolution. Section view changes visible mesh volume only."}
 }};
+constexpr std::array<MathLesson,4> graphLessons{{
+  {"Connections and adjacency","A[i,j]=1 exactly when i R j","Make a one-way link: a relation that is not symmetric.","Click a node or choose its row. Six switches edit its outgoing connections, including its self-loop. The lit/dark matrix on the right reads source by row and destination by column. Bent arrows distinguish opposite directions. Positions illustrate connectivity; they do not set edge weights."},
+  {"Paths and reachability","d(s,v)=minimum number of directed edges; d(s,s)=0","Discover a reachable destination at least three edges away.","Play reveals successive distance layers from the selected source. Gold highlights the shortest path once its destination is discovered. The table gives complete BFS results: -1 means unreachable or no predecessor. Ties use ascending node IDs. The source is reachable by a zero-length path, even without a self-loop."},
+  {"Relations and property witnesses","equivalence = reflexive AND symmetric AND transitive","Build an equivalence relation with between two and five classes, then group it fully.","Choose a property to highlight its first failing witness. Dashed coral marks a required but absent edge, never a stored connection. Transitivity uses i R j and j R k but not i R k; witnesses may involve a repeated node. A valid equivalence relation enables the grouping slider. Empty relations are symmetric and transitive but not reflexive on these six nodes."},
+  {"Bipartite matching","augment along an alternating path; Hall: |N(S)| >= |S|","Finish a perfect matching whose construction requires rerouting an existing pair.","Left nodes 0..2 connect to right nodes 3..5. Violet links are currently matched. A pending augmenting path is gold on additions and coral on removals; the moving bead follows it, and the pairs flip together at the next integer stage. The table shows the current pairs. A deficient left subset and all its neighbors are highlighted when a perfect matching is impossible. No eligible edge is added automatically."}
+}};
 constexpr std::array<MathLesson,4> mapsLessons{{
   {"Maps and destinations","injective: at most one preimage; surjective: every output is reached","Make f injective without being surjective.","Click an A bead or choose its index, then edit its B destination. Empty outputs are muted. Change the set sizes from one to four. Shrinking B or C retargets removed destinations to the last remaining element; shrinking A hides its extra inputs. A bijection has both properties."},
   {"Fibers and partitions","i ~ j iff f(i)=f(j); A/~ corresponds to image(f)","Find a fiber with at least two inputs, and fully group the beads.","Choose an output B to highlight its entire preimage, including an empty fiber. Group by common output rearranges A without changing f. Nonempty fibers partition A; unused outputs do not create extra equivalence classes. The table records class indices ordered by reached B indices."},
@@ -770,6 +823,18 @@ constexpr std::array<MathLesson,4> qrLessons{{
   {"QR and reconstruction","A Pi = Q R; c0 = r00 q0; c1 = r01 q0 + r11 q1","Use rank 2 and a nonzero r01; reconstruct both columns with relative error below 1e-10.","Left: original columns. Right: their reconstruction from the active Q directions and R coefficients. The matrix drawer shows pivoted A, thin Q and triangular R. Swapping the pivot order changes the factorization convention, not the map. At rank loss unused Q columns and R diagonal entries are zero. The reported residual includes numerical rank truncation."},
   {"Projection and least squares","min_x ||Ax-b||^2; at a minimum, A^T(b-Ax) = 0","Find a nonzero least-squares residual with normal-equation residual below 1e-9.","Teal is the closest point in the column span; the gold segment to b is perpendicular to that span. Coral is the fit using your two trial coefficients. Choose Minimum-norm fit to inspect the computed solution, including values beyond the trial controls' range. The two graphs vary one coefficient around the current pair while keeping the other fixed. Rank 2 has a unique answer; a dependent matrix can have many answers."},
   {"Null directions and minimum norm","x = x_min + N t; A N = 0; ||x||^2 = ||x_min||^2 + ||t||^2","Use rank 1 and a nonzero null offset while preserving the minimum residual.","Left: the same target and fitted point as coefficients move along null directions. Right: excess squared error ||A delta||^2 with delta = x-x_min, over [-3,3]^2; height is scaled to fit. Full rank gives a bowl, rank 1 a trough, rank 0 a flat plane. Gold marks the minimum-norm solution at delta=0; violet moves within the minimizing family. The family is for the numerical-rank model; actual-input residuals remain visible."}
+}};
+constexpr std::array<MathParameter,MathObjectPreset::kCapacity> graphPresetParameters{MathParameter::GraphNode,MathParameter::GraphTarget,MathParameter::GraphTime,MathParameter::GraphProperty,MathParameter::GraphGroup,MathParameter::GraphMatchTime,MathParameter::GraphE00,MathParameter::GraphE01,MathParameter::GraphE02,MathParameter::GraphE03,MathParameter::GraphE04,MathParameter::GraphE05,MathParameter::GraphE10,MathParameter::GraphE11,MathParameter::GraphE12,MathParameter::GraphE13,MathParameter::GraphE14,MathParameter::GraphE15,MathParameter::GraphE20,MathParameter::GraphE21,MathParameter::GraphE22,MathParameter::GraphE23,MathParameter::GraphE24,MathParameter::GraphE25,MathParameter::GraphE30,MathParameter::GraphE31,MathParameter::GraphE32,MathParameter::GraphE33,MathParameter::GraphE34,MathParameter::GraphE35,MathParameter::GraphE40,MathParameter::GraphE41,MathParameter::GraphE42,MathParameter::GraphE43,MathParameter::GraphE44,MathParameter::GraphE45,MathParameter::GraphE50,MathParameter::GraphE51,MathParameter::GraphE52,MathParameter::GraphE53,MathParameter::GraphE54,MathParameter::GraphE55};
+constexpr std::array<MathObjectPreset,9> graphPresets{{
+  {"Branching network",graphPresetParameters,{0,5,0,2,0,0,0,1,1,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0},42},
+  {"Directed cycle",graphPresetParameters,{0,5,0,2,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,0,0},42},
+  {"Broken transitivity",graphPresetParameters,{0,5,0,2,0,0,1,1,0,0,0,0,0,1,1,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,1},42},
+  {"Three interleaved classes",graphPresetParameters,{0,5,0,2,0,0,1,0,0,1,0,0,0,1,0,0,1,0,0,0,1,0,0,1,1,0,0,1,0,0,0,1,0,0,1,0,0,0,1,0,0,1},42},
+  {"All connected",graphPresetParameters,{0,5,0,2,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},42},
+  {"Empty relation",graphPresetParameters,{0,5,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},42},
+  {"Matching needs a reroute",graphPresetParameters,{0,5,0,2,0,0,0,0,0,1,1,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},42},
+  {"Hall obstruction",graphPresetParameters,{0,5,0,2,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},42},
+  {"All bipartite links",graphPresetParameters,{0,5,0,2,0,0,0,0,0,1,1,1,0,0,0,1,1,1,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},42}
 }};
 constexpr std::array<MathParameter,MathObjectPreset::kCapacity> mapsPresetParameters{MathParameter::MapsA,MathParameter::MapsB,MathParameter::MapsC,MathParameter::MapsSource,MathParameter::MapsMiddle,MathParameter::MapsFiber,MathParameter::MapsF0,MathParameter::MapsF1,MathParameter::MapsF2,MathParameter::MapsF3,MathParameter::MapsG0,MathParameter::MapsG1,MathParameter::MapsG2,MathParameter::MapsG3,MathParameter::MapsH0,MathParameter::MapsH1,MathParameter::MapsH2,MathParameter::MapsH3,MathParameter::MapsW0,MathParameter::MapsW1,MathParameter::MapsW2,MathParameter::MapsW3,MathParameter::MapsGroup,MathParameter::MapsTime,MathParameter::MapsCondition};
 constexpr std::array<MathObjectPreset,9> mapsPresets{{
@@ -1376,6 +1441,9 @@ Triple normSupport(const Triple& w,double p,bool infinity) {
   for(unsigned i=0;i<3;++i)result[i]=((w[i]>0)-(w[i]<0))*std::pow(std::fabs(w[i])/h,q-1);
   return result;
 }
+FiniteRelation graphInput(const MathObjects& model){
+  FiniteRelation result=0;for(unsigned i=0;i<36;++i)if(model.parameter(static_cast<MathParameter>(index(MathParameter::GraphE00)+i))==1)result|=FiniteRelation{1}<<i;return result;
+}
 struct MapParameterBinding {MathParameter first;unsigned count;MathParameter sourceSize,targetSize;};
 constexpr std::array<MapParameterBinding,7> mapParameterBindings{{
   {MathParameter::MapsF0,4,MathParameter::MapsA,MathParameter::MapsB},
@@ -1536,6 +1604,7 @@ std::span<const MathLesson> mathLessons(MathObjectKind kind) {
     case MathObjectKind::Polar:return polarLessons;
     case MathObjectKind::Qr:return qrLessons;
     case MathObjectKind::Maps:return mapsLessons;
+    case MathObjectKind::Graph:return graphLessons;
     default:return {};
   }
 }
@@ -1558,6 +1627,7 @@ std::span<const MathObjectPreset> mathObjectPresets(MathObjectKind kind,unsigned
     case MathObjectKind::Polar:return polarPresets;
     case MathObjectKind::Qr:return qrPresets;
     case MathObjectKind::Maps:return mapsPresets;
+    case MathObjectKind::Graph:return graphPresets;
     default:return {};
   }
 }
@@ -1568,6 +1638,7 @@ double MathObjects::parameter(MathParameter p) const {
 }
 double MathObjects::parameterMaximum(MathParameter p) const {
   if(index(p)>=parameters.size())throw std::invalid_argument("unknown math parameter");
+  if(p==MathParameter::GraphNode&&snapshot_.level==3)return 2;
   if(const auto* binding=mapBinding(p);binding&&binding->targetSize!=MathParameter::Count)return parameter(binding->targetSize)-1;
   return parameters[index(p)].maximum;
 }
@@ -1575,6 +1646,10 @@ bool MathObjects::parameterAvailable(MathParameter p) const {
   if(index(p)>=parameters.size())return false;
   const auto& spec=parameters[index(p)];
   if(spec.owner!=snapshot_.kind||spec.minimumLevel>snapshot_.level||!(spec.control.layers&(1U<<snapshot_.level)))return false;
+  if(spec.owner==MathObjectKind::Graph){
+    if(p>=MathParameter::GraphE00&&p<=MathParameter::GraphE55&&snapshot_.level==3){const auto edge=index(p)-index(MathParameter::GraphE00);return edge/6<3&&edge%6>=3;}
+    if(p==MathParameter::GraphGroup)return analyzeFiniteGraph(graphInput(*this),0).equivalence;
+  }
   if(const auto* binding=mapBinding(p);binding&&binding->sourceSize!=MathParameter::Count&&index(p)-index(binding->first)>=parameter(binding->sourceSize))return false;
   switch(p) {
     case MathParameter::QrC0:case MathParameter::QrC1:return parameter(MathParameter::QrUseSolution)==0;
@@ -1661,7 +1736,7 @@ MathActionResult MathObjects::dispatch(const MathAction& a) {
       if(a.parameter>=MathParameter::SimplexP0&&a.parameter<=MathParameter::SimplexQ1){const auto offset=index(a.parameter)-index(MathParameter::SimplexP0);const auto other=index(MathParameter::SimplexP0)+(offset^1U);if(a.value+parameters_[other]>1+1e-12)return {false,"probabilities A+B must not exceed one"};next=std::min(next,1-parameters_[other]);}
       parameters_[index(a.parameter)]=next;
       if(a.parameter==MathParameter::Shortcut)snapshot_.routeCount=1;
-      switch(snapshot_.kind){case MathObjectKind::Curve:case MathObjectKind::Lathe:case MathObjectKind::Membrane:case MathObjectKind::Rigid:case MathObjectKind::Truss:case MathObjectKind::Simplex:case MathObjectKind::Distance:case MathObjectKind::Polar:case MathObjectKind::Qr:case MathObjectKind::Maps:snapshot_.playing=false;break;default:break;}
+      switch(snapshot_.kind){case MathObjectKind::Curve:case MathObjectKind::Lathe:case MathObjectKind::Membrane:case MathObjectKind::Rigid:case MathObjectKind::Truss:case MathObjectKind::Simplex:case MathObjectKind::Distance:case MathObjectKind::Polar:case MathObjectKind::Qr:case MathObjectKind::Maps:case MathObjectKind::Graph:snapshot_.playing=false;break;default:break;}
       if(a.parameter==playbackParameter())snapshot_.playing=false;
       if(a.parameter==MathParameter::FieldPath){fieldPathReversed_=false;parameters_[index(MathParameter::FieldTime)]=0;snapshot_.playing=false;}
       break;
@@ -1805,6 +1880,7 @@ MathActionResult MathObjects::dispatch(const MathAction& a) {
     case MathActionKind::Check:snapshot_.playing=false;check();return {true,"challenge_checked"};
     default:return {false,"unknown_action"};
   }
+  if(snapshot_.kind==MathObjectKind::Graph)parameters_[index(MathParameter::GraphNode)]=std::min(parameter(MathParameter::GraphNode),parameterMaximum(MathParameter::GraphNode));
   if(snapshot_.kind==MathObjectKind::Maps)for(const auto& binding:mapParameterBindings)if(binding.targetSize!=MathParameter::Count)
     for(unsigned i=0;i<binding.count;++i){const auto p=static_cast<MathParameter>(index(binding.first)+i);parameters_[index(p)]=std::min(parameters_[index(p)],parameterMaximum(p));}
   const auto touched=[&](MathParameter p){return (a.kind==MathActionKind::SetParameter&&a.parameter==p)||(a.kind==MathActionKind::ResetParameters&&a.resetParameters.test(index(p)));};
@@ -2093,6 +2169,15 @@ void MathObjects::check() {
         case 1:solved=result.fiberSizes[in.fiber]>=2&&parameter(MathParameter::MapsGroup)==1;good="Yes: this class contains multiple inputs with the same output.";bad="Choose Grouped fibers and inspect output B2.";break;
         case 2:{bool nonconstant=false;for(unsigned i=1;i<in.a;++i)nonconstant|=result.composed[i]!=result.composed[0];solved=result.commutes&&nonconstant;good="Yes: both routes agree on every input, with more than one output.";bad="Choose Commuting routes, or make each h destination equal g(f(A)).";break;}
         case 3:{unsigned positive=0;for(unsigned i=0;i<in.a;++i)positive+=in.f[i]==in.fiber&&in.weights[i]>0;solved=parameter(MathParameter::MapsCondition)==1&&result.conditionalDefined&&positive>=2&&result.eventProbability>0&&result.eventProbability<1;good="Yes: the selected event has two positive-weight inputs, renormalized to total probability one.";bad="Choose Weighted outcomes, select B0, and switch to conditioning.";break;}
+      }break;
+    }
+    case MathObjectKind::Graph:{
+      const auto relation=graphInput(*this);const auto result=analyzeFiniteGraph(relation,static_cast<unsigned>(parameter(MathParameter::GraphNode)));
+      switch(snapshot_.level){
+        case 0:solved=!result.symmetric;good="Yes: an arrow exists without its reverse.";bad="Enable N0 to N1 while leaving N1 to N0 off.";break;
+        case 1:{const auto d=result.distance[static_cast<unsigned>(parameter(MathParameter::GraphTarget))];solved=d>=3&&parameter(MathParameter::GraphTime)>=d;good="Yes: the discovered destination needs at least three directed edges.";bad="Choose Branching network, target N5, and advance the search frontier to at least 4.";break;}
+        case 2:solved=result.equivalence&&result.classCount>1&&result.classCount<6&&parameter(MathParameter::GraphGroup)==1;good="Yes: the equivalence classes partition all six nodes.";bad="Choose Three interleaved classes, then group the classes fully.";break;
+        case 3:{const auto matching=analyzeBipartiteMatching(bipartiteEdges(relation));bool reroute=false;for(auto length:matching.pathLengths)reroute|=length>2;solved=matching.maximumSize==3&&reroute&&parameter(MathParameter::GraphMatchTime)>=3;good="Yes: an alternating path rerouted a pair and completed a perfect matching.";bad="Choose Matching needs a reroute, then advance the matching construction to 3.";break;}
       }break;
     }
     case MathObjectKind::Count:return;
@@ -3816,6 +3901,91 @@ void MathObjects::rebuild() {
         b.table("Map and quotient classes",{"f(A)","Class","Fiber size","Selected fiber"},4);
         for(unsigned i=0;i<in.a;++i)b.row(aNames[i],{static_cast<double>(in.f[i]),static_cast<double>(analysis.classOf[i]),static_cast<double>(analysis.fiberSizes[in.f[i]]),in.f[i]==in.fiber?1.:0.});
         b.label(analysis.bijective?"Bijection: one input per output":analysis.injective?"Injection: distinct outputs, some unused":analysis.surjective?"Surjection: all outputs reached, with a collision":"Neither: collisions and unused outputs",{-2.5F,-2.6F,0},white);
+      }
+      break;
+    }
+    case MathObjectKind::Graph:{
+      using P=MathParameter;const unsigned level=snapshot_.level,source=static_cast<unsigned>(parameter(P::GraphNode)),target=static_cast<unsigned>(parameter(P::GraphTarget));
+      const bool matching=level==3;const auto relation=graphInput(*this);const auto analysis=analyzeFiniteGraph(relation,source);const auto eligible=bipartiteEdges(relation);const auto pairs=analyzeBipartiteMatching(eligible);
+      const unsigned stage=std::min(3U,static_cast<unsigned>(parameter(P::GraphMatchTime))),pairMask=pairs.states[stage];
+      constexpr std::array<std::string_view,6> names{"N0","N1","N2","N3","N4","N5"};
+      constexpr std::array<Vec3,6> colors{teal,coral,blue,violet,gold,white};
+      std::array<Vec3,6> positions{};
+      for(unsigned i=0;i<6;++i){const double angle=pi/2-2*pi*i/6;const Vec3 ordinary{-2.25F+1.45F*static_cast<float>(std::cos(angle)),1.45F*static_cast<float>(std::sin(angle)),0};positions[i]=ordinary;
+        if(matching)positions[i]={i<3?-3.5F:-1.F,1.15F-1.15F*(i%3),0};
+        else if(level==2&&analysis.equivalence){const auto group=analysis.classOf[i];unsigned size=0,slot=0;for(unsigned j=0;j<6;++j)if(analysis.classOf[j]==group){++size;slot+=j<i;}
+          const double a=2*pi*group/analysis.classCount,t=pi/2-2*pi*slot/size;
+          const float radius=analysis.classCount==1?1.2F:size==1?0:.34F;const Vec3 center{-2.25F+(analysis.classCount==1?0:1.05F*static_cast<float>(std::cos(a))),analysis.classCount==1?0:1.05F*static_cast<float>(std::sin(a)),0};
+          const auto grouped=center+Vec3{radius*static_cast<float>(std::cos(t)),radius*static_cast<float>(std::sin(t)),0};const float mix=static_cast<float>(parameter(P::GraphGroup));positions[i]=ordinary*(1-mix)+grouped*mix;
+        }
+      }
+      const unsigned property=static_cast<unsigned>(parameter(P::GraphProperty));const auto witness=analysis.witnesses[property];
+      std::array<bool,6> witnessNodes{};FiniteRelation witnessEdges=0,missing=0,pathEdges=0;
+      if(level==2&&witness.count){for(unsigned i=0;i<witness.count;++i)witnessNodes[witness.nodes[i]]=true;const auto i=witness.nodes[0],j=witness.nodes[1],k=witness.nodes[2];
+        if(property==0)missing=relationEdge(i,i);
+        if(property==1){witnessEdges=relationEdge(i,j);missing=relationEdge(j,i);}
+        if(property==2){witnessEdges=relationEdge(i,j)|relationEdge(j,k);missing=relationEdge(i,k);}
+      }
+      const unsigned frontier=static_cast<unsigned>(parameter(P::GraphTime));
+      if(level==1&&analysis.distance[target]>=0&&static_cast<unsigned>(analysis.distance[target])<=frontier){unsigned node=target;while(node!=source){const auto parent=static_cast<unsigned>(analysis.parent[node]);pathEdges|=relationEdge(parent,node);node=parent;}}
+      unsigned pending=0;if(matching&&stage<pairs.maximumSize)for(unsigned k=1;k<pairs.pathLengths[stage];++k){const auto x=pairs.paths[stage][k-1],y=pairs.paths[stage][k];const auto left=x<3?x:y,right=x>=3?x-3:y-3;pending|=1U<<(3*left+right);}
+      const auto edgePoint=[&](unsigned i,unsigned j,float t){
+        const auto from=positions[i],to=positions[j];
+        if(i==j){auto radial=normalized(Vec3{from.x+2.25F,from.y,0});if(length(radial)<.1F)radial={0,1,0};const auto tangent=Vec3{-radial.y,radial.x,0};const float angle=static_cast<float>(2*pi*t);return from+radial*.35F-radial*(.25F*std::cos(angle))+tangent*(.25F*std::sin(angle));}
+        const auto direction=normalized(to-from),side=Vec3{-direction.y,direction.x,0};const auto a=from+direction*.19F,c=to-direction*.19F;
+        return a*(1-t)+c*t+side*((matching?0:.23F)*4*t*(1-t));
+      };
+      const auto drawEdge=[&](unsigned i,unsigned j,Vec3 color,std::string_view role,bool absent){
+        if(absent){for(unsigned k=0;k<4;++k)b.rod(edgePoint(i,j,k*.25F),edgePoint(i,j,k*.25F+.12F),color,.014F,role);b.arrow(edgePoint(i,j,.9F),edgePoint(i,j,1),color,role);}
+        else {const unsigned steps=i==j?7:3;for(unsigned k=0;k+1<steps;++k)b.rod(edgePoint(i,j,k/static_cast<float>(steps)),edgePoint(i,j,(k+1)/static_cast<float>(steps)),color,.014F,role);b.arrow(edgePoint(i,j,(steps-1)/static_cast<float>(steps)),edgePoint(i,j,1),color,role);}
+      };
+      for(unsigned i=0;i<6;++i)for(unsigned j=0;j<6;++j)if(relation&relationEdge(i,j)){
+        if(matching&&(i>=3||j<3))continue;
+        Vec3 color=i==source?gold:muted*.65F;
+        if(level==1)color=(pathEdges&relationEdge(i,j))?gold:analysis.distance[i]>=0&&static_cast<unsigned>(analysis.distance[i])<frontier?teal:muted*.5F;
+        if(level==2)color=(witnessEdges&relationEdge(i,j))?gold:analysis.equivalence?colors[analysis.classOf[i]]:muted*.65F;
+        if(matching){const unsigned bit=1U<<(3*i+j-3);color=pending&bit?(pairMask&bit?coral:gold):pairMask&bit?violet:muted*.5F;}
+        drawEdge(i,j,color,"graph_edge",false);
+      }
+      if(missing)for(unsigned i=0;i<6;++i)for(unsigned j=0;j<6;++j)if(missing&relationEdge(i,j))drawEdge(i,j,coral,"graph_missing_edge",true);
+      snapshot_.curve.active=true;snapshot_.curve.count=matching?3:6;snapshot_.curve.selected=source;snapshot_.curve.selectionParameter=P::GraphNode;
+      for(unsigned i=0;i<6;++i){Vec3 color=i==source?gold:blue;
+        if(level==1)color=analysis.distance[i]>=0&&static_cast<unsigned>(analysis.distance[i])<=frontier?teal:muted;
+        if(level==2)color=witnessNodes[i]?gold:analysis.equivalence?colors[analysis.classOf[i]]:blue;
+        if(matching&&pairs.deficiency)color=(i<3?(pairs.deficientLeft&(1U<<i)):(pairs.neighbors&(1U<<(i-3))))?coral:blue;
+        b.ball(positions[i],i==source?.15F:.11F,color,"graph_node");b.label(names[i],positions[i]+Vec3{-.13F,.22F,.1F},color);if(i<snapshot_.curve.count)snapshot_.curve.controls[i]=positions[i];
+      }
+      if(level==2&&analysis.equivalence&&parameter(P::GraphGroup)==1)for(unsigned group=0;group<analysis.classCount;++group){Vec3 lo{10,10,0},hi{-10,-10,0};for(unsigned i=0;i<6;++i)if(analysis.classOf[i]==group){lo.x=std::min(lo.x,positions[i].x);lo.y=std::min(lo.y,positions[i].y);hi.x=std::max(hi.x,positions[i].x);hi.y=std::max(hi.y,positions[i].y);}
+        b.planeFrame((lo+hi)*.5F+Vec3{0,0,-.08F},{(hi.x-lo.x)*.5F+.2F,0,0},{0,(hi.y-lo.y)*.5F+.2F,0},colors[group],"graph_equivalence_class");
+      }
+      // The binary matrix shares the exact relation bits; it is a bounded
+      // triangle mesh so dense six-node relations stay under the part budget.
+      const unsigned rows=matching?3:6;const float cell=.4F,startX=1.4F,startY=1.F;
+      auto& matrix=snapshot_.solid;
+      for(unsigned i=0;i<rows;++i){b.label(names[i],{startX-.42F,startY-cell*i,.03F},i==source?gold:white);b.label(names[matching?i+3:i],{startX+cell*i,startY+.4F,.03F},white);
+        for(unsigned j=0;j<rows;++j){const unsigned to=matching?j+3:j;const bool exists=relation&relationEdge(i,to);const auto color=exists?(i==source?gold:teal):muted*.22F;const float x=startX+cell*j,y=startY-cell*i;const auto base=matrix.vertexCount;
+          for(auto delta:std::array<Vec3,4>{{{-.17F,-.17F,0},{.17F,-.17F,0},{.17F,.17F,0},{-.17F,.17F,0}}})matrix.vertices[matrix.vertexCount++]={Vec3{x,y,0}+delta,{0,0,1},color};
+          for(unsigned k:{0U,1U,2U,0U,2U,3U})matrix.indices[matrix.indexCount++]=static_cast<std::uint16_t>(base+k);
+        }
+      }
+      b.planeFrame({startX+cell*(rows-1)*.5F,startY-cell*source,-.02F},{cell*(rows-1)*.5F+.2F,0,0},{0,.2F,0},gold,"graph_matrix_row");
+      b.label(matching?"Eligible links: lit = 1":"Adjacency: lit = 1",{startX-.35F,1.85F,0},white);
+      b.metric("Directed edges",matching?std::popcount(eligible):analysis.edgeCount);
+      if(matching){
+        b.metric("Current matching size",std::popcount(pairMask));b.metric("Maximum matching size",pairs.maximumSize);b.metric("Hall deficiency",pairs.deficiency);b.metric("Deficient left subset size",std::popcount(pairs.deficientLeft));b.metric("Neighbor set size",std::popcount(pairs.neighbors));
+        b.table("Current pairs: -1 means unmatched",{"Right node","Matched","In Hall subset",{}},3);
+        for(unsigned i=0;i<3;++i){int partner=-1;for(unsigned j=0;j<3;++j)if(pairMask&(1U<<(3*i+j)))partner=static_cast<int>(j+3);b.row(names[i],{static_cast<double>(partner),partner>=0?1.:0.,pairs.deficientLeft&(1U<<i)?1.:0.,0});}
+        if(stage<pairs.maximumSize){const auto& path=pairs.paths[stage];const auto count=pairs.pathLengths[stage];const float amount=(static_cast<float>(parameter(P::GraphMatchTime))-stage)*(count-1);const unsigned segment=std::min(count-2,static_cast<unsigned>(amount));const float t=amount-segment;b.ball(positions[path[segment]]*(1-t)+positions[path[segment+1]]*t+Vec3{0,0,.12F},.075F,gold,"graph_augment_tracer");}
+        b.label(pairs.deficiency?"Coral nodes: too few neighbors for this left subset":"Violet: paired; gold adds / coral removes",{-4.1F,-2.35F,0},white);
+      }else{
+        b.metric("Reflexive",analysis.reflexive);b.metric("Symmetric",analysis.symmetric);b.metric("Transitive",analysis.transitive);b.metric("Equivalence relation",analysis.equivalence);
+        if(level==1){unsigned discovered=0;for(auto d:analysis.distance)discovered+=d>=0&&static_cast<unsigned>(d)<=frontier;b.metric("Reachable nodes",analysis.reachableCount);b.metric("Discovered nodes",discovered);b.metric("Shortest path length",analysis.distance[target]);
+          b.table("Shortest directed paths; -1 means none",{"Distance","Parent","Discovered",{}},3);for(unsigned i=0;i<6;++i)b.row(names[i],{static_cast<double>(analysis.distance[i]),static_cast<double>(analysis.parent[i]),analysis.distance[i]>=0&&static_cast<unsigned>(analysis.distance[i])<=frontier?1.:0.,0});
+          b.label(analysis.distance[target]<0?"Selected destination is unreachable":"Gold: selected shortest path after discovery",{-4.1F,-2.35F,0},white);
+        }else if(level==2){b.metric("Equivalence classes",analysis.classCount);b.metric("Witness node count",witness.count);
+          b.table(analysis.equivalence?"Equivalence classes":"Classes undefined: relation is not an equivalence",{"Class (-1 undefined)","Witness",{},{}},2);for(unsigned i=0;i<6;++i)b.row(names[i],{analysis.equivalence?static_cast<double>(analysis.classOf[i]):-1.,witnessNodes[i]?1.:0.,0,0});
+          b.label(witness.count?"Gold: witness; dashed coral: required missing edge":"Selected property holds on all six nodes",{-4.1F,-2.35F,0},white);
+        }else {b.table("Outgoing and incoming links",{"Out-degree","In-degree","Self-loop",{}},3);for(unsigned i=0;i<6;++i){unsigned out=0,incoming=0;for(unsigned j=0;j<6;++j){out+=(relation&relationEdge(i,j))!=0;incoming+=(relation&relationEdge(j,i))!=0;}b.row(names[i],{static_cast<double>(out),static_cast<double>(incoming),(relation&relationEdge(i,i))?1.:0.,0});}}
       }
       break;
     }

@@ -1,5 +1,49 @@
 # Paths workstreams
 
+## Copy textbook text to other applications
+
+**Built; automated checks pass; the user confirmed copying reading text into
+another application.** Their pasted sample includes prose and LaTeX. Separate
+question/working menu checks have not been reported. Right-click paragraphs,
+definitions, headings, equations or question
+working to open the **cyan Copy** menu. Mixed readings offer the clicked
+paragraph/equation plus **Copy reading**. Question titles, givens, working and
+prompts offer **Copy question + working**, including the stable question ID,
+current choices and feedback. Equations remain editable LaTeX source; paragraphs
+retain inline notation. Paste into another app with its normal paste command.
+
+The shared `TextbookUi` owns clipboard presentation for Library and `math_lab`.
+`NativeMath::Document` supplies existing source ranges and placements; no
+typesetter, renderer or selection engine was added. The existing question session
+supplies current working and redacted review. Closed disclosures, future working,
+answer keys and archived results are excluded from question copies. Copy creates
+no attempt, guidance event or navigation action. Existing editing fields and
+their paste behavior are unchanged.
+
+Release builds of `sorter`, `math_lab` and `paths_learning_document_ui_tests`
+pass. The pure `--text-copy-only` regression checks exact UTF-8/LaTeX, CRLF and
+blank-line boundaries, failed-typesetting source, supported/prepared questions,
+wrong feedback, Undo, completion and restart. The existing
+`paths_textbook_reading_state_tests` passes for disclosure independence and
+save replay. No ImGui context, fonts, native window, screenshot, image or system
+clipboard access was used during automated verification. The user's subsequent
+paste confirms the reading-copy interaction. The linker retains its existing
+duplicate-ImGui-library warning.
+
+Five existing production files change by +117/-31 lines (net +86), with no new
+production files. One existing test file and these ownership/workstream notes
+are updated. No competing route was introduced or removed; this is a new
+clipboard capability. Changes stay uncommitted and unrelated work is preserved.
+Evidence: `build/text-copy-evidence/verification.json`.
+
+Manual check: launch `b/sorter`, open Library, right-click a paragraph and paste
+it into another app. Right-click a **gold equation** and copy its LaTeX. After
+solving a step, right-click **cyan working** and choose **Copy question + working**;
+confirm the paste contains the question and current work. Completed **green
+working** should copy the reached final result. Full drag selection and rich
+formatted clipboard output are outside this workstream. The next candidate is
+the queued matrix exercise roles after this interaction is accepted.
+
 ## Probability reasoning through reusable exercise roles
 
 **Built and locally published; visual and teaching acceptance remain with the
@@ -766,6 +810,29 @@ One production file changes, with no new production files and 12 fewer lines.
 Changes stay uncommitted. All verification is CPU/text only; no images, native
 windows, screenshots, captures or font probes are used. The vector-construction
 checkpoint below follows this consolidation.
+
+## P066 — Relations and Graphs Lab
+
+The 37th asset (`graph`) supplies editable six-node adjacency, shortest directed
+paths, property witnesses/equivalence grouping, and three-by-three matching.
+Forty-two controls and nine presets use the existing row selector, node picker,
+playback, tables and CPU scene. `FiniteGraph.hpp/.cpp` own the mathematical
+analysis. A triangle-mesh matrix keeps dense cases within the primitive budget.
+Matching exposes alternating-path additions/removals and Hall obstructions;
+property failures mark a required missing edge without changing the relation.
+
+Both Release applications build, with the existing duplicate `libpaths_imgui.a`
+linker warning. All 14 selected checks pass (five CPU suites, nine text-only CLI
+cases). The new tests cover 2,634 relations from six sources, all 512 bipartite
+graphs against exhaustive matching enumeration, and 2,560 fresh CPU scenes.
+Observed maxima: 182 parts, 6,488 vertices and 19,416 indices. Existing layout
+checks cover 6,480 layouts and 136 object/layer states. No images, native windows,
+screenshots, captures or font probes are used.
+
+[P066_RELATIONS_AND_GRAPHS.md](P066_RELATIONS_AND_GRAPHS.md) records controls,
+launch commands, conventions and reuse scope. Algebra/Discrete checklists mark
+foundations while leaving full chapters open. Source cards, learner state and
+textbook integration remain untouched. Changes are uncommitted.
 
 ## P065 — Sets and Maps Lab
 

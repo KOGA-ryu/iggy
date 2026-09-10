@@ -89,7 +89,7 @@ void drawMathCorpus(MathCorpusUiState& ui,const MathCorpus& corpus,bool blocked)
     const bool overflow=doc.width>width;
     if(overflow)ImGui::BeginChild("Reading equations",{width,doc.height+ImGui::GetStyle().ScrollbarSize+16},ImGuiChildFlags_None,ImGuiWindowFlags_HorizontalScrollbar);
     const auto at=ImGui::GetCursorScreenPos();
-    ui.math->draw(doc,at.x,at.y,ImGui::GetColorU32(ImGuiCol_Text),IM_COL32(115,209,199,255),IM_COL32(255,199,77,255));ImGui::Dummy({doc.width,doc.height});
+    ui.math->draw(doc,at.x,at.y,ImGui::GetColorU32(ImGuiCol_Text),IM_COL32(115,209,199,255),IM_COL32(255,199,77,255));ImGui::Dummy({doc.width,doc.height});drawDocumentCopyMenu(doc,at.x,at.y);
     if(overflow)ImGui::EndChild();
   };
   TextbookContentUi content;

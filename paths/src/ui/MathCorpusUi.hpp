@@ -36,5 +36,7 @@ void drawMathCorpus(MathCorpusUiState& ui,const MathCorpus& corpus,bool blocked)
 // Data-only reconciliation; does not initialize ImGui, fonts, or a native host.
 void refreshMathCorpusPreview(MathCorpusUiState&,const MathCorpus&);
 bool recordQuestionReadingHelp(MathCorpusUiState&,BookHelp);
+// Text-only export of the active question and its current learner projection.
+std::string questionCopyText(const CorpusStarter&,const iggy3d::first_move::LayeredQuestionSession&);
 std::optional<std::size_t> drawCorpusQuestions(MathCorpusUiState& ui,const MathCorpus& corpus,bool blocked);
 } // namespace paths

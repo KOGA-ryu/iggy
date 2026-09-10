@@ -11,7 +11,7 @@
 
 namespace paths {
 
-enum class MathObjectKind : std::uint8_t { Algebra, Trig, Calculus, Linear, Discrete, Function, Surface, Symmetry, Harmonics, Oscillator, Modular, Gaussian, VectorField, Flux, Tensor, Probability, Binomial, Bayes, Covariance, Spherical, Quadratic, Roots, Psd, Norm, Curve, Lathe, Boolean, Patch, Membrane, Rigid, Truss, Simplex, Distance, Polar, Qr, Maps, Count };
+enum class MathObjectKind : std::uint8_t { Algebra, Trig, Calculus, Linear, Discrete, Function, Surface, Symmetry, Harmonics, Oscillator, Modular, Gaussian, VectorField, Flux, Tensor, Probability, Binomial, Bayes, Covariance, Spherical, Quadratic, Roots, Psd, Norm, Curve, Lathe, Boolean, Patch, Membrane, Rigid, Truss, Simplex, Distance, Polar, Qr, Maps, Graph, Count };
 enum class MathParameter : std::uint16_t {
   X, Gap, Angle, Slices, SliceGap, Sample, Shear, Scale, Depth, Shortcut,
   FunctionRule, FunctionX, DeltaX, IntegralStart, TaylorCenter, TaylorDegree,
@@ -64,7 +64,8 @@ enum class MathParameter : std::uint16_t {
   DistanceAB, DistanceAC, DistanceAD, DistanceBC, DistanceBD, DistanceCD, DistanceEdge, DistanceMirror, DistanceSecond, DistanceMix, DistanceScale, DistanceGuides,
   PolarA00, PolarA01, PolarA02, PolarA10, PolarA11, PolarA12, PolarA20, PolarA21, PolarA22, PolarShape, PolarAmount, PolarIteration, PolarExtension, PolarGuides,
   QrA0X, QrA0Y, QrA0Z, QrA1X, QrA1Y, QrA1Z, QrBX, QrBY, QrBZ, QrVector, QrStage, QrC0, QrC1, QrUseSolution, QrNull0, QrNull1, QrGuides,
-  MapsA, MapsB, MapsC, MapsSource, MapsMiddle, MapsFiber, MapsF0, MapsF1, MapsF2, MapsF3, MapsG0, MapsG1, MapsG2, MapsG3, MapsH0, MapsH1, MapsH2, MapsH3, MapsW0, MapsW1, MapsW2, MapsW3, MapsGroup, MapsTime, MapsCondition, Count
+  MapsA, MapsB, MapsC, MapsSource, MapsMiddle, MapsFiber, MapsF0, MapsF1, MapsF2, MapsF3, MapsG0, MapsG1, MapsG2, MapsG3, MapsH0, MapsH1, MapsH2, MapsH3, MapsW0, MapsW1, MapsW2, MapsW3, MapsGroup, MapsTime, MapsCondition,
+  GraphNode, GraphTarget, GraphTime, GraphProperty, GraphGroup, GraphMatchTime, GraphE00, GraphE01, GraphE02, GraphE03, GraphE04, GraphE05, GraphE10, GraphE11, GraphE12, GraphE13, GraphE14, GraphE15, GraphE20, GraphE21, GraphE22, GraphE23, GraphE24, GraphE25, GraphE30, GraphE31, GraphE32, GraphE33, GraphE34, GraphE35, GraphE40, GraphE41, GraphE42, GraphE43, GraphE44, GraphE45, GraphE50, GraphE51, GraphE52, GraphE53, GraphE54, GraphE55, Count
 };
 enum class MathActionKind : std::uint8_t { Select, SetParameter, Reset, VisitVertex, UndoRoute, ResetRoute, Check, SetLevel, SwapBounds, DescentStep, MatrixPreset, MoveSurfacePoint, SymmetryTurn, SymmetryUndo, SymmetryIdentity, TogglePlayback, AdvanceTime, ModularStep, ResetModularWalk, ReverseFieldPath, ProbabilityStep, ResetProbabilityWalk, BernoulliStep, ResetBernoulli, ObjectPreset, ResetParameters };
 enum class MathShape : std::uint8_t { Box, Rod, Disk, Sphere, Ring, Cone, Count };

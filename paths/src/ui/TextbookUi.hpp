@@ -6,7 +6,15 @@
 #include <limits>
 #include <functional>
 #include <optional>
+#include <initializer_list>
 namespace paths {
+struct TextCopyOption { const char* label; std::string_view text; };
+// Attach to the last submitted item, using an ID unique within its UI scope.
+// Copy retains source bytes; equation text is LaTeX, never pixels.
+void drawTextCopyMenu(const char* id,std::initializer_list<TextCopyOption>);
+// Source selection from existing document placements, without typesetting.
+TextCopyOption documentCopyText(const NativeMath::Document&,std::size_t placement);
+void drawDocumentCopyMenu(const NativeMath::Document&,float x,float y);
 struct BookReadingUiState {
   struct Equation { std::string source; NativeMath::Equation layout; };
   float equationPixels=0;

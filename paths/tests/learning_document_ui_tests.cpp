@@ -10,6 +10,63 @@ using namespace paths;
 namespace fm=iggy3d::first_move;
 namespace {
 void expect(bool ok,const std::string& why){if(!ok)throw std::runtime_error(why);}
+void textCopyOnly(){
+  expect(!ImGui::GetCurrentContext(),"Copy checks must not initialize ImGui or fonts");
+  NativeMath::Document doc;using Kind=NativeMath::Document::Part::Kind;
+  const std::string paragraph="Probability Ω: $P(E)=\\frac{1}{3}$ is exact.\r\nThe event is café, 100%.";
+  doc.source="Earlier.\r\n\r\n"+paragraph+"\r\n \t\r\nLater.";
+  const auto mathBegin=doc.source.find('$'),mathEnd=doc.source.find('$',mathBegin+1)+1;
+  doc.parts={{Kind::Text,0,mathBegin,{}},{Kind::InlineMath,mathBegin,mathEnd,{}},{Kind::Text,mathEnd,doc.source.size(),{}}};
+  const auto place=[&](std::size_t part,std::size_t at){doc.placements.push_back({part,at,at+1,0,0,1,1,1});return doc.placements.size()-1;};
+  const auto first=place(0,0),prose=place(0,doc.source.find("Probability")),formula=place(1,mathBegin),continuation=place(2,doc.source.find("café")),last=place(2,doc.source.find("Later"));
+  expect(documentCopyText(doc,first).text=="Earlier." && documentCopyText(doc,last).text=="Later.","Paragraph copying stops at blank lines, including whitespace and CRLF");
+  expect(documentCopyText(doc,prose).text==paragraph && documentCopyText(doc,continuation).text==paragraph,"Wrapped prose preserves UTF-8, percent signs, inline math and original line endings");
+  expect(documentCopyText(doc,formula).text=="$P(E)=\\frac{1}{3}$","Equation copying retains exact source delimiters and backslashes");
+  doc.parts[1].kind=Kind::Source;
+  expect(documentCopyText(doc,formula).text=="$P(E)=\\frac{1}{3}$" && std::string_view(documentCopyText(doc,formula).label)=="Copy source","Failed typesetting still copies its original source");
+  auto corpus=loadMathCorpus(CORPUS_FIXTURE);std::vector<CorpusStarter> questions;
+  const auto imported=importLearningDocuments(DOCUMENT_FIXTURE,corpus,questions);expect(imported.accepted,imported.message);
+  const auto at=std::find_if(questions.begin(),questions.end(),[](const auto& q){return q.id=="document_balance_question";});expect(at!=questions.end(),"Copy regression uses the real linear document");
+  auto q=*at;
+  for(const bool supported:{true,false}){
+    auto card=q;if(!supported)card.question.support.reset();
+    CorpusPractice practice({card});practice.open(0);
+    const auto copy=[&]{
+      const auto journal=practice.active()->journal().size();
+      const auto result=questionCopyText(practice.questions()[0],*practice.active());
+      expect(practice.active()->journal().size()==journal,"Copy creates no attempts or guidance events");return result;
+    };
+    const auto send=[&](fm::SupportAction action,unsigned value=0){
+      fm::LayeredQuestionCommand c{fm::LayeredQuestionCommandKind::Support};c.support=practice.active()->supportView()->command;c.support.action=action;c.support.value=value;
+      expect(practice.dispatch(c),"Supported copy fixture action succeeds");
+    };
+    const auto choose=[&](unsigned id){
+      if(supported)send(fm::SupportAction::Choose,id);
+      else expect(practice.dispatch(fm::LayeredQuestionCommand::submitOption({id})),"Prepared copy fixture choice succeeds");
+    };
+    const auto initial=copy();
+    expect(initial.find("Given\n$$\n4x-3=17\n$$")!=initial.npos && initial.find("Question: document_balance_question")!=initial.npos,"Copies the actual source question and stable ID");
+    expect(initial.find("x=5")==initial.npos && initial.find(q.question.steps[1].prompt)==initial.npos,"Unreached working and future prompts are absent");
+    expect(initial.find(q.question.steps[0].explanation)==initial.npos,"Copy does not reveal an unresolved explanation");
+    choose(11);const auto wrong=copy();
+    expect(wrong.find("Feedback\n")!=wrong.npos && wrong.find("Working\n$$\n4x=20")==wrong.npos,"Wrong choice exports feedback without invented working");
+    choose(12);
+    if(!supported)expect(practice.dispatch({fm::LayeredQuestionCommandKind::Continue}),"Prepared route advances through its owner");
+    expect(copy().find("Working\n$$\n4x=20\n$$")!=std::string::npos,"Accepted working reaches copied text");
+    if(supported){
+      send(fm::SupportAction::Undo);
+      expect(copy().find("Working\n$$\n4x=20")==std::string::npos,"Undo excludes the abandoned branch");
+      choose(12);
+    }
+    choose(21);if(!supported)expect(practice.dispatch({fm::LayeredQuestionCommandKind::Continue}),"Prepared completion succeeds");
+    const auto complete=copy();
+    expect(complete.find("Working / complete\n$$\nx=5\n$$")!=complete.npos && complete.find("Choices")==complete.npos && complete.find("Current step")==complete.npos,"Completion exports the reached result without stale prompts or choices");
+    expect(practice.dispatch({fm::LayeredQuestionCommandKind::RestartQuestion}),"Restart copy fixture");
+    expect(copy().find("x=5")==std::string::npos,"A new run cannot copy archived final working");
+  }
+  expect(!ImGui::GetCurrentContext(),"No copy check created a context or read/wrote the system clipboard");
+  std::cout<<"TEXT_COPY {\"exact_source\":true,\"supported_and_prepared\":true,\"wrong_choice\":true,\"undo\":true,\"completion\":true,\"restart\":true,\"windows\":0,\"font_probes\":0,\"clipboard_access\":false}\n";
+}
 unsigned sectionFor(const CorpusTextbook& book,std::string_view id) {
   for(unsigned i=0;i<book.sections.size();++i)if(id==book.sections[i].id)return i;
   throw std::runtime_error("Missing textbook section: "+std::string(id));
@@ -127,9 +184,11 @@ void textbookReadingState(const std::filesystem::path& source) {
 }
 int main(int argc,char** argv) {
   try {
+    if(argc==2 && std::string_view(argv[1])=="--text-copy-only"){textCopyOnly();return 0;}
     if(argc==3 && std::string_view(argv[1])=="--textbook-reading-state"){textbookReadingState(argv[2]);return 0;}
     if(argc==2 && std::string_view(argv[1])=="--reload-state-only"){reloadStateOnly();return 0;}
     expect(argc==1 || (argc==3 && std::string_view(argv[1])=="--published-store"),"Use --published-store FOLDER or no arguments");
+    textCopyOnly();
     auto corpus=loadMathCorpus(CORPUS_FIXTURE);auto questions=loadCorpusStarters(STARTER_FIXTURE,corpus);
     if(argc==3)for(const auto* name:{"matrix_reasoning.json","linear_support.json"}){
       auto more=loadCorpusStarters(std::filesystem::path(CORPUS_FIXTURE).parent_path()/name,corpus);questions.insert(questions.end(),more.begin(),more.end());

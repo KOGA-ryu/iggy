@@ -15,6 +15,17 @@ question section when the current section's questions are exhausted. Document
 figures use existing registered models and `planLessonFigureRegions`; the
 3D worker's geometry and controls remain authoritative.
 
+`TextbookUi` owns the shared right-click text-copy menu and uses the existing
+ImGui/SDL system clipboard connection. Structured passages supply their original
+strings; mixed readings reuse `NativeMath::Document` source ranges and placements
+to select whole paragraphs or equations. Copying preserves LaTeX, Unicode and
+internal line endings without reading back rendered pixels. `CorpusPracticeUi`
+formats question copies from the current session's `supportView`,
+`visibleWorking` and redacted review. It includes the current choices and feedback,
+without answer keys, future steps or archived working. Open reading disclosures
+can be copied individually; closed disclosures never supply a copy target.
+Copying has no question command, attempt, bookmark or persistence mutation.
+
 The adapter owns copied strings and lesson blocks for the lifetime of the
 borrowed `BookSection` spans. A Markdown preview rebuild remaps reading by
 stable section ID and closes old disclosures. Native bookmarks keep their
@@ -221,6 +232,15 @@ This collection consumes no sorter slots and leaves the old catalogue and
 practice-save owner unchanged. The explicit authoring map and generator prove
 subject/chapter/subcategory coverage without modifying pinned source notes.
 
+`FiniteGraph.hpp/.cpp` own a six-node relation and its BFS, property witnesses,
+equivalence classes, and three-by-three matching analysis. The Relations and
+Graphs Lab constructs arrows, a binary adjacency mesh, property counterexamples,
+class grouping and alternating-path animation from that data. The adjacency mesh
+avoids consuming a separate primitive per matrix cell. Matching uses the existing
+relation's 0..2 -> 3..5 block and preserves the other stored edges. Semantic input
+stays in `MathObjects`; the existing selected-row inspector and node picker are
+reused. [P066](P066_RELATIONS_AND_GRAPHS.md) defines the bounded interfaces.
+
 `FiniteMapsInput` / `analyzeFiniteMaps` supply the Sets and Maps Lab with
 bounded finite-map truth: fibers, composition, classifications and probability
 pushforwards. The model constructs trays, element beads, arrows, grouping and
@@ -251,8 +271,8 @@ the builders do not infer them. Zero vectors keep their labels while the existin
 primitive threshold omits zero-length arrows and segments. Part and label order,
 IDs and picker bindings are preserved.
 
-`MathParameterSpec::control` owns static inspector metadata for all 36 assets
-and 434 parameters: required group, optional short label, coordinate row and
+`MathParameterSpec::control` owns static inspector metadata for all 37 assets
+and 476 parameters: required group, optional short label, coordinate row and
 component labels, and selected-point or mode-slot binding. The inspector consumes
 those definitions directly; its separate metadata, tuple and selected-range
 registries are removed. New controls declare their bindings beside their limits

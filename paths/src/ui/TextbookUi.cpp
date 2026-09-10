@@ -15,7 +15,7 @@ void window(const char* name,ImVec2 at,ImVec2 size){
 }
 void heading(const char* text){
   ImGui::Spacing();ImGui::PushStyleColor(ImGuiCol_Text,{.45f,.82f,.78f,1});
-  ImGui::TextWrapped("%s",text);ImGui::PopStyleColor();ImGui::Separator();
+  ImGui::TextWrapped("%s",text);drawTextCopyMenu(text,{{"Copy heading",text}});ImGui::PopStyleColor();ImGui::Separator();
 }
 bool contains(std::string_view haystack,std::string_view needle){
   return std::search(haystack.begin(),haystack.end(),needle.begin(),needle.end(),[](char a,char b){return std::tolower(static_cast<unsigned char>(a))==std::tolower(static_cast<unsigned char>(b));})!=haystack.end();
@@ -39,12 +39,12 @@ void passages(NativeMath& math,BookReadingUiState& ui,std::span<const BookPassag
   ImGui::PushID(id);
   for(unsigned i=0;i<content.size();++i){
     const auto& p=content[i];ImGui::PushID(static_cast<int>(i));
-    if(p.kind==BookPassage::Kind::Prose){ImGui::TextWrapped("%s",p.text.c_str());ImGui::Spacing();}
+    if(p.kind==BookPassage::Kind::Prose){ImGui::TextWrapped("%s",p.text.c_str());drawTextCopyMenu("copy",{{"Copy paragraph",p.text}});ImGui::Spacing();}
     else {
       // Use the current reading size explicitly: display mathematics scales with prose.
       const auto& layout=equation(math,ui,p.text);
       if(!layout.error.empty()){
-        ++ui.fallbacks;ImGui::TextWrapped("Equation source: %s",p.text.c_str());
+        ++ui.fallbacks;ImGui::TextWrapped("Equation source: %s",p.text.c_str());drawTextCopyMenu("copy",{{"Copy equation (LaTeX)",p.text}});
       }else {
         const std::string number=p.number.empty()?"":"("+p.number+")";
         const float labelWidth=number.empty()?0:ImGui::CalcTextSize(number.c_str()).x+24;
@@ -59,7 +59,7 @@ void passages(NativeMath& math,BookReadingUiState& ui,std::span<const BookPassag
         const float x=start.x+std::max(0.f,(room-layout.width)*.5f);
         math.draw(layout,x,start.y,ImGui::GetColorU32(ImGuiCol_Text));
         if(!number.empty())ImGui::GetWindowDrawList()->AddText({start.x+room+12,start.y+std::max(0.f,(layout.height-ImGui::GetFontSize())*.5f)},ImGui::GetColorU32(ImGuiCol_TextDisabled),number.c_str());
-        ImGui::Dummy({room+labelWidth,layout.height});ImGui::EndChild();ImGui::PopStyleVar();
+        ImGui::Dummy({room+labelWidth,layout.height});drawTextCopyMenu("copy",{{"Copy equation (LaTeX)",p.text}});ImGui::EndChild();ImGui::PopStyleVar();
       }
       ImGui::Spacing();
     }
@@ -97,6 +97,49 @@ void lesson(Textbook& book,TextbookUiState& ui,NativeMath& math,float width){
     if(action){auto a=*action;a.section=view.section;queue(ui,a);}
   }
 }
+void copyOption(const TextCopyOption& option){
+  if(ImGui::MenuItem(option.label,nullptr,false,!option.text.empty())){
+    const std::string text(option.text);ImGui::SetClipboardText(text.c_str());
+  }
+}
+}
+void drawTextCopyMenu(const char* id,std::initializer_list<TextCopyOption> options){
+  if(ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))ImGui::SetTooltip("Right-click to copy text");
+  if(ImGui::BeginPopupContextItem(id,ImGuiPopupFlags_MouseButtonRight)){
+    ImGui::PushStyleColor(ImGuiCol_Text,{.35f,.85f,1,1});
+    for(const auto& option:options)copyOption(option);
+    ImGui::PopStyleColor();ImGui::EndPopup();
+  }
+}
+TextCopyOption documentCopyText(const NativeMath::Document& doc,std::size_t placement){
+  const auto& at=doc.placements.at(placement);const auto& part=doc.parts.at(at.part);
+  const std::string_view source=doc.source;
+  if(part.kind!=NativeMath::Document::Part::Kind::Text)
+    return {part.kind==NativeMath::Document::Part::Kind::Source?"Copy source":"Copy equation (LaTeX)",source.substr(part.begin,part.end-part.begin)};
+  // Preserve inline mathematics and original line endings in the whole paragraph.
+  std::size_t begin=0,end=source.size();
+  for(std::size_t line=0;line<source.size();){
+    const auto newline=source.find('\n',line);const auto stop=newline==source.npos?source.size():newline;
+    if(source.substr(line,stop-line).find_first_not_of(" \t\r")==source.npos){
+      if(stop<at.begin)begin=stop+1;
+      else {end=line;break;}
+    }
+    if(newline==source.npos)break;line=newline+1;
+  }
+  while(end>begin && (source[end-1]=='\n'||source[end-1]=='\r'))--end;
+  return {"Copy paragraph",source.substr(begin,end-begin)};
+}
+void drawDocumentCopyMenu(const NativeMath::Document& doc,float x,float y){
+  if(ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))ImGui::SetTooltip("Right-click to copy text");
+  if(ImGui::BeginPopupContextItem("document-copy",ImGuiPopupFlags_MouseButtonRight)){
+    ImGui::PushStyleColor(ImGuiCol_Text,{.35f,.85f,1,1});
+    const auto mouse=ImGui::GetMousePosOnOpeningCurrentPopup();
+    for(std::size_t i=0;i<doc.placements.size();++i){
+      const auto& p=doc.placements[i];
+      if(mouse.x>=x+p.x && mouse.x<x+p.x+p.width && mouse.y>=y+p.y && mouse.y<y+p.y+p.height){copyOption(documentCopyText(doc,i));break;}
+    }
+    copyOption({"Copy reading",doc.source});ImGui::PopStyleColor();ImGui::EndPopup();
+  }
 }
 std::optional<BookAction> drawBookBlock(const BookBlockView& b,BookReadingUiState& ui,NativeMath& math,float width,const std::function<void()>& drawFigure){
   static constexpr std::array<const char*,7> names{"","Definition","Proposition","Example","Figure","Exercise",""};
@@ -237,7 +280,7 @@ bool drawTextbook(Textbook& book,TextbookUiState& ui,NativeMath& math,SceneFrame
       unsigned matches=0;
       for(unsigned i=0;i<sections.size();++i)for(unsigned j=0;j<sections[i].terms.size();++j){const auto& term=sections[i].terms[j];
         if(!contains(term.name,ui.search)&&!contains(term.definition,ui.search))continue;
-        ++matches;ImGui::PushID(static_cast<int>(i));ImGui::PushID(static_cast<int>(j));heading(term.name);ImGui::TextWrapped("%s",term.definition);
+        ++matches;ImGui::PushID(static_cast<int>(i));ImGui::PushID(static_cast<int>(j));heading(term.name);ImGui::TextWrapped("%s",term.definition);drawTextCopyMenu("definition-copy",{{"Copy definition",term.definition}});
         if(ImGui::Button(sections[i].title))send(*term.blockId?BookAction{BookActionKind::OpenBlock,i,0,term.blockId}:BookAction{BookActionKind::OpenSection,i});
         ImGui::PopID();ImGui::PopID();
       }
@@ -245,7 +288,7 @@ bool drawTextbook(Textbook& book,TextbookUiState& ui,NativeMath& math,SceneFrame
     }
     case BookPage::Section:{
       ImGui::TextDisabled("%s / %s",section.part,section.chapter);heading(section.title);
-      ImGui::TextWrapped("%s",section.purpose);ImGui::Spacing();
+      ImGui::TextWrapped("%s",section.purpose);drawTextCopyMenu("purpose-copy",{{"Copy paragraph",section.purpose}});ImGui::Spacing();
       if(ImGui::Button("Reading"))send({BookActionKind::Read});
       char exerciseLabel[64];
       switch(section.exercise){
@@ -256,7 +299,7 @@ bool drawTextbook(Textbook& book,TextbookUiState& ui,NativeMath& math,SceneFrame
       }
       nextControl(exerciseLabel,column);ImGui::BeginDisabled(!*section.exercisePrompt);if(ImGui::Button(exerciseLabel))send({BookActionKind::Exercise});ImGui::EndDisabled();
       if(v.mode==BookMode::Exercise){
-        ImGui::TextWrapped("%s",section.exercisePrompt);ImGui::Separator();
+        ImGui::TextWrapped("%s",section.exercisePrompt);drawTextCopyMenu("exercise-copy",{{"Copy question",section.exercisePrompt}});ImGui::Separator();
         ImGui::BeginChild("Section exercise",{0,0});
         switch(section.exercise){
           case BookExerciseKind::MatrixBoard:drawMatrixBoardContents(book.board(),*boardUi,true);break;
@@ -269,18 +312,18 @@ bool drawTextbook(Textbook& book,TextbookUiState& ui,NativeMath& math,SceneFrame
         if(!section.lesson.empty())lesson(book,ui,math,column);
         else if(content && content->reading)content->reading(v.section,column);
         else {
-        for(const auto paragraph:section.explanation){ImGui::Spacing();ImGui::TextWrapped("%s",paragraph);}
-        heading("Definitions");for(const auto& term:section.terms){ImGui::TextColored({.9f,.78f,.49f,1},"%s",term.name);ImGui::TextWrapped("%s",term.definition);ImGui::Spacing();}
-        heading("Interactive figure");ImGui::TextWrapped("%s",section.figurePrompt);
+        for(unsigned i=0;i<section.explanation.size();++i){ImGui::PushID(static_cast<int>(i));const auto paragraph=section.explanation[i];ImGui::Spacing();ImGui::TextWrapped("%s",paragraph);drawTextCopyMenu("paragraph-copy",{{"Copy paragraph",paragraph}});ImGui::PopID();}
+        heading("Definitions");for(const auto& term:section.terms){ImGui::TextColored({.9f,.78f,.49f,1},"%s",term.name);ImGui::TextWrapped("%s",term.definition);drawTextCopyMenu(term.name,{{"Copy definition",term.definition}});ImGui::Spacing();}
+        heading("Interactive figure");ImGui::TextWrapped("%s",section.figurePrompt);drawTextCopyMenu("figure-copy",{{"Copy paragraph",section.figurePrompt}});
         figure(book,ui,column);
         heading("Worked example");
         if(ImGui::CollapsingHeader(section.exampleTitle)){
           ImGui::TextDisabled("Separate teaching example / reveal is optional");
-          for(unsigned i=0;i<section.exampleSteps.size();++i)ImGui::TextWrapped("%u. %s",i+1,section.exampleSteps[i]);
+          for(unsigned i=0;i<section.exampleSteps.size();++i){ImGui::PushID(static_cast<int>(i));ImGui::TextWrapped("%u. %s",i+1,section.exampleSteps[i]);drawTextCopyMenu("example-copy",{{"Copy step",section.exampleSteps[i]}});ImGui::PopID();}
         }
         }
-        if(*section.exercisePrompt){heading("Your exercise");ImGui::TextWrapped("%s",section.exercisePrompt);}
-        heading("Source and conventions");ImGui::TextWrapped("%s",section.reference);
+        if(*section.exercisePrompt){heading("Your exercise");ImGui::TextWrapped("%s",section.exercisePrompt);drawTextCopyMenu("exercise-copy",{{"Copy question",section.exercisePrompt}});}
+        heading("Source and conventions");ImGui::TextWrapped("%s",section.reference);drawTextCopyMenu("reference-copy",{{"Copy reference",section.reference}});
         if(!content)ImGui::TextWrapped("These are authored teaching notes. The original problem pages and learner fields remain unchanged.");
       }
       break;
