@@ -83,6 +83,19 @@ removed. The original 25-card runtime pack still reproduces byte for byte.
 The pure batch gate reads canonical reached working displays for either family
 instead of parsing matrix-only test projections. No runtime C++ changed.
 
+`author_question_family.py` owns the reusable recipe entry point for new writer
+folders. `init` supplies four editable data/prose files; `check` selects a
+registered mathematical provider and assembles its groups into one ordinary
+chapter. The first provider is the existing bounded linear teaching family.
+Its standalone packaging/receipt route was removed. It retains original-case
+construction, independent exact certificates and calculated teaching fields.
+The shared runner owns metadata, stable namespace IDs, numbered titles, choice
+placement, practice links, compiler/model/disclosure gates and a compact handoff
+with immutable evidence. It reuses the batch template/certificate functions and
+exporter file/provenance contracts. Author inputs cannot select Python paths.
+No runtime grammar, judge, renderer or publication route is added; accepted
+candidates reach publication through the existing exporter and coordinator.
+
 The [matrix reference](QUESTION_PRACTICE_FORMAT.md#editable-matrix-reference)
 connects optional document `@hint` to the existing question-step `hint` field.
 `LayeredQuestionSession::supportView` owns its disclosure separately from worked

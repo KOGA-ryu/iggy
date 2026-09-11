@@ -1,24 +1,18 @@
 #!/usr/bin/env python3
-"""Build a bounded teaching-family example through the existing six-role gate.
+"""Bounded linear-family mathematics for tools/author_question_family.py.
 
-Run from Paths: PYTHONPATH=tools python3 -B content/authoring/learning/linear_family/generate.py
-The generator knows seed solutions; certificates derive answers from original
-equations. This file is also the explicit Python certificate provider loaded by
-check_authoring_pilot.check_assignment. It is never loaded by the game.
+Seed solutions construct originals; certificates derive answers from originals.
+The shared runner owns templates, choice serialization, checking and packaging.
+This reviewed provider is never selected by an author-supplied Python path.
 """
-import argparse
 from fractions import Fraction
-import json
-from pathlib import Path
-import sys
 
 import build_question_batch as batch
-import check_authoring_pilot as pilot
 import export_learning as export
 
 SOURCE = batch.ROOT / 'content/authoring/learning/linear_family'
+SUBJECT = 'algebra'
 SETS = ('sample', 'practice', 'fresh_check')
-SOURCES = ('recipe.json', 'DESIGN.md', 'lesson.md.in', 'questions.paths.md.in', 'generate.py', 'tests.py')
 PREFIX = 'linear_family_v1'
 
 
@@ -144,21 +138,23 @@ CHECKERS = {
 }
 
 
-def make_sequence(recipe, selected):
-    require(set(recipe) == {'format', 'version', 'sets', 'roles'} and
-            recipe['format'] == 'paths_linear_family_example' and type(recipe['version']) is int
-            and recipe['version'] == 1, 'Unsupported family recipe fields/version')
+def make_sequence(recipe, selected, prefix=PREFIX):
+    require(type(recipe) is dict and set(recipe) == {'sets', 'roles'},
+            '/parameters: supply exactly sets and roles')
     require(type(recipe['sets']) is list and all(type(s) is dict for s in recipe['sets'])
             and [s.get('id') for s in recipe['sets']] == list(SETS), 'Supply the three named sets in order')
     require(type(recipe['roles']) is list and all(type(r) is dict for r in recipe['roles'])
             and [r.get('role') for r in recipe['roles']] == list(batch.EXERCISE_ROLES), 'Supply all six ordered roles')
-    for seed in recipe['sets']:
-        require(set(seed) == {'id', 'a', 'b', 'solution', 'fresh_solution'}, 'Unexpected seed field')
+    for index, seed in enumerate(recipe['sets']):
+        field = f'/sets/{index}'
+        require(set(seed) == {'id', 'a', 'b', 'solution', 'fresh_solution'}, field + ': unexpected seed field')
         a, b, s = (seed[k] for k in ('a', 'b', 'solution'))
-        require(all(type(v) is int for v in (a, b, s)) and a in (2, 4, 6, 8)
-                and 1 <= b <= 9 and a != b and 2 <= s <= 5, 'Seed outside the bounded family')
+        require(type(a) is int and a in (2, 4, 6, 8), field + '/a: use an even integer from 2 through 8')
+        require(type(b) is int and 1 <= b <= 9 and a != b,
+                field + '/b: use an integer from 1 through 9 different from a')
+        require(type(s) is int and 2 <= s <= 5, field + '/solution: use an integer from 2 through 5')
         require(type(seed['fresh_solution']) is str and seed['fresh_solution'] in ('-3/2', '-1/2', '1/2', '3/2'),
-                'Fresh solution must be a nonzero half integer in the supported range')
+                field + '/fresh_solution: use one of -3/2, -1/2, 1/2, 3/2 as a string')
     seed = next((s for s in recipe['sets'] if s['id'] == selected), None)
     require(seed is not None, 'Unknown set')
     a, b, s = (seed[k] for k in ('a', 'b', 'solution'))
@@ -180,7 +176,7 @@ def make_sequence(recipe, selected):
         rhs = coefficient*wanted+offset
         require(Fraction(rhs).denominator == 1, 'This recipe requires integral original constants')
         case = dict(a=coefficient, b=offset, c=int(rhs), reversed=reverse)
-        identity = PREFIX+'_'+selected+'_'+meta['role']+'_'+export.sha(export.encoded(case))[:12]
+        identity = prefix+'_'+selected+'_'+meta['role']+'_'+export.sha(export.encoded(case))[:12]
         questions.append(dict(id=identity, role=meta['role'], title=meta['title'], objective=meta['objective'],
                               prerequisites=meta['prerequisites'], case=case))
     sequence = dict(format='paths_exercise_roles', format_version=1, questions=questions)
@@ -188,83 +184,25 @@ def make_sequence(recipe, selected):
     return sequence
 
 
-def presentation(sequence, selected):
+def presentation(sequence):
     questions = sequence['questions']
-    key = export.sha(export.encoded([q['case'] for q in questions]))[:12]
-    values = dict(subject='algebra', subject_title='Algebra', chapter='worked_linear_practice',
-                  chapter_title='Worked linear practice', reading_id=PREFIX+'_'+selected+'_'+key+'_reading',
-                  reading_title='Balanced equations: '+selected.replace('_', ' '))
+    values = {}
     for q in questions:
         role = q['role']; a, b, c, s = original(q)
-        checked = batch.reasoning_certificate(q, CHECKERS)['expected']
-        fields = dict(given=checked['given'], a=str(a), b=str(b), c=str(c),
+        fields = dict(a=str(a), b=str(b), c=str(c),
                       opposite_b=str(-b), twice_b=str(2*b), c_plus_b=str(c+b),
                       rhs=str(c-b), solution=str(s),
                       neg_candidate_lhs=str(a*(-s)+b), undivided_lhs=str(a*(c-b)+b))
-        for number, (after, step) in enumerate(zip(checked['after'], checked['steps']), 1):
-            # Semantic IDs stay attached to answer/feedback. Only presentation
-            # order is shuffled; a question's original case fixes that order.
-            options = [(number*10+i+1, label) for i, label in enumerate(step['choices'])]
-            require(step['answer'] == options[0][1], 'Family option 1 must be the certified target')
-            options.sort(key=lambda option: export.sha(export.encoded([q['id'], number, option[0]])))
-            fields['choices_'+str(number)] = '\n'.join(f'@choice {i} | {label}' for i, label in options)
-            fields['choices_'+str(number)] += f'\n@answer {number*10+1}'
-            fields['after_'+str(number)] = after
         values.update({role+'_'+name: value for name, value in fields.items()})
     return values
 
 
-def build(selected, target, model):
-    pilot.packet()  # Preserve the existing writers' frozen reference contract.
-    inputs = {name: export.read_bytes(SOURCE/name) for name in SOURCES}
-    recipe = export.decoded(inputs['recipe.json'])
-    sequence = make_sequence(recipe, selected)
-    values = presentation(sequence, selected)
-    author = dict(format='paths_learning_authoring', format_version=1,
-                  package_id=PREFIX+'_'+selected, package_version=1,
-                  sources=[dict(id=PREFIX+'_'+selected+'_source', kind='generated',
-                      title='Original balanced-equation teaching family', uri='paths:generated/'+PREFIX,
-                      revision='1', attribution='Original Paths questions, lesson, variation plan and exact arithmetic certificates.',
-                      reuse='Original project material; no external exercise text copied.',
-                      content_ids=[values['reading_id'], *[q['id'] for q in sequence['questions']]])])
-    source_hashes = {name: export.sha(data) for name, data in inputs.items()}
-    digest = export.sha(export.encoded(dict(inputs=source_hashes, selected=selected)))
-    root = batch.ROOT/'build/linear-family-example'/selected/digest
-    source = root/'source'
-    export.immutable_directory(source, {'sequence.json': export.encoded(sequence),
-        'lesson.md.in': inputs['lesson.md.in'], 'questions.paths.md.in': inputs['questions.paths.md.in'],
-        'certificates.py': inputs['generate.py'], 'authoring.json': export.encoded(author)})
-    assignment = dict(subject='algebra', folder=str(source.relative_to(batch.ROOT)),
-                      package_id=author['package_id'], values=values)
-    # Reuse the complete existing candidate path: compiler, provenance,
-    # certificates, all wrong choices, retained working and save replay.
-    result = pilot.check_assignment(assignment, target, model)
-    require(source_hashes == {name: export.sha(export.read_bytes(SOURCE/name)) for name in SOURCES},
-            'Family source changed during verification; regenerate before using this candidate')
-    report = dict(result, family_source_sha256=source_hashes, set=selected,
-                  variation_plan=[dict(question_id=q['id'], role=q['role'], variation=meta['variation'])
-                                  for q, meta in zip(sequence['questions'], recipe['roles'])],
-                  teaching_review='Automated gates passed; see DESIGN.md for prose review and limits.',
-                  review_schedule='not_implemented', learner_evidence='not_collected')
-    receipt = export.encoded(report)
-    evidence = root/'checks'/export.sha(receipt)
-    export.immutable_directory(evidence, {'verification.json': receipt})
-    return dict(report, verification=str(evidence/'verification.json'))
-
-
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--set', choices=SETS, default='sample')
-    parser.add_argument('--target', type=Path, default=batch.ROOT/'b/sorter')
-    parser.add_argument('--model', type=Path, default=batch.ROOT/'b/paths_learning_document_tests')
-    args = parser.parse_args()
-    try:
-        print(json.dumps(build(args.set, args.target, args.model), indent=2))
-        return 0
-    except (export.ExportError, ValueError, OSError, KeyError, TypeError) as error:
-        print(json.dumps(dict(accepted=False, code=getattr(error, 'code', 'family.invalid'), message=str(error)), indent=2))
-        return 1
-
-
-if __name__ == '__main__':
-    sys.exit(main())
+def prepare(parameters, prefix):
+    """Three deliberate six-role groups, with exact fields for their teaching."""
+    groups = [(sequence['questions'], dict(presentation(sequence), set_title=selected.replace('_', ' ')))
+              for selected in SETS
+              for sequence in (make_sequence(parameters, selected, prefix),)]
+    signatures = [(q['role'], export.encoded(q['case'])) for questions, _ in groups for q in questions]
+    require(len(signatures) == len(set(signatures)),
+            '/sets: practice and fresh checks must use different originals for the same role')
+    return groups

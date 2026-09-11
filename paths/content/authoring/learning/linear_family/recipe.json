@@ -1,17 +1,93 @@
 {
-  "format": "paths_linear_family_example",
-  "version": 1,
-  "sets": [
-    {"id": "sample", "a": 6, "b": 8, "solution": 3, "fresh_solution": "1/2"},
-    {"id": "practice", "a": 4, "b": 7, "solution": 5, "fresh_solution": "3/2"},
-    {"id": "fresh_check", "a": 8, "b": 3, "solution": 2, "fresh_solution": "-1/2"}
-  ],
-  "roles": [
-    {"role": "read_notation", "title": "01 Read the signed terms", "objective": "Identify the coefficient and the added constant in an ordered pair.", "prerequisites": "Multiplication notation; signed numbers; order in a pair.", "variation": "positive_constant"},
-    {"role": "worked_check", "title": "02 Remove a negative constant", "objective": "Evaluate the right side after removing a negative added constant.", "prerequisites": "Addition of integers; inverse operations on both sides.", "variation": "negative_constant"},
-    {"role": "choose_next_step", "title": "03 Choose a useful balanced move", "objective": "Remove the added constant while preserving the coefficient and the solution set.", "prerequisites": "Equality; signed coefficients; subtracting on both sides.", "variation": "negative_coefficient_and_goal"},
-    {"role": "explain_step", "title": "04 Explain the inverse", "objective": "Choose the inverse that recovers the equation before division.", "prerequisites": "Nonzero multiplication and division; inverse operations.", "variation": "reversible_scaling"},
-    {"role": "repair_error", "title": "05 Find and repair the first error", "objective": "Identify the first invalid transformation and repair its right side.", "prerequisites": "Signed added constants; evaluation; reading sequential lines.", "variation": "first_error"},
-    {"role": "independent", "title": "06 Solve a fresh equation", "objective": "Select the exact value that satisfies the original equality.", "prerequisites": "Equality in either orientation; balanced operations; exact fractions.", "variation": "reversed_fraction"}
-  ]
+  "format": "paths_question_family",
+  "format_version": 1,
+  "family": "linear_balance_v1",
+  "package": {
+    "id": "linear_family_v1",
+    "version": 1,
+    "title": "Balanced equations: read, change and check"
+  },
+  "placement": {
+    "subject": "algebra",
+    "subject_title": "Algebra",
+    "chapter": "worked_linear_practice",
+    "chapter_title": "Worked linear practice"
+  },
+  "source": {
+    "kind": "generated",
+    "title": "Original balanced-equation teaching family",
+    "uri": "paths:generated/linear_balance_v1",
+    "revision": "1",
+    "attribution": "Original Paths questions, lesson, variation plan and exact arithmetic certificates.",
+    "reuse": "Original project material; no external exercise text copied."
+  },
+  "parameters": {
+    "sets": [
+      {
+        "id": "sample",
+        "a": 6,
+        "b": 8,
+        "solution": 3,
+        "fresh_solution": "1/2"
+      },
+      {
+        "id": "practice",
+        "a": 4,
+        "b": 7,
+        "solution": 5,
+        "fresh_solution": "3/2"
+      },
+      {
+        "id": "fresh_check",
+        "a": 8,
+        "b": 3,
+        "solution": 2,
+        "fresh_solution": "-1/2"
+      }
+    ],
+    "roles": [
+      {
+        "role": "read_notation",
+        "title": "Read the signed terms",
+        "objective": "Identify the coefficient and the added constant in an ordered pair.",
+        "prerequisites": "Multiplication notation; signed numbers; order in a pair.",
+        "variation": "positive_constant"
+      },
+      {
+        "role": "worked_check",
+        "title": "Remove a negative constant",
+        "objective": "Evaluate the right side after removing a negative added constant.",
+        "prerequisites": "Addition of integers; inverse operations on both sides.",
+        "variation": "negative_constant"
+      },
+      {
+        "role": "choose_next_step",
+        "title": "Choose a useful balanced move",
+        "objective": "Remove the added constant while preserving the coefficient and the solution set.",
+        "prerequisites": "Equality; signed coefficients; subtracting on both sides.",
+        "variation": "negative_coefficient_and_goal"
+      },
+      {
+        "role": "explain_step",
+        "title": "Explain the inverse",
+        "objective": "Choose the inverse that recovers the equation before division.",
+        "prerequisites": "Nonzero multiplication and division; inverse operations.",
+        "variation": "reversible_scaling"
+      },
+      {
+        "role": "repair_error",
+        "title": "Find and repair the first error",
+        "objective": "Identify the first invalid transformation and repair its right side.",
+        "prerequisites": "Signed added constants; evaluation; reading sequential lines.",
+        "variation": "first_error"
+      },
+      {
+        "role": "independent",
+        "title": "Solve a fresh equation",
+        "objective": "Select the exact value that satisfies the original equality.",
+        "prerequisites": "Equality in either orientation; balanced operations; exact fractions.",
+        "variation": "reversed_fraction"
+      }
+    ]
+  }
 }

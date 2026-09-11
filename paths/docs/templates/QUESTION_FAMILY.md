@@ -7,6 +7,17 @@ syntax and not permission to expand a writer's assigned scope. The completed
 the expected detail. The [research note](../MATH_PROBLEM_DESIGN_RESEARCH.md)
 explains the evidence and its limits.
 
+For the registered `linear_balance_v1` family, use
+`tools/author_question_family.py init NEW_FOLDER --family linear_balance_v1 --package NEW_ID`.
+The command supplies recipe.json, lesson.md.in, questions.paths.md.in and the
+completed example brief. Edit those four files and run
+`tools/author_question_family.py check NEW_FOLDER` with Python 3. The shared
+runner generates and checks one 18-question chapter with one lesson; it returns
+a compact handoff and full evidence path. Writers do not copy or edit Python,
+construct IDs or package metadata, or assemble a separate reading per set.
+Other mathematical families require a reviewed provider before this command
+can generate them. The recipe guide is in [Content production](../CONTENT_PRODUCTION.md#recipe-authoring).
+
 ## Learning claim and prerequisites
 
 - Observable decision the learner should make:

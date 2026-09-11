@@ -15,7 +15,7 @@ ax+b=c,\qquad a\ne0
 4x-3=9\quad\Longleftrightarrow\quad9=4x-3
 @endblock
 
-@block proposition | balance | 1.2 | Why the same operation acts on both sides
+@block proposition | rule | 1.2 | Why the same operation acts on both sides
 @prose We have ax+b=c and want to remove the added constant without changing the solutions. Subtract b from both complete sides. The added b and subtracted b cancel on the variable side; evaluate c-b on the other side. Adding b to both sides reverses the change.
 @display subtract
 ax+b-b=c-b\quad\Longleftrightarrow\quad ax=c-b
@@ -32,7 +32,7 @@ ax+b-b=c-b\quad\Longleftrightarrow\quad ax=c-b
 @prose Both reach the same equation. To check either change, add its original signed constant back to both sides. This is why naming the sign of the added constant matters before choosing an operation.
 @endblock
 
-@block proposition | coefficient | 1.4 | Undo multiplication by a nonzero coefficient
+@block proposition | condition | 1.4 | Undo multiplication by a nonzero coefficient
 @prose After removing the constant, we have ax=d and want x alone. Divide both complete sides by a. The coefficient becomes 1, and the right side becomes d/a. Multiplication by the same nonzero a reverses that step.
 @display divide
 ax=d,\quad a\ne0\quad\Longleftrightarrow\quad x=\frac{d}{a}
@@ -67,14 +67,14 @@ x=\frac{9}{4}
 4\left(\frac{9}{4}\right)-3=9-3=6
 @endblock
 
-@block example | goal | 1.6 | A valid move can miss a requested goal
+@block example | errors | 1.6 | A valid move can miss a requested goal
 @prose Suppose the goal is to remove the added constant from 4x+3=15 while keeping the coefficient 4. Subtracting 3 on both sides reaches 4x=12 and achieves that goal. Adding 3 to both sides reaches 4x+6=18: it preserves the solution set, but the constant has not been removed. Removing 3 on the left only reaches 4x=15 and changes the solution set.
 @display compare
 \begin{aligned}4x=12&\quad\text{equivalent and goal achieved}\\4x+6=18&\quad\text{equivalent, goal not achieved}\\4x=15&\quad\text{not equivalent}\end{aligned}
 @prose More than one complete method can be valid. We could divide 4x+3=15 by 4 first, giving x+3/4=15/4, then subtract 3/4 to get x=3. Removing the constant first also gives x=3 and keeps the intermediate arithmetic integral. The question's stated goal determines which next move it asks you to choose.
 @endblock
 
-@block exercise | self_check | 1.7 | Recognize the structure when the sides are reversed
+@block exercise | practice | 1.7 | Recognize the structure when the sides are reversed
 @prose Try the equation below. Use the same definitions and equality rules even though the variable expression appears on the right. This example has different numbers from the final exercise.
 @display reverse_given
 7=4x+2
@@ -89,7 +89,7 @@ x=\frac{5}{4}
 4\left(\frac{5}{4}\right)+2=5+2=7
 @endblock
 
-@block summary | finish | 1.8 | A short route with a reason at every step
+@block summary | summary | 1.8 | A short route with a reason at every step
 @prose Read the signed coefficient and added constant. Identify the goal of the next move. Apply an inverse operation to both complete sides and evaluate its arithmetic. Check that the reached equation meets the goal. Finish by substituting the proposed value into the original equality. If reviewing a mistaken solution, find its first invalid transformation before repairing the arithmetic.
 @prose The exercises use choices for notation, a calculation, a useful move, an inverse, error repair and a fresh equation. The last question checks a new application of these ideas. Completing it once does not by itself show long-term retention or the ability to write an unaided proof.
 @endblock

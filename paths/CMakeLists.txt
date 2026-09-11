@@ -416,6 +416,9 @@ if(BUILD_TESTING)
   target_compile_definitions(paths_content_tests PRIVATE PATHS_TEST_PACK="${CMAKE_CURRENT_SOURCE_DIR}/content/packs/gallery_foundation.json")
   add_test(NAME paths_content_tests COMMAND paths_content_tests)
   if(PATHS_BUILD_NATIVE)
+    add_test(NAME paths_question_family_tests COMMAND "${Python3_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/content/authoring/learning/linear_family/tests.py"
+      --target "$<TARGET_FILE:sorter>" --model "$<TARGET_FILE:paths_learning_document_tests>")
     add_test(NAME paths_question_batch_tests COMMAND "${Python3_EXECUTABLE}"
       "${CMAKE_CURRENT_SOURCE_DIR}/tests/question_batch_tests.py"
       --target "$<TARGET_FILE:sorter>" --model "$<TARGET_FILE:paths_learning_document_tests>")
@@ -426,6 +429,7 @@ if(BUILD_TESTING)
       STARTER_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/starters.json"
       DOCUMENT_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/write")
     add_test(NAME paths_learning_document_ui_tests COMMAND paths_learning_document_ui_tests)
+    add_test(NAME paths_textbook_family_capacity_tests COMMAND paths_learning_document_ui_tests --family-capacity)
     add_test(NAME paths_learning_document_reload_ui_tests COMMAND paths_learning_document_ui_tests --reload-state-only)
     add_test(NAME paths_textbook_reading_state_tests COMMAND paths_learning_document_ui_tests
       --textbook-reading-state "${CMAKE_CURRENT_SOURCE_DIR}/content/authoring/learning/linear_textbook/documents")

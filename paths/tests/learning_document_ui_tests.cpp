@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <fstream>
 #include <iostream>
 #include <set>
 #include <imgui.h>
@@ -70,6 +71,50 @@ void textCopyOnly(){
 unsigned sectionFor(const CorpusTextbook& book,std::string_view id) {
   for(unsigned i=0;i<book.sections.size();++i)if(id==book.sections[i].id)return i;
   throw std::runtime_error("Missing textbook section: "+std::string(id));
+}
+void familyPracticeCapacity() {
+  expect(!ImGui::GetCurrentContext(),"Family checks must not initialize ImGui or fonts");
+  struct Folder {
+    std::filesystem::path path=std::filesystem::canonical(std::filesystem::temp_directory_path())/("paths-family-capacity-"+std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+    ~Folder(){std::error_code error;std::filesystem::remove_all(path,error);}
+  } folder;
+  std::filesystem::create_directory(folder.path);
+  const auto source=folder.path/"family.paths.md";
+  const auto generate=[&](unsigned count){
+    const auto id="capacity_"+std::to_string(count);std::ofstream file(source);
+    file<<"@paths 1\n@subject algebra | Algebra\n@chapter capacity | Family capacity\n@lesson "<<id<<" | One family\n@template lesson.v2\n"
+        <<"@block definition | terms | 1.1 | Equality\n@prose A solution makes both sides equal.\n@endblock\n";
+    for(unsigned i=0;i<count;++i)file<<"@practice "<<id<<"_"<<i<<'\n';
+    file<<"@end\n";
+    for(unsigned i=0;i<count;++i)file<<"@question "<<id<<"_"<<i<<" | Solve the equation\n@template choices.v1\n@version 1\n"
+      <<"@goal Select the real solution.\n@given x+2=3\n@domain x is real.\n@read "<<id<<"\n@step 10 | Which value solves the equation?\n"
+      <<"@choice 11 | x=1\n@choice 12 | x=2\n@choice 13 | x=3\n@answer 11\n@after x=1\n"
+      <<"@wrong Subtract 2 from both sides.\n@why 1+2=3 checks the original equality.\n@end\n";
+    file.close();expect(bool(file),"Capacity fixture is written completely");
+  };
+  for(unsigned count:{18U,32U}) {
+    generate(count);MathCorpus corpus;std::vector<CorpusStarter> questions;
+    const auto loaded=importLearningDocuments(folder.path,corpus,questions);expect(loaded.accepted,loaded.message);
+    auto adapter=makeCorpusTextbook(corpus,questions);
+    expect(loaded.lessons==1 && loaded.questions==count && adapter->sections.size()==1,"A complete family uses one textbook section");
+    const auto& indices=adapter->bindings.front().questions;
+    expect(indices.size()==count,"All family questions reach the existing exercise selector");
+    expect(adapter->book->dispatch({BookActionKind::OpenSection,0}).accepted && adapter->book->dispatch({BookActionKind::Exercise}).accepted,"Family exercise opens in the native textbook");
+    CorpusPractice practice(questions);
+    for(unsigned i=0;i<count;++i) {
+      expect(indices[i]==i,"The family retains all question groups in authored order");practice.open(indices[i]);
+      expect(practice.dispatch(fm::LayeredQuestionCommand::submitOption({11})) && practice.dispatch({fm::LayeredQuestionCommandKind::Continue}),"Every linked question remains solvable through its owner");
+      expect(practice.active()->currentRun().completed && !practice.dispatch({fm::LayeredQuestionCommandKind::Continue}),"Completed family question waits for Next");
+    }
+    if(count==32) {
+      generate(33);const auto rejected=importLearningDocuments(folder.path,corpus,questions);
+      expect(!rejected.accepted && rejected.message.find("At most 32 question links")!=std::string::npos,"The next link above capacity is rejected at its source");
+      expect(corpus.entries.size()==1 && corpus.entries.front().id=="capacity_32" && questions.size()==32 && questions.back().id=="capacity_32_31","Rejected expansion preserves the last good family atomically");
+    }
+  }
+  expect(learningDocumentCapabilities().find("practice_links_per_lesson")!=std::string::npos,"The compiler reports the family capacity");
+  expect(!ImGui::GetCurrentContext(),"No family check initialized a renderer");
+  std::cout<<"FAMILY_CAPACITY {\"family_questions\":18,\"boundary_questions\":32,\"overflow_rejected\":33,\"single_section\":true,\"all_routes_solved\":true,\"old_content_retained\":true,\"windows\":0,\"font_probes\":0}\n";
 }
 void catalogue(const MathCorpus& corpus,const std::vector<CorpusStarter>& questions) {
   expect(!ImGui::GetCurrentContext(),"Adapter checks must not create fonts or an ImGui context");
@@ -184,6 +229,7 @@ void textbookReadingState(const std::filesystem::path& source) {
 }
 int main(int argc,char** argv) {
   try {
+    if(argc==2 && std::string_view(argv[1])=="--family-capacity"){familyPracticeCapacity();return 0;}
     if(argc==2 && std::string_view(argv[1])=="--text-copy-only"){textCopyOnly();return 0;}
     if(argc==3 && std::string_view(argv[1])=="--textbook-reading-state"){textbookReadingState(argv[2]);return 0;}
     if(argc==2 && std::string_view(argv[1])=="--reload-state-only"){reloadStateOnly();return 0;}

@@ -106,15 +106,18 @@ class BatchTests(unittest.TestCase):
             patterns.append(tuple(pattern))
         self.assertEqual(len(set(patterns)),4,'The four pilots must not share the same answer-position sequence')
         combined=self.root/'combined';export.write_tree(combined,documents)
-        lesson_run=subprocess.run([str(OPTIONS.model),'--subject-pilot-lessons',str(combined)],capture_output=True,text=True,timeout=60)
+        lesson_run=subprocess.run([str(OPTIONS.model),'--family-lessons',str(combined)],capture_output=True,text=True,timeout=60)
         self.assertEqual(lesson_run.returncode,0,lesson_run.stderr)
         self.assertEqual(json.loads(lesson_run.stdout)['independent_worked_disclosures'],12)
         # An extra public result display must fail the actual lesson projection gate.
         file=combined/'calculus.paths.md';original=file.read_bytes()
         file.write_bytes(original.replace(b'@help hint',b'@display\nf\'(1)=3\n@help hint',1))
-        leaked=subprocess.run([str(OPTIONS.model),'--subject-pilot-lessons',str(combined)],capture_output=True,text=True,timeout=60)
+        leaked=subprocess.run([str(OPTIONS.model),'--family-lessons',str(combined)],capture_output=True,text=True,timeout=60)
         self.assertNotEqual(leaked.returncode,0);self.assertIn('public worked example',leaked.stderr)
         file.write_bytes(original)
+        single=subprocess.run([str(OPTIONS.model),'--family-lessons',str(candidates[0][1]/'documents')],capture_output=True,text=True,timeout=60)
+        self.assertEqual(single.returncode,0,single.stderr)
+        self.assertEqual(json.loads(single.stdout)['independent_worked_disclosures'],3)
         baseline=OPTIONS.target.parent/'content/write';target=export.Target(OPTIONS.target)
         before=target.inspect(documents=baseline)['catalogue']['questions']
         for assignment,source in candidates:

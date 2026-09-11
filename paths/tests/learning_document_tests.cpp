@@ -405,12 +405,12 @@ void questionBatch(const Path& root,const Path& folder) {
   }
   std::cout<<Json{{"accepted",true},{"question_ids",ids},{"questions",content},{"routes",routes},{"wrong_choices",wrongs},{"disclosure_checks",disclosures},{"save_replay",true},{"windows",0}}.dump()<<'\n';
 }
-void subjectPilotLessons(const Path& source) {
-  Fixture f;const auto imported=f.load(source);expect(imported.accepted,imported.message);
-  expect(imported.lessons==4 && imported.questions==24,"Reviewed pilot wave has four readings and twenty-four questions");
+void familyLessons(const Path& source) {
+  Fixture f;const auto first=f.corpus.entries.size();const auto imported=f.load(source);expect(imported.accepted,imported.message);
+  expect(imported.lessons>0 && f.corpus.entries.size()==first+imported.lessons,"Family documents add structured readings");
   unsigned disclosures=0;
-  for(const auto* id:{"pilot_alg_balance_v1_reading","pilot_trig_sine_v1_reading","pilot_calc_derivative_v1_reading","pilot_la_rows_v1_reading"}) {
-    const auto& blocks=lesson(f.corpus,id).lesson;
+  for(std::size_t i=first;i<f.corpus.entries.size();++i) {
+    const auto& id=f.corpus.entries[i].id;const auto& blocks=f.corpus.entries[i].lesson;
     for(const auto* required:{"start","terms","rule","condition","worked","errors","practice","summary"})
       expect(std::any_of(blocks.begin(),blocks.end(),[&](const auto& b){return b.id==required;}),std::string(id)+": missing teaching block "+required);
     const auto worked=std::find_if(blocks.begin(),blocks.end(),[](const auto& b){return b.id=="worked";});
@@ -433,8 +433,8 @@ void subjectPilotLessons(const Path& source) {
       }
     }
   }
-  std::cout<<Json{{"accepted",true},{"readings",4},{"questions",24},{"closed_disclosures",disclosures},
-                  {"independent_worked_disclosures",12},{"windows",0}}.dump()<<'\n';
+  std::cout<<Json{{"accepted",true},{"readings",imported.lessons},{"questions",imported.questions},{"closed_disclosures",disclosures},
+                  {"independent_worked_disclosures",3*imported.lessons},{"windows",0}}.dump()<<'\n';
 }
 void questionBatchUpgrade(const Path& before,const Path& after,const Path& folder) {
   Fixture old;const auto first=old.bank.size();expect(old.load(before).accepted,"Original batch imports");
@@ -914,8 +914,8 @@ int main(int argc,char** argv) {
     if(argc==3 && std::string_view(argv[1])=="--question-batch") {
       std::filesystem::create_directories(folder);questionBatch(argv[2],folder);std::filesystem::remove_all(folder);return 0;
     }
-    if(argc==3 && std::string_view(argv[1])=="--subject-pilot-lessons") {
-      subjectPilotLessons(argv[2]);return 0;
+    if(argc==3 && std::string_view(argv[1])=="--family-lessons") {
+      familyLessons(argv[2]);return 0;
     }
     if(argc==3 && std::string_view(argv[1])=="--published-store") {
       std::filesystem::create_directories(folder);published(argv[2],folder);std::filesystem::remove_all(folder);return 0;

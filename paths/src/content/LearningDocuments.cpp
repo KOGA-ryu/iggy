@@ -16,7 +16,7 @@ namespace {
 namespace fm=iggy3d::first_move;
 using Json=nlohmann::json;
 using Path=std::filesystem::path;
-constexpr std::size_t maxFile=128*1024,maxExpanded=2*1024*1024,maxDocuments=128;
+constexpr std::size_t maxFile=128*1024,maxExpanded=2*1024*1024,maxDocuments=128,maxPracticeLinks=32;
 enum class Template { Lesson, BookLesson, Choices, Linear, Matrix };
 constexpr std::array templates{std::pair{"lesson.v1",Template::Lesson},std::pair{"lesson.v2",Template::BookLesson},std::pair{"choices.v1",Template::Choices},std::pair{"linear.v1",Template::Linear},std::pair{"matrix.v1",Template::Matrix}};
 constexpr std::array blockKinds{std::pair{"introduction",BookBlockKind::Introduction},std::pair{"definition",BookBlockKind::Definition},
@@ -383,7 +383,7 @@ struct Compiler {
           s.hint.emplace();field(*s.hint,value);break;
         }
         case Command::Read:require(current().question,"@read belongs to a question");identity(value);require(block->links.size()<8,"At most eight reading references");block->links.push_back(value);break;
-        case Command::Practice:require(!current().question && !block->bookBlock,"@practice belongs outside a textbook block");identity(value);require(block->links.size()<16,"At most sixteen question links");block->links.push_back(value);if(block->format==Template::Lesson)prose=&block->body;break;
+        case Command::Practice:require(!current().question && !block->bookBlock,"@practice belongs outside a textbook block");identity(value);require(block->links.size()<maxPracticeLinks,"At most "+std::to_string(maxPracticeLinks)+" question links");block->links.push_back(value);if(block->format==Template::Lesson)prose=&block->body;break;
         case Command::Text:require(!current().question && current().format==Template::Lesson && value.empty(),"@text resumes a lesson.v1 body and takes no arguments");prose=&block->body;break;
         case Command::Block: {
           auto& b=current();require(!b.question && b.format==Template::BookLesson && !b.bookBlock && b.lesson.size()<64,"lesson.v2 has at most 64 closed @block sections");
@@ -573,7 +573,7 @@ DocumentImport importLearningStore(const Path& store,MathCorpus& corpus,std::vec
 }
 std::string learningDocumentCapabilities() {
   Json result{{"format_version",1},{"document_format","paths.md v1"},{"templates",Json::array()},{"figures",Json::array()}};
-  result["limits"]={{"documents",maxDocuments},{"file_bytes",maxFile},{"expanded_bytes",maxExpanded},{"filesystem_entries",2048},{"include_depth",8},{"subjects",32},{"chapters",512},{"readings",4096},{"questions",1024},{"steps",32},{"choices",8}};
+  result["limits"]={{"documents",maxDocuments},{"file_bytes",maxFile},{"expanded_bytes",maxExpanded},{"filesystem_entries",2048},{"include_depth",8},{"subjects",32},{"chapters",512},{"readings",4096},{"questions",1024},{"steps",32},{"choices",8},{"practice_links_per_lesson",maxPracticeLinks}};
   for(const auto& [key,kind]:templates)result["templates"].push_back(key);
   result["step_hint"]={{"templates",{"linear.v1","matrix.v1"}},{"directive","hint"},{"optional",true},{"bytes",8000}};
   result["choice_feedback"]={{"templates",{"choices.v1","linear.v1","matrix.v1"}},{"directive","feedback"},{"optional",true},{"bytes",2000},{"wrong_choices_only",true}};
