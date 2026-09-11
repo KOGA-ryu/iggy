@@ -345,21 +345,27 @@ a reset credit. Different topics, interruptions and coordinator work prevent
 an isolated speed or cost comparison; no token or weekly-allowance saving is
 claimed. No subsequent curriculum wave is assigned.
 
-The reusable recipe capability supports two registered families as described
+The reusable recipe capability supports four registered families as described
 below. Other mathematics still requires its reviewed providers;
 this does not assign another production wave.
 
 ## Recipe authoring
 
 The common entry point is `tools/author_question_family.py`. It currently
-supports `linear_balance_v1` and `sine_turn_v1`, using the existing reviewed
-teaching and native choices/textbook layout. Work from the Paths root:
+supports `linear_balance_v1`, `sine_turn_v1`, `polynomial_derivative_v1`
+and `row_operations_v1`,
+using the existing reviewed teaching and native choices/textbook layout.
+Work from the Paths root:
 
 ```sh
 python3 -B tools/author_question_family.py init content/authoring/drafts/balance_next --family linear_balance_v1 --package balance_next
 python3 -B tools/author_question_family.py check content/authoring/drafts/balance_next
 python3 -B tools/author_question_family.py init content/authoring/drafts/sine_next --family sine_turn_v1 --package sine_next
 python3 -B tools/author_question_family.py check content/authoring/drafts/sine_next
+python3 -B tools/author_question_family.py init content/authoring/drafts/derivatives_next --family polynomial_derivative_v1 --package derivatives_next
+python3 -B tools/author_question_family.py check content/authoring/drafts/derivatives_next
+python3 -B tools/author_question_family.py init content/authoring/drafts/rows_next --family row_operations_v1 --package rows_next
+python3 -B tools/author_question_family.py check content/authoring/drafts/rows_next
 ```
 
 `init` requires a new directory. Its four editable files are:
@@ -375,13 +381,29 @@ The shared recipe fields are `format: paths_question_family`, `format_version: 1
 `family`, `package`, `placement`, `source` and `parameters`. Package has id,
 version and title; placement has subject/subject_title and chapter/chapter_title.
 Source has kind, title, uri, revision, attribution and reuse. The registered
-provider defines parameters. Both use three named finite sets and six role
+provider defines parameters. All use three named finite sets and six role
 descriptions. The [linear example](../content/authoring/learning/linear_family/DESIGN.md)
 derives signed linear cases from bounded coefficients and solutions. The
 [sine example](../content/authoring/learning/sine_family/DESIGN.md) specifies a
 height, coefficient sign, offset and known branch for each named role, with
 strict limits that keep its feedback and questions meaningful.
+The [polynomial derivative example](../content/authoring/learning/polynomial_family/DESIGN.md)
+uses four bounded integer coefficients and a fixed evaluation point per role.
+It reserves the independent lesson example and rejects cases without two
+distinct named numerical distractors.
+The [row-operation example](../content/authoring/learning/row_family/DESIGN.md)
+uses bounded augmented rows and explicit multipliers where the question supplies
+one. It checks unique solutions, whole-row targets, reversible arithmetic and
+distinct misconceptions, including conditions that keep the written corrections
+accurate. Its calculated elimination multiplier may be fractional.
 No Python path or program is accepted as a recipe field.
+
+Sine, calculus and row operations use the same named-case assembly: sets and
+role metadata, case identities and repeated-question rejection live in the
+shared runner.
+Providers supply only mathematical input validation/construction and calculated
+fields. The linear recipe retains its different grouped-seed mathematics.
+Adding another named-case provider does not require copying those shared steps.
 
 `check` generates stable question IDs from the registered family/version,
 package namespace, role, set and original mathematics. It fills existing
@@ -390,9 +412,11 @@ first-answer positions across roles and sets while preserving feedback IDs,
 and assembles one lesson with ordered practice links. It creates
 standard metadata and source coverage automatically. The linear provider's
 old standalone packaging and receipt implementation was removed. The sine
-adapter calls the frozen Wave 01 exact mathematical functions without calling
-its old recipe, presentation or packaging functions. Imported mathematical
-code is included in the shared source-change checks and verification hashes.
+and calculus adapters call the frozen Wave 01 exact mathematical functions;
+the row adapter uses the canonical batch matrix checkers and frozen calculated
+corrections. None calls the old recipe, choice-ordering or packaging routes.
+Imported mathematical code is included in the shared source-change checks
+and verification hashes.
 
 The actual document compiler, independent finite certificates, complete model
 replay, wrong-choice checks, saved-work replay and shared disclosure gate must
@@ -416,17 +440,18 @@ not inferred merely from an unchanged ID. Routine teaching review remains the
 coordinator's responsibility. Visual quality and learning outcomes remain
 separate observations. Neither checking nor initialization publishes content.
 
-Only these two families' documented finite parameters are supported at this
-checkpoint. The sine scaffold deliberately starts with the reviewed Wave 01
-mathematics; publishing it unchanged would duplicate that practice. New IDs or
-package names do not establish new mathematical coverage. Both examples remain
-unpublished. A number edit still needs review for purposeful variation.
+Only these four families' documented finite parameters are supported at this
+checkpoint. The sine, calculus and row scaffolds deliberately start with reviewed
+Wave 01 mathematics; publishing them unchanged would duplicate that practice.
+New IDs or package names do not establish new mathematical coverage. The
+examples remain unpublished. A number edit still needs review for purposeful
+variation.
 
 Adding another subject means registering its reviewed generator/certificates
 and calculated fields with the same runner, while reusing the packaging and
 checking path. It does not mean trusting answer keys or copying this linear
 oracle into unrelated mathematics. The single targeted
-`paths_question_family_tests` CTest entry covers both providers; their tests
+`paths_question_family_tests` CTest entry covers all four providers; their tests
 are maintained in `tests/question_family_tests.py`.
 
 ## Deferred demonstration packaging

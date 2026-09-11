@@ -1,0 +1,102 @@
+@question {{read_notation_id}} | {{read_notation_title}}
+@template choices.v1
+@version 1
+@goal {{read_notation_objective}}
+@given {{read_notation_given}}
+@domain The entries are real coefficients of x and y followed by the right-hand constant. The vertical bar is not division.
+@read {{reading_id}}
+@step 10 | Which equation is represented by this augmented row?
+{{read_notation_choices_1}}
+@feedback {{read_notation_wrong_1_1_id}} | This changes the y coefficient from {{read_notation_b}} to {{read_notation_negative_b}}. The ordered row [{{read_notation_a}},{{read_notation_b}}|{{read_notation_c}}] represents {{read_notation_answer_1}}.
+@feedback {{read_notation_wrong_1_2_id}} | This uses y coefficient {{read_notation_negative_c}} instead of {{read_notation_b}}, and right-hand constant {{read_notation_b}} instead of {{read_notation_c}}. Keep coefficient, coefficient, constant order: {{read_notation_answer_1}}.
+@after {{read_notation_after_1}}
+@wrong Match the x coefficient, y coefficient, and constant in order.
+@why Read the entries in x, y, constant order: {{read_notation_calculation_1}}
+@end
+
+@question {{worked_check_id}} | {{worked_check_title}}
+@template choices.v1
+@version 1
+@goal {{worked_check_objective}}
+@given {{worked_check_given}}
+@domain R2 is the destination; use the old rows and operate on its x, y, and constant entries.
+@read {{reading_id}}
+@step 10 | What is the missing constant after the complete replacement of row 2?
+{{worked_check_choices_1}}
+@feedback {{worked_check_wrong_1_0_id}} | This keeps the old constant {{worked_check_second_2}}. Apply the same row operation: {{worked_check_constant_calculation}}.
+@feedback {{worked_check_wrong_1_2_id}} | This uses the wrong signed constant update. The complete replacement requires {{worked_check_constant_calculation}}, not {{worked_check_wrong_1_2_label}}.
+@after {{worked_check_after_1}}
+@wrong Apply the same signed multiple to the constant after the augmented bar.
+@why Apply the stated multiple to the constant after the bar as well: {{worked_check_forward_calculation}}. Row 1 is unchanged, so the resulting augmented matrix is {{worked_check_changed_row}}.
+@end
+
+@question {{choose_next_step_id}} | {{choose_next_step_title}}
+@template choices.v1
+@version 1
+@goal {{choose_next_step_objective}}
+@given {{choose_next_step_given}}
+@domain The target is the x coefficient in row 2. Keep row 1 unchanged and use a whole-row replacement.
+@read {{reading_id}}
+@step 10 | Which operation eliminates x from row 2 while leaving row 1 unchanged?
+{{choose_next_step_choices_1}}
+@feedback {{choose_next_step_wrong_1_1_id}} | This changes row 1, but row 1 must remain unchanged. The stated goal requires a replacement of row 2 by {{choose_next_step_answer_1}}.
+@feedback {{choose_next_step_wrong_1_0_id}} | With this multiple, row 2 has x coefficient {{choose_next_step_second_0}}+({{choose_next_step_opposite_k}})({{choose_next_step_first_0}})={{choose_next_step_wrong_multiple_x}}, not 0. Use {{choose_next_step_answer_1}}.
+@after {{choose_next_step_after_1}}
+@wrong Check both the destination row and whether its new x coefficient is zero.
+@why Test row 2's x coefficient while retaining row 1: {{choose_next_step_forward_calculation}}. All three destination entries use the same multiple; row 1 is unchanged: {{choose_next_step_changed_row}}.
+@end
+
+@question {{explain_step_id}} | {{explain_step_title}}
+@template choices.v1
+@version 1
+@goal {{explain_step_objective}}
+@given {{explain_step_given}}
+@domain Row 1 remains unchanged. A reverse operation must recover all three entries of the original row 2.
+@read {{reading_id}}
+@step 10 | Which inverse operation restores the original second row?
+{{explain_step_choices_1}}
+@feedback {{explain_step_wrong_1_0_id}} | Repeating the original multiple gives constant {{explain_step_changed_constant}}+({{explain_step_k}})({{explain_step_first_2}})={{explain_step_repeated_constant}}, not the original {{explain_step_second_2}}. Use {{explain_step_answer_1}}.
+@feedback {{explain_step_wrong_1_1_id}} | Zeroing row 2 erases its original entries [{{explain_step_second_0}},{{explain_step_second_1}}|{{explain_step_second_2}}] instead of recovering them. Use {{explain_step_answer_1}}.
+@after {{explain_step_after_1}}
+@wrong Undo an addition or subtraction with the opposite multiple of the retained row.
+@why Reverse the replacement with the opposite multiple on every entry: {{explain_step_inverse_calculation}}. With row 1 unchanged, this restores the complete original augmented matrix {{explain_step_original_row}}.
+@end
+
+@question {{repair_error_id}} | {{repair_error_title}}
+@template choices.v1
+@version 1
+@goal {{repair_error_objective}}
+@given {{repair_error_given}}
+@domain L1, L2 and L3 form a student attempt containing an error; later lines may carry an earlier error. The intended operation reaches every column.
+@read {{reading_id}}
+@step 10 | Which line first fails to apply the row operation to the complete row?
+{{repair_error_choices_1}}
+@feedback {{repair_error_wrong_1_1_id}} | L2 only carries forward the unchanged constant from L1; the omission first occurs in L1.
+@feedback {{repair_error_wrong_1_2_id}} | L3 is a consequence of the incomplete earlier line; inspect L1 before judging later arithmetic.
+@after {{repair_error_after_1}}
+@wrong Find the earliest omitted constant or coefficient operation before judging later arithmetic.
+@why The first incomplete operation is visible in the constant column: L_1 leaves {{repair_error_second_2}} unchanged, but the constant must use {{repair_error_constant_expression}}.
+@step 20 | What is the corrected consequence of that first error?
+{{repair_error_choices_2}}
+@feedback {{repair_error_wrong_2_0_id}} | This leaves the old constant {{repair_error_second_2}} untouched. The complete constant update is {{repair_error_constant_calculation}}.
+@feedback {{repair_error_wrong_2_1_id}} | This subtracts only one copy of {{repair_error_first_2}}, although the required multiple is {{repair_error_k}}. The complete constant update is {{repair_error_constant_calculation}}.
+@after {{repair_error_after_2}}
+@wrong Recalculate the missing operation from the original entries.
+@why Recalculate that constant from the original rows: {{repair_error_constant_calculation}}.
+@end
+
+@question {{independent_id}} | {{independent_title}}
+@template choices.v1
+@version 1
+@goal {{independent_objective}}
+@given {{independent_given}}
+@domain x and y are real. Each option is an ordered pair (x,y), and the same pair must satisfy both original equations.
+@read {{reading_id}}
+@step 10 | Which ordered pair solves both original equations?
+{{independent_choices_1}}
+@feedback {{independent_wrong_1_0_id}} | This pair makes the original left sides {{independent_wrong_0_left_0}} and {{independent_wrong_0_left_1}}; they must equal {{independent_first_constant}} and {{independent_second_constant}} respectively. The pair (x,y)=({{independent_x}},{{independent_y}}) satisfies both equations.
+@feedback {{independent_wrong_1_2_id}} | This pair makes the original left sides {{independent_wrong_2_left_0}} and {{independent_wrong_2_left_1}}; they must equal {{independent_first_constant}} and {{independent_second_constant}} respectively. The pair (x,y)=({{independent_x}},{{independent_y}}) satisfies both equations.
+@after {{independent_after_1}}
+@wrong Substitute both coordinates into both original rows, retaining exact fractions.
+@why Substitute the same ordered pair into both original equations: {{independent_calculation_1}}
+@end

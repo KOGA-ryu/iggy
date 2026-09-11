@@ -8,7 +8,6 @@ import export_learning as export
 
 SOURCE = Path(__file__).resolve().parent
 SUBJECT = 'trigonometry'
-SETS = ('sample', 'practice', 'fresh_check')
 DOMAIN = dict(units='radians', lower='0', upper='2', include_lower=True, include_upper=False)
 LEVELS = ('-1', '-1/2', '0', '1/2', '1')
 ROLE_LEVELS = {
@@ -76,35 +75,3 @@ def presentation(questions):
         values.update({q['role']+'_'+name: value for name, value in fields.items()})
     return values
 
-
-def prepare(parameters, prefix):
-    require(type(parameters) is dict and set(parameters) == {'domain', 'sets', 'roles'},
-            '/', 'Supply domain, sets and roles')
-    require(export.encoded(parameters['domain']) == export.encoded(DOMAIN), '/domain',
-            'Only real radians in [0, 2pi) are supported; keep the supplied domain exactly')
-    sets, roles = parameters['sets'], parameters['roles']
-    require(type(sets) is list and all(type(s) is dict for s in sets)
-            and [s.get('id') for s in sets] == list(SETS), '/sets', 'Supply sample, practice and fresh_check in order')
-    require(type(roles) is list and all(type(r) is dict for r in roles)
-            and [r.get('role') for r in roles] == list(batch.EXERCISE_ROLES), '/roles', 'Supply the six ordered roles')
-    for index, meta in enumerate(roles):
-        require(set(meta) == {'role', 'title', 'objective', 'prerequisites'}
-                and all(type(v) is str and v.strip() and '\n' not in v and '\r' not in v for v in meta.values()),
-                f'/roles/{index}', 'Supply the role, title, objective and prerequisites as single-line text')
-    groups, signatures = [], set()
-    for index, seed in enumerate(sets):
-        pointer = f'/sets/{index}'
-        require(set(seed) == {'id', 'cases'} and type(seed['cases']) is dict
-                and set(seed['cases']) == set(batch.EXERCISE_ROLES), pointer, 'Supply id and one case per role')
-        questions = []
-        for meta in roles:
-            role = meta['role']; location = pointer+'/cases/'+role
-            case = original_case(seed['cases'][role], role, location)
-            q = dict(meta, case=case, id=prefix+'_'+seed['id']+'_'+role+'_'+export.sha(export.encoded(case))[:12])
-            signature = (role, batch.reasoning_certificate(q, CHECKERS)['expected']['given'])
-            require(signature not in signatures, location, 'Use a different displayed original for this role in each set')
-            signatures.add(signature); questions.append(q)
-        batch.validate_role_sequence(dict(format='paths_exercise_roles', format_version=1, questions=questions),
-                                     SOURCE/'recipe.json')
-        groups.append((questions, dict(presentation(questions), set_title=seed['id'].replace('_', ' '))))
-    return groups

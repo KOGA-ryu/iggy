@@ -1,0 +1,243 @@
+{
+  "format": "paths_question_family",
+  "format_version": 1,
+  "family": "polynomial_derivative_v1",
+  "package": {
+    "id": "polynomial_family_v1",
+    "version": 1,
+    "title": "Polynomial derivatives: a slope and its check"
+  },
+  "placement": {
+    "subject": "calculus",
+    "subject_title": "Calculus",
+    "chapter": "topic_0060",
+    "chapter_title": "Differentiation"
+  },
+  "source": {
+    "kind": "generated",
+    "title": "Original Paths polynomial derivative teaching family",
+    "uri": "paths:generated/polynomial_derivative_v1",
+    "revision": "1",
+    "attribution": "Reuses the reviewed Paths Wave 01 polynomial derivative cases, lesson, questions and exact certificates. The Wave 01 review checked definitions and conditions against OpenStax Calculus Volume 1 sections 3.1 and 3.3 on 2026-09-10.",
+    "reuse": "Original project material; no external exercise wording copied. Frozen source: content/authoring/production/wave01/calculus."
+  },
+  "parameters": {
+    "sets": [
+      {
+        "id": "sample",
+        "cases": {
+          "read_notation": {
+            "coefficients": [
+              1,
+              -2,
+              3,
+              4
+            ],
+            "at": 1
+          },
+          "worked_check": {
+            "coefficients": [
+              -1,
+              3,
+              2,
+              -5
+            ],
+            "at": 2
+          },
+          "choose_next_step": {
+            "coefficients": [
+              2,
+              1,
+              -3,
+              0
+            ],
+            "at": -1
+          },
+          "explain_step": {
+            "coefficients": [
+              1,
+              0,
+              4,
+              -1
+            ],
+            "at": 0
+          },
+          "repair_error": {
+            "coefficients": [
+              2,
+              -3,
+              1,
+              2
+            ],
+            "at": 1
+          },
+          "independent": {
+            "coefficients": [
+              -1,
+              2,
+              -4,
+              3
+            ],
+            "at": -1
+          }
+        }
+      },
+      {
+        "id": "practice",
+        "cases": {
+          "read_notation": {
+            "coefficients": [
+              3,
+              1,
+              -2,
+              0
+            ],
+            "at": 0
+          },
+          "worked_check": {
+            "coefficients": [
+              1,
+              -3,
+              0,
+              2
+            ],
+            "at": 2
+          },
+          "choose_next_step": {
+            "coefficients": [
+              -2,
+              1,
+              3,
+              -4
+            ],
+            "at": 1
+          },
+          "explain_step": {
+            "coefficients": [
+              1,
+              2,
+              -1,
+              0
+            ],
+            "at": -1
+          },
+          "repair_error": {
+            "coefficients": [
+              -1,
+              0,
+              5,
+              1
+            ],
+            "at": 2
+          },
+          "independent": {
+            "coefficients": [
+              2,
+              -1,
+              -2,
+              4
+            ],
+            "at": -1
+          }
+        }
+      },
+      {
+        "id": "fresh_check",
+        "cases": {
+          "read_notation": {
+            "coefficients": [
+              1,
+              0,
+              0,
+              -2
+            ],
+            "at": -2
+          },
+          "worked_check": {
+            "coefficients": [
+              0,
+              3,
+              -4,
+              1
+            ],
+            "at": 2
+          },
+          "choose_next_step": {
+            "coefficients": [
+              -3,
+              0,
+              2,
+              0
+            ],
+            "at": 1
+          },
+          "explain_step": {
+            "coefficients": [
+              2,
+              -1,
+              0,
+              5
+            ],
+            "at": -1
+          },
+          "repair_error": {
+            "coefficients": [
+              1,
+              2,
+              0,
+              -3
+            ],
+            "at": 2
+          },
+          "independent": {
+            "coefficients": [
+              0,
+              0,
+              -5,
+              4
+            ],
+            "at": -3
+          }
+        }
+      }
+    ],
+    "roles": [
+      {
+        "role": "read_notation",
+        "title": "Read derivative notation",
+        "objective": "Identify the difference-quotient definition at the stated point.",
+        "prerequisites": "Real substitution, signed polynomial arithmetic and the linked derivative definition."
+      },
+      {
+        "role": "worked_check",
+        "title": "Complete a derivative calculation",
+        "objective": "Complete the stated derivative arithmetic.",
+        "prerequisites": "Real substitution, signed polynomial arithmetic and the linked derivative definition."
+      },
+      {
+        "role": "choose_next_step",
+        "title": "Factor the increment",
+        "objective": "Select the factored quotient before cancellation.",
+        "prerequisites": "Real substitution, signed polynomial arithmetic and the linked derivative definition."
+      },
+      {
+        "role": "explain_step",
+        "title": "Explain cancellation",
+        "objective": "State when the displayed quotient identity is defined.",
+        "prerequisites": "Real substitution, signed polynomial arithmetic and the linked derivative definition."
+      },
+      {
+        "role": "repair_error",
+        "title": "Repair a derivative calculation",
+        "objective": "Locate the first error, then correct the derivative value.",
+        "prerequisites": "Real substitution, signed polynomial arithmetic and the linked derivative definition."
+      },
+      {
+        "role": "independent",
+        "title": "Find a fresh derivative",
+        "objective": "Find the derivative at the given real input.",
+        "prerequisites": "Real substitution, signed polynomial arithmetic and the linked derivative definition."
+      }
+    ]
+  }
+}

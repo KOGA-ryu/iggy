@@ -21,6 +21,18 @@ import export_learning as export
 
 family = runner.load_provider('linear_balance_v1')
 sine = runner.load_provider('sine_turn_v1')
+polynomial = runner.load_provider('polynomial_derivative_v1')
+rows = runner.load_provider('row_operations_v1')
+
+
+def semantic_question(row):
+    """Compare full compiled teaching while allowing identity/position changes."""
+    q = copy.deepcopy(row['question']); q.pop('id')
+    for step in q['steps']:
+        labels = {o['id']:o['label'] for o in step['options']}
+        step['accepted_option_ids'] = [labels[i] for i in step['accepted_option_ids']]
+        step['options'] = sorted([{k:v for k,v in o.items() if k != 'id'} for o in step['options']], key=lambda o:o['label'])
+    return q
 
 
 class FamilyTests(unittest.TestCase):
@@ -227,7 +239,7 @@ class SineRecipeTests(RecipeFixture):
         for name in ('lesson.md.in', 'questions.paths.md.in'):
             self.assertEqual((self.source/name).read_bytes(), (sine.math.SOURCE/'families/sine_turn'/name).read_bytes())
         recipe = export.decoded((self.source/'recipe.json').read_bytes())
-        groups = sine.prepare(recipe['parameters'], 'reuse_test')
+        groups = runner.prepare_groups(sine, recipe['parameters'], 'reuse_test')
         for (questions, fields), old_set in zip(groups, sine.math.SETS):
             old = sine.math.sequence('sine_turn', old_set)['questions']
             for q, previous in zip(questions, old):
@@ -365,6 +377,305 @@ class SineRecipeTests(RecipeFixture):
         with patch.object(runner, 'model_gate', side_effect=gate), patch.object(export, 'read_bytes', side_effect=read):
             with self.assertRaises(export.ExportError) as caught: self.check()
         self.assertEqual(caught.exception.code, 'family.source_changed')
+
+
+class PolynomialRecipeTests(RecipeFixture):
+    family_name = 'polynomial_derivative_v1'
+
+    def test_reviewed_math_and_complete_compiled_teaching_survive_common_format(self):
+        report = self.check(); g = polynomial.math
+        self.assertEqual((report['questions'], report['readings'], report['decisions'], report['wrong_choices']), (18,1,21,42))
+        self.assertEqual(report['lesson_checks']['independent_worked_disclosures'], 3)
+        self.assertTrue(report['route_checks']['save_replay']); self.assertFalse(report['published'])
+        self.assertEqual({p.name for p in self.source.iterdir()}, set(runner.INPUTS))
+        self.assertEqual(report, self.check())
+        self.assertEqual((self.source/'lesson.md.in').read_bytes(), (g.ROOT/'families/polynomial_rules/lesson.md.in').read_bytes())
+        recipe = export.decoded((g.ROOT/'recipe.json').read_bytes()); old_questions, blocks = [], []
+        for selected in g.SETS:
+            group = g.sequence(recipe, 'polynomial_rules', selected)['questions']; old_questions.extend(group)
+            blocks.extend(g.question_text(q, pos) for q,pos in zip(group, g.POSITIONS['polynomial_rules',selected]))
+        with tempfile.TemporaryDirectory(prefix='paths-calculus-reference-') as temporary:
+            folder = Path(temporary).resolve()
+            (folder/'chapter.paths.md').write_text(batch.chapter_text(g.values('polynomial_rules',old_questions,'\n\n'.join(blocks))))
+            old = runner.model_gate(MODEL, '--question-batch', folder)['questions']
+        self.assertEqual(list(map(semantic_question,report['route_checks']['questions'])), list(map(semantic_question,old)))
+        for current, previous in zip(report['mathematical_checks'], old_questions):
+            expected = batch.reasoning_certificate(previous, g.CHECKERS)
+            self.assertEqual(current['expected'], expected['expected'])
+            self.assertEqual(current['evidence'], expected['evidence'])
+        positions = [next(i for i,o in enumerate(q['question']['steps'][0]['options'])
+                          if o['id'] in q['question']['steps'][0]['accepted_option_ids']) for q in report['route_checks']['questions']]
+        self.assertTrue(all(sorted(positions[i::6]) == [0,1,2] for i in range(6)))
+        for path in runner.PROVIDER_DEPENDENCIES[self.family_name]:
+            self.assertEqual(report['tools_sha256'][str(path.relative_to(ROOT))], export.sha(path.read_bytes()))
+
+    def test_full_bounded_polynomial_pool_against_independent_horner_expansion(self):
+        # Repeated multiplication by (a+h); no binomial or derivative helper.
+        def shifted_horner(c, a):
+            result = [0]
+            for coefficient in c:
+                product = [0]*(len(result)+1)
+                for i,value in enumerate(result): product[i] += a*value; product[i+1] += value
+                product[0] += coefficient; result = product
+            return result[:4]
+        checked, numeric, degenerate = 0, 0, 0
+        for coefficients in itertools.product(range(-5,6), repeat=4):
+            if not any(coefficients[:3]): continue
+            for a in range(-3,4):
+                seed = dict(coefficients=list(coefficients), at=a)
+                if dict(family='polynomial_rules', **seed) == polynomial.WORKED_CASE: continue
+                case = polynomial.original_case(seed, 'read_notation', '/seed')
+                t = polynomial.math.context(dict(id='oracle', role='read_notation', case=case))
+                e = shifted_horner(coefficients, a)
+                self.assertEqual(t['e'], e); self.assertEqual(t['d'], e[1]); self.assertEqual(t['function_value'], e[0])
+                # These are the three named misconceptions, evaluated from the
+                # independently expanded original; select distinct wrong values.
+                wrong = list(dict.fromkeys(v for v in (e[0],e[1]+coefficients[-1],-e[1]) if v != e[1]))
+                if len(wrong) >= 2:
+                    self.assertEqual([e['value'] for e in polynomial.math.numeric_errors(t)], wrong[:2]); numeric += 1
+                else:
+                    with self.assertRaises(export.ExportError): polynomial.math.numeric_errors(t)
+                    degenerate += 1
+                checked += 1
+        self.assertEqual(checked, 102409)
+        self.assertEqual(numeric+degenerate, checked)
+        print(json.dumps(dict(polynomial_originals_checked=checked,numeric_role_cases=numeric,rejected_numeric_cases=degenerate)))
+
+    def test_point_edit_reaches_answer_working_and_feedback_without_changing_other_questions(self):
+        before = self.check()
+        self.change_recipe(lambda r:r['parameters']['sets'][0]['cases']['worked_check'].update(at=1))
+        after = self.check(); old, new = before['route_checks']['questions'], after['route_checks']['questions']
+        self.assertEqual(old[:1]+old[2:], new[:1]+new[2:]); self.assertNotEqual(old[1]['id'], new[1]['id'])
+        self.assertIn(r'\quad a=1', new[1]['question']['equation'])
+        self.assertEqual(after['mathematical_checks'][1]['expected']['steps'][0]['answer'], '5')
+        self.assertEqual(new[1]['question']['working_states'][-1]['display'], "f'(1)=5")
+        wrong = next(o for o in new[1]['question']['steps'][0]['options'] if o['id']==12)
+        self.assertIn('(-1)(1)^3+(3)(1)^2+(2)(1)+(-5)=-1', wrong['wrong_feedback'])
+        self.assertIn('(-1)(3)(1)^2+(3)(2)(1)+(2)(1)=5', wrong['wrong_feedback'])
+
+    def test_markdown_prompt_and_specific_correction_edits_reach_all_three_sets(self):
+        before = self.check(); path = self.source/'questions.paths.md.in'; original = path.read_text()
+        for fragment, field in [('After applying the power and sum rules, what value does the derivative expression give?', 'prompt'),
+                                ('This option computes', 'wrong_feedback')]:
+            path.write_text(original.replace(fragment, 'Check the signed terms. '+fragment, 1))
+            after = self.check(); expected = copy.deepcopy(before['route_checks'])
+            for q in expected['questions'][1::6]:
+                step = q['question']['steps'][0]
+                if field == 'prompt': step['prompt'] = 'Check the signed terms. '+step['prompt']
+                else:
+                    option = next(o for o in step['options'] if o['id']==12)
+                    option['wrong_feedback'] = 'Check the signed terms. '+option['wrong_feedback']
+            self.assertEqual(after['route_checks'], expected)
+            self.assertEqual(after['mathematical_checks'], before['mathematical_checks'])
+
+    def test_invalid_inputs_and_degenerate_numeric_cases_identify_exact_locations(self):
+        original = (self.source/'recipe.json').read_bytes()
+        cases = [({'coefficients':[1,2,3]},'/coefficients'), ({'coefficients':[1,2,3,4,5]},'/coefficients'),
+                 ({'coefficients':[6,2,3,4]},'/coefficients/0'), ({'coefficients':[True,2,3,4]},'/coefficients/0'),
+                 ({'coefficients':[1,2,'3',4]},'/coefficients/2'), ({'coefficients':[0,0,0,4]},'/coefficients'),
+                 ({'at':4},'/at'), ({'at':False},'/at'), ({'at':'1'},'/at'),
+                 ({'coefficients':[1,-2,1,4],'at':1},''), ({'coefficients':[0,1,0,0],'at':0},'')]
+        for mutation, suffix in cases:
+            (self.source/'recipe.json').write_bytes(original)
+            self.change_recipe(lambda r:r['parameters']['sets'][0]['cases']['independent'].update(mutation))
+            with self.assertRaises(export.ExportError) as caught: self.check()
+            self.assertIn(str(self.source/'recipe.json')+':/parameters/sets/0/cases/independent'+suffix, str(caught.exception))
+        (self.source/'recipe.json').write_bytes(original)
+        self.change_recipe(lambda r:r['parameters']['sets'][1]['cases'].update(r['parameters']['sets'][0]['cases']))
+        with self.assertRaises(export.ExportError) as caught: self.check()
+        self.assertIn('different displayed original', str(caught.exception))
+        for mutation in (lambda r:r['parameters'].update(domain='complex'),
+                         lambda r:r['parameters']['sets'][0]['cases']['independent'].update(answer=0),
+                         lambda r:r['parameters']['roles'][0].update(title='too long '*200)):
+            (self.source/'recipe.json').write_bytes(original); self.change_recipe(mutation)
+            with self.assertRaises(export.ExportError): self.check()
+
+    def test_actual_false_key_missing_point_and_invalid_cancellation_are_rejected(self):
+        # Mutate the authored template and send it through the real compiler;
+        # the common certificate boundary must reject otherwise playable cards.
+        path = self.source/'questions.paths.md.in'; original = path.read_text()
+        defects = [original.replace('@after {{explain_step_after_1}}', '@after h=0', 1),
+                   original.replace('@given {{independent_given}}', '@given f(x)={{independent_f}}', 1)]
+        for damaged in defects:
+            path.write_text(damaged)
+            with self.assertRaises(export.ExportError) as caught: self.check()
+            self.assertIn('given/after', str(caught.exception)); self.assertIn(str(path), str(caught.exception))
+        path.write_text(original)
+        report = self.check(); recipe = export.decoded((self.source/'recipe.json').read_bytes())
+        qs, checks, _, _, _ = runner.assemble(recipe, runner.inputs(self.source), self.source, polynomial)
+        text = (Path(report['authoring'])/'documents/chapter.paths.md').read_text()
+        text = text.replace('@answer 11', '@answer 12', 1).replace('@feedback 12 |', '@feedback 11 |', 1)
+        with tempfile.TemporaryDirectory(prefix='paths-polynomial-key-') as temporary:
+            folder = Path(temporary).resolve(); (folder/'chapter.paths.md').write_text(text)
+            compiled = runner.model_gate(MODEL, '--question-batch', folder)['questions']
+            with self.assertRaises(export.ExportError): batch.verify_role_content(qs, compiled, checks)
+
+
+class RowRecipeTests(RecipeFixture):
+    family_name = 'row_operations_v1'
+
+    def test_reviewed_math_and_complete_compiled_teaching_survive_common_format(self):
+        report = self.check(); g = rows.math
+        self.assertEqual((report['questions'],report['readings'],report['decisions'],report['wrong_choices']), (18,1,21,42))
+        self.assertEqual(report['lesson_checks']['independent_worked_disclosures'], 3)
+        self.assertTrue(report['route_checks']['save_replay']); self.assertFalse(report['published'])
+        self.assertEqual({p.name for p in self.source.iterdir()}, set(runner.INPUTS))
+        self.assertEqual(report, self.check())
+        self.assertEqual((self.source/'lesson.md.in').read_bytes(), (g.WORKER/'row_operations/lesson.md.in').read_bytes())
+        old_qs, old_checks, documents, _, _ = g.family_material(export.decoded((g.WORKER/'recipe.json').read_bytes()),'row_operations')
+        with tempfile.TemporaryDirectory(prefix='paths-row-reference-') as temporary:
+            folder = Path(temporary).resolve(); export.write_tree(folder, documents)
+            old = runner.model_gate(MODEL,'--question-batch',folder)['questions']
+        self.assertEqual(list(map(semantic_question,report['route_checks']['questions'])), list(map(semantic_question,old)))
+        for current, previous in zip(report['mathematical_checks'], old_checks):
+            self.assertEqual(current['evidence'], previous['evidence'])
+            a, b = copy.deepcopy(current['expected']), copy.deepcopy(previous['expected'])
+            for expected in (a,b):
+                for step in expected['steps']: step['choices'].sort()
+            self.assertEqual(a, b)
+        positions = [next(i for i,o in enumerate(q['question']['steps'][0]['options'])
+                          if o['id'] in q['question']['steps'][0]['accepted_option_ids']) for q in report['route_checks']['questions']]
+        self.assertTrue(all(sorted(positions[i::6]) == [0,1,2] for i in range(6)))
+        self.assertEqual(report['mathematical_checks'][14]['evidence']['facts']['multiplier'], '-3/2')
+        for path in runner.PROVIDER_DEPENDENCIES[self.family_name]:
+            self.assertEqual(report['tools_sha256'][str(path.relative_to(ROOT))], export.sha(path.read_bytes()))
+
+    def test_finite_sample_pool_against_independent_gaussian_elimination(self):
+        # Pivot, normalize and eliminate; do not use the production Cramer
+        # solver, row-addition helper or certificate to derive expectations.
+        def solve(original):
+            a = [[Fraction(v) for v in row] for row in original]
+            for column in range(2):
+                pivot = next((i for i in range(column,2) if a[i][column]), None)
+                if pivot is None: return None
+                a[column], a[pivot] = a[pivot], a[column]
+                scale = a[column][column]; a[column] = [v/scale for v in a[column]]
+                for i in range(2):
+                    if i != column:
+                        factor = a[i][column]; a[i] = [v-factor*w for v,w in zip(a[i],a[column])]
+            return [a[0][2],a[1][2]]
+        pool = [list(row) for row in itertools.product(range(-2,3),range(-2,3),(-1,1))]
+        accepted = dict.fromkeys(batch.EXERCISE_ROLES,0); rejected = 0
+        for first, second in itertools.product(pool,repeat=2):
+            original = [first,second]; xy = solve(original)
+            candidates = [('choose_next_step',None),('independent',None)] + [
+                (role,k) for role,k in itertools.product(rows.OPERATIONS,(-2,-1,1,2))]
+            for role,k in candidates:
+                case = dict(rows=original)
+                if k is not None: case['multiplier'] = k
+                possible = xy is not None
+                if role == 'choose_next_step': possible = possible and first[0] != 0 and second[0] != 0
+                if role == 'independent': possible = possible and xy[0] != 0 and xy[0] != xy[1]
+                if role in ('worked_check','repair_error'):
+                    possible = possible and second[0]+k*first[0] == 0 and second[1]+k*first[1] == 1
+                if role == 'repair_error': possible = possible and k <= -2
+                if not possible:
+                    with self.assertRaises(export.ExportError, msg=(role,case)): rows.original_case(case,role,'/sample')
+                    rejected += 1; continue
+                q = dict(id='sample',role=role,case=rows.original_case(case,role,'/sample'))
+                cert = batch.reasoning_certificate(q,rows.CHECKERS); facts = cert['evidence']['facts']
+                solution = list(map(Fraction,facts['solution' if role == 'independent' else 'original_solution']))
+                self.assertEqual(solution,xy)
+                if role == 'independent':
+                    pairs = [(xy[1],xy[0]),xy,(2*xy[0],xy[1])]
+                    residuals = [[a*x+b*y-c for a,b,c in original] for x,y in pairs]
+                    self.assertEqual([list(map(Fraction,r)) for r in facts['choice_residuals']],residuals)
+                else:
+                    if role == 'choose_next_step': k = -Fraction(second[0],first[0]); self.assertEqual(Fraction(facts['multiplier']),k)
+                    changed = [first,[v+k*w for v,w in zip(second,first)]]
+                    self.assertEqual(solve(changed),xy)
+                    if role in ('worked_check','repair_error'):
+                        self.assertEqual(list(map(Fraction,facts['new_row' if role == 'worked_check' else 'corrected_row'])),changed[1])
+                        self.assertEqual(Fraction(cert['expected']['steps'][-1]['answer']),changed[1][2])
+                    if role == 'explain_step': self.assertEqual([[Fraction(v) for v in r] for r in facts['recovered_rows']],original)
+                    fields = rows.presentation([q]); prefix = role+'_'
+                    for j in range(3):
+                        self.assertIn(f'{second[j]}+({batch.tex(k)})({first[j]})={batch.tex(changed[1][j])}',fields[prefix+'forward_calculation'])
+                accepted[role] += 1
+        self.assertEqual(solve(rows.WORKED_ROWS),[Fraction(16,7),Fraction(13,7)])
+        self.assertEqual(sum(accepted.values())+rejected,35000)
+        self.assertTrue(all(accepted[r] > 0 for r in batch.EXERCISE_ROLES if r != 'read_notation'))
+        print(json.dumps(dict(row_system_role_cases=35000,row_cases_accepted=accepted,row_cases_rejected=rejected)))
+
+    def test_original_row_edit_updates_all_columns_answer_and_specific_feedback(self):
+        before = self.check()
+        self.change_recipe(lambda r:r['parameters']['sets'][0]['cases']['worked_check'].update(rows=[[1,-1,3],[2,-1,11]]))
+        after = self.check(); old, new = before['route_checks']['questions'],after['route_checks']['questions']
+        self.assertEqual(old[:1]+old[2:],new[:1]+new[2:]); self.assertNotEqual(old[1]['id'],new[1]['id'])
+        self.assertEqual(after['mathematical_checks'][1]['expected']['steps'][0]['answer'],'5')
+        self.assertIn(r'0&1&5\end{array}',new[1]['question']['working_states'][-1]['display'])
+        step = new[1]['question']['steps'][0]
+        for calculation in ('2+(-2)(1)=0','-1+(-2)(-1)=1','11+(-2)(3)=5'):
+            self.assertIn(calculation,step['explanation'])
+        wrong = next(o for o in step['options'] if o['id'] == 11)
+        self.assertEqual(wrong['label'],'11'); self.assertIn('11+(-2)(3)=5',wrong['wrong_feedback'])
+
+    def test_markdown_prompt_and_correction_edits_reach_all_three_sets(self):
+        before = self.check(); path = self.source/'questions.paths.md.in'; original = path.read_text()
+        for fragment,field in [('Which inverse operation restores the original second row?','prompt'),
+                               ('Repeating the original multiple gives constant','wrong_feedback')]:
+            path.write_text(original.replace(fragment,'Retain the complete row. '+fragment,1))
+            after = self.check(); expected = copy.deepcopy(before['route_checks'])
+            for q in expected['questions'][3::6]:
+                step = q['question']['steps'][0]
+                if field == 'prompt': step['prompt'] = 'Retain the complete row. '+step['prompt']
+                else:
+                    option = next(o for o in step['options'] if o['id'] == 11)
+                    option['wrong_feedback'] = 'Retain the complete row. '+option['wrong_feedback']
+            self.assertEqual(after['route_checks'],expected)
+            self.assertEqual(after['mathematical_checks'],before['mathematical_checks'])
+
+    def test_invalid_shapes_singular_systems_and_misleading_corrections_report_recipe_location(self):
+        original = (self.source/'recipe.json').read_bytes()
+        failures = [('read_notation',dict(row=[1,2]),'/row'),('read_notation',dict(row=[1,True,3]),'/row/1'),
+            ('read_notation',dict(row=[1,2,21]),'/row/2'),('read_notation',dict(row=[1,'2',3]),'/row/1'),
+            *[('read_notation',dict(row=[1,b,c]),'/row') for b,c in ((0,3),(2,2),(2,-2))],
+            ('independent',dict(rows=[[1,2,3]]),'/rows'),('independent',dict(rows=[[1,2,3],[2,4,6]]),''),
+            ('independent',dict(rows=[[1,0,0],[0,1,2]]),''),('independent',dict(rows=[[1,0,2],[0,1,2]]),''),
+            ('independent',dict(rows=rows.WORKED_ROWS),'/rows'),('independent',dict(answer=[1,2]),''),
+            ('choose_next_step',dict(rows=[[0,1,2],[1,1,3]]),''),
+            ('worked_check',dict(multiplier=0),'/multiplier'),('worked_check',dict(multiplier=True),'/multiplier'),
+            ('worked_check',dict(multiplier=7),'/multiplier'),('worked_check',dict(multiplier=1),''),
+            ('worked_check',dict(rows=[[1,2,0],[2,5,8]]),'/rows/0/2'),
+            ('explain_step',dict(rows=[[1,2,0],[2,5,8]]),'/rows/0/2'),
+            ('repair_error',dict(rows=[[1,1,2],[1,2,4]],multiplier=-1),'')]
+        for role,mutation,suffix in failures:
+            (self.source/'recipe.json').write_bytes(original)
+            self.change_recipe(lambda r:r['parameters']['sets'][0]['cases'][role].update(mutation))
+            with self.assertRaises(export.ExportError) as caught: self.check()
+            self.assertIn(str(self.source/'recipe.json')+':/parameters/sets/0/cases/'+role+suffix,str(caught.exception))
+        (self.source/'recipe.json').write_bytes(original)
+        self.change_recipe(lambda r:r['parameters']['sets'][1]['cases'].update(r['parameters']['sets'][0]['cases']))
+        with self.assertRaises(export.ExportError) as caught: self.check()
+        self.assertIn('different displayed original',str(caught.exception))
+
+    def test_compiled_false_keys_and_working_reject_and_repair_keeps_two_decisions(self):
+        report = self.check(); recipe = export.decoded((self.source/'recipe.json').read_bytes())
+        qs,checks,_,_,_ = runner.assemble(recipe,runner.inputs(self.source),self.source,rows)
+        for index in (4,10,16):
+            first,second = report['route_checks']['questions'][index]['question']['steps']
+            self.assertIn('Which line first',first['prompt']); self.assertIn('corrected consequence',second['prompt'])
+            answer = checks[index]['expected']['steps'][1]['answer']
+            self.assertNotIn('='+answer,checks[index]['expected']['after'][0]+first['explanation'])
+        original = (Path(report['authoring'])/'documents/chapter.paths.md').read_text()
+        false_key = original.replace('@answer 11','@answer 12',1).replace('@feedback 12 |','@feedback 11 |',1)
+        false_working = original.replace('@after '+checks[1]['expected']['after'][0],'@after 0=1',1)
+        for damaged in (false_key,false_working):
+            self.assertNotEqual(damaged,original)
+            with tempfile.TemporaryDirectory(prefix='paths-row-mutation-') as temporary:
+                folder = Path(temporary).resolve(); (folder/'chapter.paths.md').write_text(damaged)
+                compiled = runner.model_gate(MODEL,'--question-batch',folder)['questions']
+                with self.assertRaises(export.ExportError): batch.verify_role_content(qs,compiled,checks)
+
+    def test_calculated_fields_use_captured_inputs_without_frozen_assembly_or_file_reads(self):
+        parameters = export.decoded((self.source/'recipe.json').read_bytes())['parameters']
+        expected = runner.prepare_groups(rows,parameters,'sample')
+        self.assertIs(rows.CHECKERS,batch.MATRIX_ROLE_CHECKERS)
+        failure = AssertionError('The recipe adapter must not call frozen assembly or read author inputs')
+        with patch.object(rows.math,'sequence',side_effect=failure), patch.object(rows.math,'render',side_effect=failure), \
+                patch.object(rows.math,'family_material',side_effect=failure), patch.object(rows.math,'order',side_effect=failure), \
+                patch.object(export,'read_bytes',side_effect=failure), patch.object(Path,'open',side_effect=failure):
+            self.assertEqual(runner.prepare_groups(rows,parameters,'sample'),expected)
 
 
 if __name__ == '__main__':

@@ -9,9 +9,12 @@ explains the evidence and its limits.
 
 For a registered family, use
 `tools/author_question_family.py init NEW_FOLDER --family FAMILY --package NEW_ID`.
-FAMILY is `linear_balance_v1` or `sine_turn_v1`; the
-[sine example](../../content/authoring/learning/sine_family/DESIGN.md) documents
-the second family's finite cases and teaching fields.
+FAMILY is `linear_balance_v1`, `sine_turn_v1`, `polynomial_derivative_v1`
+or `row_operations_v1`.
+The [sine example](../../content/authoring/learning/sine_family/DESIGN.md),
+[polynomial derivative example](../../content/authoring/learning/polynomial_family/DESIGN.md),
+and [row-operation example](../../content/authoring/learning/row_family/DESIGN.md)
+document their finite cases and teaching fields.
 The command supplies recipe.json, lesson.md.in, questions.paths.md.in and the
 completed example brief. Edit those four files and run
 `tools/author_question_family.py check NEW_FOLDER` with Python 3. The shared

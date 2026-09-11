@@ -1,0 +1,102 @@
+@question {{read_notation_id}} | {{read_notation_title}}
+@template choices.v1
+@version 1
+@goal {{read_notation_objective}}
+@given {{read_notation_given}}
+@domain The function f has real inputs. The fixed input is a={{read_notation_a}}; h denotes a change in input.
+@read {{reading_id}}
+@step 10 | Which limit or value defines the derivative at a={{read_notation_a}}?
+{{read_notation_choices_1}}
+@feedback 12 | This ratio puts the input change h above the output change. Slope uses output change divided by input change, followed by its limit as h approaches zero.
+@feedback 13 | f({{read_notation_a}}) is the function output: {{read_notation_value_expression}}={{read_notation_function_value}}. A derivative measures change near this input, rather than the output itself.
+@after {{read_notation_after_1}}
+@wrong Identify which quantity measures output change per unit input change.
+@why The numerator f({{read_notation_a}}+h)-f({{read_notation_a}}) is the output change. Dividing it by the nonzero input change h gives an average slope. The limit as h approaches zero is f'({{read_notation_a}}); the original quotient remains undefined at h=0.
+@end
+
+@question {{worked_check_id}} | {{worked_check_title}}
+@template choices.v1
+@version 1
+@goal {{worked_check_objective}}
+@given {{worked_check_given}}
+@domain All inputs are real. The power rule multiplies each nonconstant coefficient by its exponent and reduces that exponent by one; evaluate at a={{worked_check_a}}.
+@read {{reading_id}}
+@step 10 | After applying the power and sum rules, what value does the derivative expression give?
+{{worked_check_choices_1}}
+@feedback 12 | This option computes {{worked_check_error_a_name}}: {{worked_check_error_a_expression}}={{worked_check_error_a_value}}. Compute the displayed derivative instead: {{worked_check_derivative_expression}}={{worked_check_d}}. A constant contributes zero to a derivative.
+@feedback 13 | This option computes {{worked_check_error_b_name}}: {{worked_check_error_b_expression}}={{worked_check_error_b_value}}. The signed derivative calculation is {{worked_check_derivative_expression}}={{worked_check_d}}; preserve each power multiplier and sign.
+@after {{worked_check_after_1}}
+@wrong Evaluate every term of the displayed derivative expression with its sign.
+@why The derivative terms give {{worked_check_derivative_expression}}={{worked_check_d}}. Expanding the original polynomial independently gives f({{worked_check_a}}+h)={{worked_check_expanded}} and f({{worked_check_a}})={{worked_check_function_value}}. Subtracting leaves {{worked_check_numerator}}. For nonzero h the quotient is {{worked_check_hp}}, whose limit is {{worked_check_d}}. Both calculations give the same slope.
+@end
+
+@question {{choose_next_step_id}} | {{choose_next_step_title}}
+@template choices.v1
+@version 1
+@goal {{choose_next_step_objective}}
+@given {{choose_next_step_given}}
+@domain The real increment h is nonzero. The requested next form must show a common h factored in the numerator and retain the denominator h.
+@read {{reading_id}}
+@step 10 | Which expression shows the factored quotient before cancellation?
+{{choose_next_step_choices_1}}
+@feedback 12 | {{choose_next_step_hp}} is the valid simplified quotient after cancellation. This decision asks for the preceding form with the common h still visible above and below the fraction bar.
+@feedback 13 | This divides {{choose_next_step_hp}} by h once more. Multiplying the numerator back by h gives {{choose_next_step_numerator}}; the missing numerator factor is required to represent the original quotient.
+@after {{choose_next_step_after_1}}
+@wrong Distinguish a valid simplified expression from the specifically requested factorization.
+@why The numerator {{choose_next_step_numerator}} equals h({{choose_next_step_hp}}). Thus the quotient is {{choose_next_step_factored}}. Since h is nonzero, cancelling the common factor gives {{choose_next_step_hp}}. Multiplying this result by h recovers the original numerator.
+@end
+
+@question {{explain_step_id}} | {{explain_step_title}}
+@template choices.v1
+@version 1
+@goal {{explain_step_objective}}
+@given {{explain_step_given}}
+@domain a={{explain_step_a}} is fixed and real; h is a real increment. Choose the restriction required for the displayed quotient identity.
+@read {{reading_id}}
+@step 10 | For which values of h is this identity between the original quotient and its simplification defined?
+{{explain_step_choices_1}}
+@feedback 12 | At h=0 the numerator is f({{explain_step_a}})-f({{explain_step_a}})=0 and the denominator is zero. The quotient 0/0 is undefined; a limit does not change this fact.
+@feedback 13 | All real values include zero, where the original denominator vanishes. The simplified polynomial can have a value there while the original quotient does not.
+@after {{explain_step_after_1}}
+@wrong Check the denominator of the original expression before cancelling.
+@why Subtracting f({{explain_step_a}}) gives the numerator {{explain_step_numerator}}=h({{explain_step_hp}}). Cancellation is valid only when the common factor h is nonzero. The quotient then equals {{explain_step_hp}}; its limit as h approaches zero is {{explain_step_d}}, a separate statement from the nonzero-h identity.
+@end
+
+@question {{repair_error_id}} | {{repair_error_title}}
+@template choices.v1
+@version 1
+@goal {{repair_error_objective}}
+@given {{repair_error_given}}
+@domain L1, L2 and L3 label a proposed solution containing an error. Compare each line with the original polynomial; h is nonzero when the quotient is formed.
+@read {{reading_id}}
+@step 10 | Which line is the first to disagree with the original polynomial?
+{{repair_error_choices_1}}
+@feedback 12 | L1 is the correct expansion of f({{repair_error_a}}+h). The following subtraction of f({{repair_error_a}}), a constant with no h term, must leave the coefficient of h unchanged.
+@feedback 13 | L3 uses the altered linear coefficient from L2. That later conclusion inherits an earlier error; compare the h coefficients in L1 and L2 first.
+@after {{repair_error_after_1}}
+@wrong Subtracting a constant changes only the constant term of a polynomial in h.
+@why L2 changes the coefficient of h even though f({{repair_error_a}}) has no h term. Subtracting f({{repair_error_a}}) should cancel only the constant term of L1. The derivative must be recalculated from that corrected subtraction.
+@step 20 | After correcting the subtraction, what is f'({{repair_error_a}})?
+{{repair_error_choices_2}}
+@feedback 22 | This computes {{repair_error_error_a_name}}: {{repair_error_error_a_expression}}={{repair_error_error_a_value}}. Recover the unchanged h coefficient from the expansion; the independent derivative calculation is {{repair_error_derivative_expression}}={{repair_error_d}}.
+@feedback 23 | This computes {{repair_error_error_b_name}}: {{repair_error_error_b_expression}}={{repair_error_error_b_value}}. Correct subtraction gives {{repair_error_numerator}}, so the nonzero-h quotient is {{repair_error_hp}} and its limit is {{repair_error_d}}.
+@after {{repair_error_after_2}}
+@wrong Correct the subtraction before using its h coefficient as the derivative value.
+@why The corrected difference is f({{repair_error_a}}+h)-f({{repair_error_a}})={{repair_error_numerator}}. Dividing by nonzero h gives {{repair_error_hp}}; taking the limit gives {{repair_error_d}}. The power-rule check {{repair_error_derivative_expression}}={{repair_error_d}} agrees with the corrected expansion.
+@end
+
+@question {{independent_id}} | {{independent_title}}
+@template choices.v1
+@version 1
+@goal {{independent_objective}}
+@given {{independent_given}}
+@domain f is a real polynomial and a={{independent_a}} is its specified real input.
+@read {{reading_id}}
+@step 10 | What is f'({{independent_a}})?
+{{independent_choices_1}}
+@feedback 12 | This is {{independent_error_a_name}}: {{independent_error_a_expression}}={{independent_error_a_value}}. The derivative requires {{independent_derivative_expression}}={{independent_d}}; an output value and a slope are different quantities.
+@feedback 13 | This is {{independent_error_b_name}}: {{independent_error_b_expression}}={{independent_error_b_value}}. Keeping the power-rule signs and removing the constant gives {{independent_derivative_expression}}={{independent_d}}.
+@after {{independent_after_1}}
+@wrong Check the requested derivative at the given point in the original polynomial.
+@why Differentiate term by term and substitute a={{independent_a}}: {{independent_derivative_expression}}={{independent_d}}. As an independent check, expansion gives f({{independent_a}}+h)={{independent_expanded}}. Subtract f({{independent_a}})={{independent_function_value}}, divide by nonzero h, and obtain {{independent_hp}}. Its limit is {{independent_d}}, whereas the original function output is {{independent_function_value}}.
+@end

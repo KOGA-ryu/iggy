@@ -19,13 +19,17 @@ ROOT = batch.ROOT
 PROVIDERS = {
     'linear_balance_v1': ROOT / 'content/authoring/learning/linear_family',
     'sine_turn_v1': ROOT / 'content/authoring/learning/sine_family',
+    'polynomial_derivative_v1': ROOT / 'content/authoring/learning/polynomial_family',
+    'row_operations_v1': ROOT / 'content/authoring/learning/row_family',
 }
-# Reviewed code only. The sine adapter reuses the frozen Wave 01 mathematics;
+# Reviewed code only. These adapters reuse the frozen Wave 01 mathematics;
 # include that imported implementation and its local imports in the receipt.
-PROVIDER_DEPENDENCIES = {'sine_turn_v1': (
-    ROOT / 'content/authoring/production/wave01/trigonometry/generate.py',
-    ROOT / 'tools/check_authoring_pilot.py',
-)}
+PROVIDER_DEPENDENCIES = {
+    family: (ROOT / f'content/authoring/production/wave01/{subject}/generate.py',
+             ROOT / 'tools/check_authoring_pilot.py')
+    for family, subject in (('sine_turn_v1', 'trigonometry'), ('polynomial_derivative_v1', 'calculus'),
+                            ('row_operations_v1', 'linear_algebra'))
+}
 INPUTS = ('recipe.json', 'lesson.md.in', 'questions.paths.md.in', 'DESIGN.md')
 
 
@@ -92,12 +96,52 @@ def tool_hashes(family):
     return {str(p.relative_to(ROOT)): export.sha(export.read_bytes(p)) for p in paths}
 
 
+def prepare_groups(provider, parameters, prefix):
+    if hasattr(provider, 'prepare'):
+        # Linear seeds construct several deliberate signed variations together.
+        return provider.prepare(parameters, prefix)
+    def require(ok, pointer, message):
+        export.require(ok, 'family.parameters', pointer + ': ' + message)
+    expected = {'sets', 'roles'} | ({'domain'} if hasattr(provider, 'DOMAIN') else set())
+    require(type(parameters) is dict and set(parameters) == expected, '/', 'Supply exactly '+', '.join(sorted(expected)))
+    if 'domain' in expected:
+        require(export.encoded(parameters['domain']) == export.encoded(provider.DOMAIN), '/domain',
+                'Keep the supplied family domain exactly')
+    sets, roles = parameters['sets'], parameters['roles']
+    require(type(sets) is list and all(type(s) is dict for s in sets)
+            and [s.get('id') for s in sets] == ['sample', 'practice', 'fresh_check'],
+            '/sets', 'Supply sample, practice and fresh_check in order')
+    require(type(roles) is list and all(type(r) is dict for r in roles)
+            and [r.get('role') for r in roles] == list(batch.EXERCISE_ROLES), '/roles', 'Supply the six ordered roles')
+    for index, meta in enumerate(roles):
+        require(set(meta) == {'role', 'title', 'objective', 'prerequisites'}
+                and all(type(v) is str and 0 < len(v.strip()) <= 1000 and '\n' not in v and '\r' not in v for v in meta.values()),
+                f'/roles/{index}', 'Supply role, title, objective and prerequisites as bounded single-line text')
+    groups, signatures = [], set()
+    for index, seed in enumerate(sets):
+        pointer = f'/sets/{index}'
+        require(set(seed) == {'id', 'cases'} and type(seed['cases']) is dict
+                and set(seed['cases']) == set(batch.EXERCISE_ROLES), pointer, 'Supply id and one case per role')
+        questions = []
+        for meta in roles:
+            role = meta['role']; location = pointer+'/cases/'+role
+            case = provider.original_case(seed['cases'][role], role, location)
+            q = dict(meta, case=case, id=prefix+'_'+seed['id']+'_'+role+'_'+export.sha(export.encoded(case))[:12])
+            signature = (role, batch.reasoning_certificate(q, provider.CHECKERS)['expected']['given'])
+            require(signature not in signatures, location, 'Use a different displayed original for this role in each set')
+            signatures.add(signature); questions.append(q)
+        batch.validate_role_sequence(dict(format='paths_exercise_roles', format_version=1, questions=questions),
+                                     provider.SOURCE/'recipe.json')
+        groups.append((questions, dict(provider.presentation(questions), set_title=seed['id'].replace('_', ' '))))
+    return groups
+
+
 def assemble(recipe, captured, source, provider):
     export.require(recipe['placement']['subject'] == provider.SUBJECT, 'family.placement',
                    f'{source}/recipe.json:/placement/subject: {recipe["family"]} belongs to {provider.SUBJECT}')
     namespace = 'qf_' + export.sha(export.encoded([recipe['family'], recipe['package']['id']]))[:12]
     try:
-        groups = provider.prepare(recipe['parameters'], namespace)
+        groups = prepare_groups(provider, recipe['parameters'], namespace)
     except (export.ExportError, ValueError, KeyError, TypeError) as error:
         detail = str(error)
         location = '/parameters' + (detail if detail.startswith('/') else ': ' + detail)
