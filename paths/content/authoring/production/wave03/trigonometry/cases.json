@@ -1,0 +1,3211 @@
+{
+  "format": "paths_finite_identity_cases",
+  "format_version": 1,
+  "cases": [
+    {
+      "id": "prod03_trig_identities_q01",
+      "group": "introductory",
+      "title": "A first coordinate quotient",
+      "original": [
+        "div",
+        [
+          "sub",
+          1,
+          [
+            "pow",
+            "c",
+            2
+          ]
+        ],
+        "s"
+      ],
+      "domain": "S",
+      "final": "s",
+      "final_form": "single_factor",
+      "multiplier": "s",
+      "goal": "Simplify E to a single coordinate factor, retain its original domain and prove the identity exactly.",
+      "domain_text": "Theta is real and measured in radians; s=sin(theta) and c=cos(theta). E names the original expression. D is its full domain, which must be retained after every cancellation.",
+      "steps": [
+        {
+          "form": "domain",
+          "prompt": "Which condition describes the full original domain D?",
+          "candidates": [
+            "S",
+            "C",
+            "R"
+          ]
+        },
+        {
+          "form": "squared_numerator",
+          "prompt": "Use the unit-circle relation to replace only the numerator by a square.",
+          "candidates": [
+            [
+              "div",
+              [
+                "pow",
+                "s",
+                2
+              ],
+              "s"
+            ],
+            [
+              "div",
+              [
+                "pow",
+                "c",
+                2
+              ],
+              "s"
+            ],
+            [
+              "div",
+              [
+                "add",
+                1,
+                [
+                  "pow",
+                  "s",
+                  2
+                ]
+              ],
+              "s"
+            ]
+          ]
+        },
+        {
+          "form": "single_factor",
+          "prompt": "Cancel the nonzero common factor and leave one coordinate factor.",
+          "candidates": [
+            "s",
+            "c",
+            1
+          ]
+        },
+        {
+          "form": "polynomial",
+          "prompt": "Multiply the original E by the nonzero multiplier s. Which polynomial is the exact result?",
+          "candidates": [
+            [
+              "pow",
+              "s",
+              2
+            ],
+            [
+              "pow",
+              "c",
+              2
+            ],
+            1
+          ],
+          "check": true
+        }
+      ],
+      "controls": [
+        "sin"
+      ]
+    },
+    {
+      "id": "prod03_trig_identities_q02",
+      "group": "introductory",
+      "title": "A complementary coordinate quotient",
+      "original": [
+        "div",
+        [
+          "sub",
+          1,
+          [
+            "pow",
+            "s",
+            2
+          ]
+        ],
+        "c"
+      ],
+      "domain": "C",
+      "final": "c",
+      "final_form": "single_factor",
+      "multiplier": "c",
+      "goal": "Simplify E to a single coordinate factor, retain its original domain and prove the identity exactly.",
+      "domain_text": "Theta is real and measured in radians; s=sin(theta) and c=cos(theta). E names the original expression. D is its full domain, which must be retained after every cancellation.",
+      "steps": [
+        {
+          "form": "domain",
+          "prompt": "Which condition describes the full original domain D?",
+          "candidates": [
+            "C",
+            "S",
+            "R"
+          ]
+        },
+        {
+          "form": "squared_numerator",
+          "prompt": "Replace the numerator by a square using the unit-circle relation.",
+          "candidates": [
+            [
+              "div",
+              [
+                "pow",
+                "c",
+                2
+              ],
+              "c"
+            ],
+            [
+              "div",
+              [
+                "pow",
+                "s",
+                2
+              ],
+              "c"
+            ],
+            [
+              "div",
+              [
+                "add",
+                1,
+                [
+                  "pow",
+                  "s",
+                  2
+                ]
+              ],
+              "c"
+            ]
+          ]
+        },
+        {
+          "form": "single_factor",
+          "prompt": "Cancel one nonzero factor and leave a single coordinate factor.",
+          "candidates": [
+            "c",
+            "s",
+            1
+          ]
+        },
+        {
+          "form": "polynomial",
+          "prompt": "Multiply the original E by the nonzero multiplier c. Which polynomial is the exact result?",
+          "candidates": [
+            [
+              "pow",
+              "c",
+              2
+            ],
+            [
+              "pow",
+              "s",
+              2
+            ],
+            1
+          ],
+          "check": true
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "prod03_trig_identities_q03",
+      "group": "introductory",
+      "title": "A sum of two quotients",
+      "original": [
+        "add",
+        "tan",
+        "cot"
+      ],
+      "domain": "SC",
+      "final": [
+        "div",
+        1,
+        [
+          "mul",
+          "s",
+          "c"
+        ]
+      ],
+      "final_form": "constant_over_coordinate_product",
+      "multiplier": [
+        "mul",
+        "s",
+        "c"
+      ],
+      "goal": "Simplify E to one fraction with a constant numerator and a product of coordinates below it; retain D and prove the result.",
+      "domain_text": "Theta is real and measured in radians; s=sin(theta) and c=cos(theta). E names the original expression. D is its full domain, which must be retained after every cancellation.",
+      "steps": [
+        {
+          "form": "domain",
+          "prompt": "Which condition describes the full original domain D?",
+          "candidates": [
+            "SC",
+            "S",
+            "C"
+          ]
+        },
+        {
+          "form": "quotient_sum",
+          "prompt": "Rewrite both quotient functions as a sum of coordinate fractions.",
+          "candidates": [
+            [
+              "add",
+              [
+                "div",
+                "s",
+                "c"
+              ],
+              [
+                "div",
+                "c",
+                "s"
+              ]
+            ],
+            [
+              "add",
+              [
+                "div",
+                "c",
+                "s"
+              ],
+              [
+                "div",
+                "c",
+                "s"
+              ]
+            ],
+            [
+              "sub",
+              [
+                "div",
+                "s",
+                "c"
+              ],
+              [
+                "div",
+                "c",
+                "s"
+              ]
+            ]
+          ]
+        },
+        {
+          "form": "common_fraction",
+          "prompt": "Combine the two terms over one common denominator.",
+          "candidates": [
+            [
+              "div",
+              [
+                "add",
+                [
+                  "pow",
+                  "s",
+                  2
+                ],
+                [
+                  "pow",
+                  "c",
+                  2
+                ]
+              ],
+              [
+                "mul",
+                "s",
+                "c"
+              ]
+            ],
+            [
+              "div",
+              [
+                "add",
+                "s",
+                "c"
+              ],
+              [
+                "mul",
+                "s",
+                "c"
+              ]
+            ],
+            [
+              "div",
+              [
+                "sub",
+                [
+                  "pow",
+                  "s",
+                  2
+                ],
+                [
+                  "pow",
+                  "c",
+                  2
+                ]
+              ],
+              [
+                "mul",
+                "s",
+                "c"
+              ]
+            ]
+          ]
+        },
+        {
+          "form": "constant_over_coordinate_product",
+          "prompt": "Use the unit-circle relation to make the numerator constant.",
+          "candidates": [
+            [
+              "div",
+              1,
+              [
+                "mul",
+                "s",
+                "c"
+              ]
+            ],
+            [
+              "div",
+              2,
+              [
+                "mul",
+                "s",
+                "c"
+              ]
+            ],
+            [
+              "div",
+              0,
+              [
+                "mul",
+                "s",
+                "c"
+              ]
+            ]
+          ]
+        },
+        {
+          "form": "polynomial",
+          "prompt": "Multiply the original E by the nonzero multiplier (s times c). Which polynomial is the exact result?",
+          "candidates": [
+            1,
+            [
+              "add",
+              [
+                "pow",
+                "s",
+                2
+              ],
+              [
+                "sub",
+                1,
+                [
+                  "pow",
+                  "c",
+                  2
+                ]
+              ]
+            ],
+            0
+          ],
+          "check": true
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "prod03_trig_identities_q04",
+      "group": "introductory",
+      "title": "A difference of function squares",
+      "original": [
+        "sub",
+        [
+          "pow",
+          "sec",
+          2
+        ],
+        [
+          "pow",
+          "tan",
+          2
+        ]
+      ],
+      "domain": "C",
+      "final": 1,
+      "final_form": "constant",
+      "multiplier": [
+        "pow",
+        "c",
+        2
+      ],
+      "goal": "Reduce E to a constant on its full original domain and prove it using an exact polynomial check.",
+      "domain_text": "Theta is real and measured in radians; s=sin(theta) and c=cos(theta). E names the original expression. D is its full domain, which must be retained after every cancellation.",
+      "steps": [
+        {
+          "form": "domain",
+          "prompt": "Which condition describes the full original domain D?",
+          "candidates": [
+            "C",
+            "S",
+            "R"
+          ]
+        },
+        {
+          "form": "difference_fractions",
+          "prompt": "Rewrite the squared functions as a difference of coordinate fractions.",
+          "candidates": [
+            [
+              "sub",
+              [
+                "div",
+                1,
+                [
+                  "pow",
+                  "c",
+                  2
+                ]
+              ],
+              [
+                "div",
+                [
+                  "pow",
+                  "s",
+                  2
+                ],
+                [
+                  "pow",
+                  "c",
+                  2
+                ]
+              ]
+            ],
+            [
+              "sub",
+              [
+                "div",
+                1,
+                [
+                  "pow",
+                  "s",
+                  2
+                ]
+              ],
+              [
+                "div",
+                [
+                  "pow",
+                  "s",
+                  2
+                ],
+                [
+                  "pow",
+                  "c",
+                  2
+                ]
+              ]
+            ],
+            [
+              "add",
+              [
+                "div",
+                1,
+                [
+                  "pow",
+                  "c",
+                  2
+                ]
+              ],
+              [
+                "div",
+                [
+                  "pow",
+                  "s",
+                  2
+                ],
+                [
+                  "pow",
+                  "c",
+                  2
+                ]
+              ]
+            ]
+          ]
+        },
+        {
+          "form": "common_fraction",
+          "prompt": "Combine the shared denominator without changing the numerator sign.",
+          "candidates": [
+            [
+              "div",
+              [
+                "sub",
+                1,
+                [
+                  "pow",
+                  "s",
+                  2
+                ]
+              ],
+              [
+                "pow",
+                "c",
+                2
+              ]
+            ],
+            [
+              "div",
+              [
+                "add",
+                1,
+                [
+                  "pow",
+                  "s",
+                  2
+                ]
+              ],
+              [
+                "pow",
+                "c",
+                2
+              ]
+            ],
+            [
+              "div",
+              [
+                "sub",
+                [
+                  "pow",
+                  "s",
+                  2
+                ],
+                1
+              ],
+              [
+                "pow",
+                "c",
+                2
+              ]
+            ]
+          ]
+        },
+        {
+          "form": "squared_numerator",
+          "prompt": "Rewrite the numerator as a square while keeping the denominator.",
+          "candidates": [
+            [
+              "div",
+              [
+                "pow",
+                "c",
+                2
+              ],
+              [
+                "pow",
+                "c",
+                2
+              ]
+            ],
+            [
+              "div",
+              [
+                "pow",
+                "s",
+                2
+              ],
+              [
+                "pow",
+                "c",
+                2
+              ]
+            ],
+            [
+              "div",
+              [
+                "pow",
+                [
+                  "sub",
+                  1,
+                  "s"
+                ],
+                2
+              ],
+              [
+                "pow",
+                "c",
+                2
+              ]
+            ]
+          ]
+        },
+        {
+          "form": "constant",
+          "prompt": "Cancel the entire nonzero denominator factor to obtain a constant.",
+          "candidates": [
+            1,
+            0,
+            -1
+          ]
+        },
+        {
+          "form": "polynomial",
+          "prompt": "Multiply the original E by the nonzero multiplier (c) squared. Which polynomial is the exact result?",
+          "candidates": [
+            [
+              "pow",
+              "c",
+              2
+            ],
+            [
+              "pow",
+              "s",
+              2
+            ],
+            0
+          ],
+          "check": true
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "prod03_trig_identities_q05",
+      "group": "practice",
+      "title": "Two unlike denominators",
+      "original": [
+        "add",
+        [
+          "div",
+          "s",
+          [
+            "add",
+            1,
+            "c"
+          ]
+        ],
+        [
+          "div",
+          [
+            "add",
+            1,
+            "c"
+          ],
+          "s"
+        ]
+      ],
+      "domain": "S",
+      "final": [
+        "div",
+        2,
+        "s"
+      ],
+      "final_form": "constant_over_coordinate",
+      "multiplier": [
+        "mul",
+        "s",
+        [
+          "add",
+          1,
+          "c"
+        ]
+      ],
+      "goal": "Simplify E to a constant divided by a single coordinate; use a common denominator and factor before cancelling, retain D and prove the result.",
+      "domain_text": "Theta is real and measured in radians; s=sin(theta) and c=cos(theta). E names the original expression. D is its full domain, which must be retained after every cancellation.",
+      "steps": [
+        {
+          "form": "domain",
+          "prompt": "Which condition describes the full original domain D?",
+          "candidates": [
+            "S",
+            "C",
+            "R"
+          ]
+        },
+        {
+          "form": "common_fraction",
+          "prompt": "Combine the original terms into one fraction without expanding products.",
+          "candidates": [
+            [
+              "div",
+              [
+                "add",
+                [
+                  "pow",
+                  "s",
+                  2
+                ],
+                [
+                  "pow",
+                  [
+                    "add",
+                    1,
+                    "c"
+                  ],
+                  2
+                ]
+              ],
+              [
+                "mul",
+                "s",
+                [
+                  "add",
+                  1,
+                  "c"
+                ]
+              ]
+            ],
+            [
+              "div",
+              [
+                "add",
+                [
+                  "pow",
+                  "s",
+                  2
+                ],
+                [
+                  "add",
+                  1,
+                  "c"
+                ]
+              ],
+              [
+                "mul",
+                "s",
+                [
+                  "add",
+                  1,
+                  "c"
+                ]
+              ]
+            ],
+            [
+              "div",
+              [
+                "sub",
+                [
+                  "pow",
+                  "s",
+                  2
+                ],
+                [
+                  "pow",
+                  [
+                    "add",
+                    1,
+                    "c"
+                  ],
+                  2
+                ]
+              ],
+              [
+                "mul",
+                "s",
+                [
+                  "add",
+                  1,
+                  "c"
+                ]
+              ]
+            ]
+          ]
+        },
+        {
+          "form": "expanded_fraction",
+          "prompt": "Expand the numerator fully, leaving the common denominator unchanged.",
+          "candidates": [
+            [
+              "div",
+              [
+                "add",
+                [
+                  "add",
+                  [
+                    "add",
+                    [
+                      "pow",
+                      "s",
+                      2
+                    ],
+                    1
+                  ],
+                  [
+                    "mul",
+                    2,
+                    "c"
+                  ]
+                ],
+                [
+                  "pow",
+                  "c",
+                  2
+                ]
+              ],
+              [
+                "mul",
+                "s",
+                [
+                  "add",
+                  1,
+                  "c"
+                ]
+              ]
+            ],
+            [
+              "div",
+              [
+                "add",
+                [
+                  "add",
+                  [
+                    "pow",
+                    "s",
+                    2
+                  ],
+                  1
+                ],
+                [
+                  "pow",
+                  "c",
+                  2
+                ]
+              ],
+              [
+                "mul",
+                "s",
+                [
+                  "add",
+                  1,
+                  "c"
+                ]
+              ]
+            ],
+            [
+              "div",
+              [
+                "add",
+                [
+                  "add",
+                  [
+                    "add",
+                    [
+                      "pow",
+                      "s",
+                      2
+                    ],
+                    1
+                  ],
+                  "c"
+                ],
+                [
+                  "pow",
+                  "c",
+                  2
+                ]
+              ],
+              [
+                "mul",
+                "s",
+                [
+                  "add",
+                  1,
+                  "c"
+                ]
+              ]
+            ]
+          ]
+        },
+        {
+          "form": "factored_fraction",
+          "prompt": "Use the circle relation and factor the numerator to expose a cancellable binomial.",
+          "candidates": [
+            [
+              "div",
+              [
+                "mul",
+                2,
+                [
+                  "add",
+                  1,
+                  "c"
+                ]
+              ],
+              [
+                "mul",
+                "s",
+                [
+                  "add",
+                  1,
+                  "c"
+                ]
+              ]
+            ],
+            [
+              "div",
+              [
+                "add",
+                1,
+                "c"
+              ],
+              [
+                "mul",
+                "s",
+                [
+                  "add",
+                  1,
+                  "c"
+                ]
+              ]
+            ],
+            [
+              "div",
+              [
+                "mul",
+                2,
+                [
+                  "sub",
+                  1,
+                  "c"
+                ]
+              ],
+              [
+                "mul",
+                "s",
+                [
+                  "add",
+                  1,
+                  "c"
+                ]
+              ]
+            ]
+          ]
+        },
+        {
+          "form": "constant_over_coordinate",
+          "prompt": "Cancel the nonzero common binomial and leave a single coordinate denominator.",
+          "candidates": [
+            [
+              "div",
+              2,
+              "s"
+            ],
+            [
+              "div",
+              1,
+              "s"
+            ],
+            [
+              "div",
+              2,
+              [
+                "add",
+                1,
+                "c"
+              ]
+            ]
+          ]
+        },
+        {
+          "form": "polynomial",
+          "prompt": "Multiply the original E by the nonzero multiplier (s times (1+c)). Which polynomial is the exact result?",
+          "candidates": [
+            [
+              "add",
+              2,
+              [
+                "mul",
+                2,
+                "c"
+              ]
+            ],
+            [
+              "add",
+              1,
+              [
+                "mul",
+                2,
+                "c"
+              ]
+            ],
+            [
+              "sub",
+              2,
+              [
+                "mul",
+                2,
+                "c"
+              ]
+            ]
+          ],
+          "check": true
+        }
+      ],
+      "controls": [
+        [
+          "div",
+          [
+            "add",
+            [
+              "add",
+              [
+                "pow",
+                "c",
+                2
+              ],
+              [
+                "mul",
+                2,
+                "c"
+              ]
+            ],
+            [
+              "add",
+              1,
+              [
+                "pow",
+                "s",
+                2
+              ]
+            ]
+          ],
+          [
+            "mul",
+            "s",
+            [
+              "add",
+              1,
+              "c"
+            ]
+          ]
+        ]
+      ]
+    },
+    {
+      "id": "prod03_trig_identities_q06",
+      "group": "practice",
+      "title": "A difference with a common domain",
+      "original": [
+        "sub",
+        [
+          "div",
+          "c",
+          [
+            "sub",
+            1,
+            "s"
+          ]
+        ],
+        [
+          "div",
+          [
+            "add",
+            1,
+            "s"
+          ],
+          "c"
+        ]
+      ],
+      "domain": "C",
+      "final": 0,
+      "final_form": "constant",
+      "multiplier": [
+        "mul",
+        "c",
+        [
+          "sub",
+          1,
+          "s"
+        ]
+      ],
+      "goal": "Reduce E completely, retain every original exclusion and prove the resulting identity by clearing only nonzero denominators.",
+      "domain_text": "Theta is real and measured in radians; s=sin(theta) and c=cos(theta). E names the original expression. D is its full domain, which must be retained after every cancellation.",
+      "steps": [
+        {
+          "form": "domain",
+          "prompt": "Which condition describes the full original domain D?",
+          "candidates": [
+            "C",
+            "S",
+            "R"
+          ]
+        },
+        {
+          "form": "common_fraction",
+          "prompt": "Combine the difference over a common denominator, keeping the subtraction order.",
+          "candidates": [
+            [
+              "div",
+              [
+                "sub",
+                [
+                  "pow",
+                  "c",
+                  2
+                ],
+                [
+                  "mul",
+                  [
+                    "add",
+                    1,
+                    "s"
+                  ],
+                  [
+                    "sub",
+                    1,
+                    "s"
+                  ]
+                ]
+              ],
+              [
+                "mul",
+                "c",
+                [
+                  "sub",
+                  1,
+                  "s"
+                ]
+              ]
+            ],
+            [
+              "div",
+              [
+                "add",
+                [
+                  "pow",
+                  "c",
+                  2
+                ],
+                [
+                  "mul",
+                  [
+                    "add",
+                    1,
+                    "s"
+                  ],
+                  [
+                    "sub",
+                    1,
+                    "s"
+                  ]
+                ]
+              ],
+              [
+                "mul",
+                "c",
+                [
+                  "sub",
+                  1,
+                  "s"
+                ]
+              ]
+            ],
+            [
+              "div",
+              [
+                "sub",
+                [
+                  "pow",
+                  "c",
+                  2
+                ],
+                [
+                  "add",
+                  1,
+                  "s"
+                ]
+              ],
+              [
+                "mul",
+                "c",
+                [
+                  "sub",
+                  1,
+                  "s"
+                ]
+              ]
+            ]
+          ]
+        },
+        {
+          "form": "expanded_fraction",
+          "prompt": "Expand the numerator and distribute the outer minus sign.",
+          "candidates": [
+            [
+              "div",
+              [
+                "add",
+                [
+                  "sub",
+                  [
+                    "pow",
+                    "c",
+                    2
+                  ],
+                  1
+                ],
+                [
+                  "pow",
+                  "s",
+                  2
+                ]
+              ],
+              [
+                "mul",
+                "c",
+                [
+                  "sub",
+                  1,
+                  "s"
+                ]
+              ]
+            ],
+            [
+              "div",
+              [
+                "sub",
+                [
+                  "sub",
+                  [
+                    "pow",
+                    "c",
+                    2
+                  ],
+                  1
+                ],
+                [
+                  "pow",
+                  "s",
+                  2
+                ]
+              ],
+              [
+                "mul",
+                "c",
+                [
+                  "sub",
+                  1,
+                  "s"
+                ]
+              ]
+            ],
+            [
+              "div",
+              [
+                "add",
+                [
+                  "add",
+                  [
+                    "pow",
+                    "c",
+                    2
+                  ],
+                  1
+                ],
+                [
+                  "pow",
+                  "s",
+                  2
+                ]
+              ],
+              [
+                "mul",
+                "c",
+                [
+                  "sub",
+                  1,
+                  "s"
+                ]
+              ]
+            ]
+          ]
+        },
+        {
+          "form": "zero_fraction",
+          "prompt": "Use the circle relation in the numerator while displaying the common denominator.",
+          "candidates": [
+            [
+              "div",
+              0,
+              [
+                "mul",
+                "c",
+                [
+                  "sub",
+                  1,
+                  "s"
+                ]
+              ]
+            ],
+            [
+              "div",
+              1,
+              [
+                "mul",
+                "c",
+                [
+                  "sub",
+                  1,
+                  "s"
+                ]
+              ]
+            ],
+            [
+              "div",
+              2,
+              [
+                "mul",
+                "c",
+                [
+                  "sub",
+                  1,
+                  "s"
+                ]
+              ]
+            ]
+          ]
+        },
+        {
+          "form": "polynomial",
+          "prompt": "Multiply the original E by the nonzero multiplier (c times (1-s)). Which polynomial is the exact result?",
+          "candidates": [
+            0,
+            1,
+            [
+              "sub",
+              [
+                "pow",
+                "c",
+                2
+              ],
+              [
+                "pow",
+                "s",
+                2
+              ]
+            ]
+          ],
+          "check": true
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "prod03_trig_identities_q07",
+      "group": "practice",
+      "title": "A coordinate fraction",
+      "original": [
+        "div",
+        [
+          "sub",
+          1,
+          "c"
+        ],
+        "s"
+      ],
+      "domain": "S",
+      "final": [
+        "div",
+        "s",
+        [
+          "add",
+          1,
+          "c"
+        ]
+      ],
+      "final_form": "rationalized_fraction",
+      "multiplier": [
+        "mul",
+        "s",
+        [
+          "add",
+          1,
+          "c"
+        ]
+      ],
+      "goal": "Rewrite E with denominator 1+c and a single coordinate numerator by conjugate rationalization; retain D and prove the identity.",
+      "domain_text": "Theta is real and measured in radians; s=sin(theta) and c=cos(theta). E names the original expression. D is its full domain, which must be retained after every cancellation.",
+      "steps": [
+        {
+          "form": "domain",
+          "prompt": "Which condition describes the full original domain D?",
+          "candidates": [
+            "S",
+            "C",
+            "R"
+          ]
+        },
+        {
+          "form": "conjugate_fraction",
+          "prompt": "Multiply numerator and denominator by the conjugate of the numerator.",
+          "candidates": [
+            [
+              "div",
+              [
+                "mul",
+                [
+                  "sub",
+                  1,
+                  "c"
+                ],
+                [
+                  "add",
+                  1,
+                  "c"
+                ]
+              ],
+              [
+                "mul",
+                "s",
+                [
+                  "add",
+                  1,
+                  "c"
+                ]
+              ]
+            ],
+            [
+              "div",
+              [
+                "mul",
+                [
+                  "sub",
+                  1,
+                  "c"
+                ],
+                [
+                  "sub",
+                  1,
+                  "c"
+                ]
+              ],
+              [
+                "mul",
+                "s",
+                [
+                  "add",
+                  1,
+                  "c"
+                ]
+              ]
+            ],
+            [
+              "div",
+              [
+                "mul",
+                [
+                  "sub",
+                  1,
+                  "c"
+                ],
+                [
+                  "add",
+                  1,
+                  "c"
+                ]
+              ],
+              "s"
+            ]
+          ]
+        },
+        {
+          "form": "difference_square_fraction",
+          "prompt": "Apply difference of squares to the numerator product.",
+          "candidates": [
+            [
+              "div",
+              [
+                "sub",
+                1,
+                [
+                  "pow",
+                  "c",
+                  2
+                ]
+              ],
+              [
+                "mul",
+                "s",
+                [
+                  "add",
+                  1,
+                  "c"
+                ]
+              ]
+            ],
+            [
+              "div",
+              [
+                "add",
+                1,
+                [
+                  "pow",
+                  "c",
+                  2
+                ]
+              ],
+              [
+                "mul",
+                "s",
+                [
+                  "add",
+                  1,
+                  "c"
+                ]
+              ]
+            ],
+            [
+              "div",
+              [
+                "pow",
+                [
+                  "sub",
+                  1,
+                  "c"
+                ],
+                2
+              ],
+              [
+                "mul",
+                "s",
+                [
+                  "add",
+                  1,
+                  "c"
+                ]
+              ]
+            ]
+          ]
+        },
+        {
+          "form": "squared_numerator",
+          "prompt": "Replace the difference of squares by the complementary coordinate square.",
+          "candidates": [
+            [
+              "div",
+              [
+                "pow",
+                "s",
+                2
+              ],
+              [
+                "mul",
+                "s",
+                [
+                  "add",
+                  1,
+                  "c"
+                ]
+              ]
+            ],
+            [
+              "div",
+              [
+                "pow",
+                "c",
+                2
+              ],
+              [
+                "mul",
+                "s",
+                [
+                  "add",
+                  1,
+                  "c"
+                ]
+              ]
+            ],
+            [
+              "div",
+              [
+                "sub",
+                [
+                  "pow",
+                  "s",
+                  2
+                ],
+                1
+              ],
+              [
+                "mul",
+                "s",
+                [
+                  "add",
+                  1,
+                  "c"
+                ]
+              ]
+            ]
+          ]
+        },
+        {
+          "form": "rationalized_fraction",
+          "prompt": "Cancel the common coordinate factor to reach the requested denominator.",
+          "candidates": [
+            [
+              "div",
+              "s",
+              [
+                "add",
+                1,
+                "c"
+              ]
+            ],
+            [
+              "div",
+              "c",
+              [
+                "add",
+                1,
+                "c"
+              ]
+            ],
+            [
+              "div",
+              1,
+              [
+                "add",
+                1,
+                "c"
+              ]
+            ]
+          ]
+        },
+        {
+          "form": "polynomial",
+          "prompt": "Multiply the original E by the nonzero multiplier (s times (1+c)). Which polynomial is the exact result?",
+          "candidates": [
+            [
+              "pow",
+              "s",
+              2
+            ],
+            [
+              "pow",
+              "c",
+              2
+            ],
+            1
+          ],
+          "check": true
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "prod03_trig_identities_q08",
+      "group": "practice",
+      "title": "The complementary fraction",
+      "original": [
+        "div",
+        [
+          "sub",
+          1,
+          "s"
+        ],
+        "c"
+      ],
+      "domain": "C",
+      "final": [
+        "div",
+        "c",
+        [
+          "add",
+          1,
+          "s"
+        ]
+      ],
+      "final_form": "rationalized_fraction",
+      "multiplier": [
+        "mul",
+        "c",
+        [
+          "add",
+          1,
+          "s"
+        ]
+      ],
+      "goal": "Rewrite E with denominator 1+s and a single coordinate numerator by conjugate rationalization; retain D and prove the identity.",
+      "domain_text": "Theta is real and measured in radians; s=sin(theta) and c=cos(theta). E names the original expression. D is its full domain, which must be retained after every cancellation.",
+      "steps": [
+        {
+          "form": "domain",
+          "prompt": "Which condition describes the full original domain D?",
+          "candidates": [
+            "C",
+            "S",
+            "R"
+          ]
+        },
+        {
+          "form": "conjugate_fraction",
+          "prompt": "Multiply numerator and denominator by the conjugate of the numerator.",
+          "candidates": [
+            [
+              "div",
+              [
+                "mul",
+                [
+                  "sub",
+                  1,
+                  "s"
+                ],
+                [
+                  "add",
+                  1,
+                  "s"
+                ]
+              ],
+              [
+                "mul",
+                "c",
+                [
+                  "add",
+                  1,
+                  "s"
+                ]
+              ]
+            ],
+            [
+              "div",
+              [
+                "mul",
+                [
+                  "sub",
+                  1,
+                  "s"
+                ],
+                [
+                  "sub",
+                  1,
+                  "s"
+                ]
+              ],
+              [
+                "mul",
+                "c",
+                [
+                  "add",
+                  1,
+                  "s"
+                ]
+              ]
+            ],
+            [
+              "div",
+              [
+                "mul",
+                [
+                  "sub",
+                  1,
+                  "s"
+                ],
+                [
+                  "add",
+                  1,
+                  "s"
+                ]
+              ],
+              "c"
+            ]
+          ]
+        },
+        {
+          "form": "difference_square_fraction",
+          "prompt": "Apply difference of squares to the numerator product.",
+          "candidates": [
+            [
+              "div",
+              [
+                "sub",
+                1,
+                [
+                  "pow",
+                  "s",
+                  2
+                ]
+              ],
+              [
+                "mul",
+                "c",
+                [
+                  "add",
+                  1,
+                  "s"
+                ]
+              ]
+            ],
+            [
+              "div",
+              [
+                "add",
+                1,
+                [
+                  "pow",
+                  "s",
+                  2
+                ]
+              ],
+              [
+                "mul",
+                "c",
+                [
+                  "add",
+                  1,
+                  "s"
+                ]
+              ]
+            ],
+            [
+              "div",
+              [
+                "pow",
+                [
+                  "sub",
+                  1,
+                  "s"
+                ],
+                2
+              ],
+              [
+                "mul",
+                "c",
+                [
+                  "add",
+                  1,
+                  "s"
+                ]
+              ]
+            ]
+          ]
+        },
+        {
+          "form": "squared_numerator",
+          "prompt": "Replace the difference of squares by the complementary coordinate square.",
+          "candidates": [
+            [
+              "div",
+              [
+                "pow",
+                "c",
+                2
+              ],
+              [
+                "mul",
+                "c",
+                [
+                  "add",
+                  1,
+                  "s"
+                ]
+              ]
+            ],
+            [
+              "div",
+              [
+                "pow",
+                "s",
+                2
+              ],
+              [
+                "mul",
+                "c",
+                [
+                  "add",
+                  1,
+                  "s"
+                ]
+              ]
+            ],
+            [
+              "div",
+              [
+                "sub",
+                [
+                  "pow",
+                  "c",
+                  2
+                ],
+                1
+              ],
+              [
+                "mul",
+                "c",
+                [
+                  "add",
+                  1,
+                  "s"
+                ]
+              ]
+            ]
+          ]
+        },
+        {
+          "form": "rationalized_fraction",
+          "prompt": "Cancel the common coordinate factor to reach the requested denominator.",
+          "candidates": [
+            [
+              "div",
+              "c",
+              [
+                "add",
+                1,
+                "s"
+              ]
+            ],
+            [
+              "div",
+              "s",
+              [
+                "add",
+                1,
+                "s"
+              ]
+            ],
+            [
+              "div",
+              1,
+              [
+                "add",
+                1,
+                "s"
+              ]
+            ]
+          ]
+        },
+        {
+          "form": "polynomial",
+          "prompt": "Multiply the original E by the nonzero multiplier (c times (1+s)). Which polynomial is the exact result?",
+          "candidates": [
+            [
+              "pow",
+              "c",
+              2
+            ],
+            [
+              "pow",
+              "s",
+              2
+            ],
+            1
+          ],
+          "check": true
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "prod03_trig_identities_q09",
+      "group": "mixed",
+      "title": "A nested trigonometric quotient",
+      "original": [
+        "div",
+        [
+          "sub",
+          "sec",
+          1
+        ],
+        "tan"
+      ],
+      "domain": "SC",
+      "final": [
+        "div",
+        "s",
+        [
+          "add",
+          1,
+          "c"
+        ]
+      ],
+      "final_form": "rationalized_fraction",
+      "multiplier": [
+        "mul",
+        "s",
+        [
+          "add",
+          1,
+          "c"
+        ]
+      ],
+      "goal": "Select and execute a coordinate-rewrite strategy, then rationalize to denominator 1+c with one coordinate above it. Retain the full original domain and prove the result.",
+      "domain_text": "Theta is real and measured in radians; s=sin(theta) and c=cos(theta). E names the original expression. D is its full domain, which must be retained after every cancellation.",
+      "steps": [
+        {
+          "form": "domain",
+          "prompt": "Which condition describes the full original domain D?",
+          "candidates": [
+            "SC",
+            "S",
+            "C"
+          ]
+        },
+        {
+          "form": "quotient_rewrite",
+          "prompt": "Choose the strategy that exposes the nested division: replace every named trigonometric function by coordinates before cancelling.",
+          "candidates": [
+            [
+              "div",
+              [
+                "sub",
+                [
+                  "div",
+                  1,
+                  "c"
+                ],
+                1
+              ],
+              [
+                "div",
+                "s",
+                "c"
+              ]
+            ],
+            [
+              "div",
+              [
+                "sub",
+                [
+                  "div",
+                  1,
+                  "s"
+                ],
+                1
+              ],
+              [
+                "div",
+                "s",
+                "c"
+              ]
+            ],
+            [
+              "div",
+              [
+                "sub",
+                [
+                  "div",
+                  1,
+                  "c"
+                ],
+                1
+              ],
+              [
+                "div",
+                "c",
+                "s"
+              ]
+            ]
+          ]
+        },
+        {
+          "form": "common_fraction",
+          "prompt": "Divide the coordinate fractions and leave one fraction before rationalizing.",
+          "candidates": [
+            [
+              "div",
+              [
+                "sub",
+                1,
+                "c"
+              ],
+              "s"
+            ],
+            [
+              "div",
+              [
+                "add",
+                1,
+                "c"
+              ],
+              "s"
+            ],
+            [
+              "div",
+              [
+                "sub",
+                1,
+                "c"
+              ],
+              "c"
+            ]
+          ]
+        },
+        {
+          "form": "conjugate_fraction",
+          "prompt": "Choose the conjugate multiplication that prepares the requested denominator.",
+          "candidates": [
+            [
+              "div",
+              [
+                "mul",
+                [
+                  "sub",
+                  1,
+                  "c"
+                ],
+                [
+                  "add",
+                  1,
+                  "c"
+                ]
+              ],
+              [
+                "mul",
+                "s",
+                [
+                  "add",
+                  1,
+                  "c"
+                ]
+              ]
+            ],
+            [
+              "div",
+              [
+                "mul",
+                [
+                  "sub",
+                  1,
+                  "c"
+                ],
+                [
+                  "sub",
+                  1,
+                  "c"
+                ]
+              ],
+              [
+                "mul",
+                "s",
+                [
+                  "add",
+                  1,
+                  "c"
+                ]
+              ]
+            ],
+            [
+              "div",
+              [
+                "mul",
+                [
+                  "sub",
+                  1,
+                  "c"
+                ],
+                [
+                  "add",
+                  1,
+                  "c"
+                ]
+              ],
+              "s"
+            ]
+          ]
+        },
+        {
+          "form": "squared_numerator",
+          "prompt": "Apply difference of squares and the circle relation to make the numerator one square.",
+          "candidates": [
+            [
+              "div",
+              [
+                "pow",
+                "s",
+                2
+              ],
+              [
+                "mul",
+                "s",
+                [
+                  "add",
+                  1,
+                  "c"
+                ]
+              ]
+            ],
+            [
+              "div",
+              [
+                "pow",
+                "c",
+                2
+              ],
+              [
+                "mul",
+                "s",
+                [
+                  "add",
+                  1,
+                  "c"
+                ]
+              ]
+            ],
+            [
+              "div",
+              [
+                "add",
+                1,
+                [
+                  "pow",
+                  "c",
+                  2
+                ]
+              ],
+              [
+                "mul",
+                "s",
+                [
+                  "add",
+                  1,
+                  "c"
+                ]
+              ]
+            ]
+          ]
+        },
+        {
+          "form": "rationalized_fraction",
+          "prompt": "Cancel one coordinate factor and retain the original domain.",
+          "candidates": [
+            [
+              "div",
+              "s",
+              [
+                "add",
+                1,
+                "c"
+              ]
+            ],
+            [
+              "div",
+              1,
+              [
+                "add",
+                1,
+                "c"
+              ]
+            ],
+            [
+              "div",
+              "c",
+              [
+                "add",
+                1,
+                "c"
+              ]
+            ]
+          ]
+        },
+        {
+          "form": "polynomial",
+          "prompt": "Multiply the original E by the nonzero multiplier (s times (1+c)). Which polynomial is the exact result?",
+          "candidates": [
+            [
+              "pow",
+              "s",
+              2
+            ],
+            [
+              "pow",
+              "c",
+              2
+            ],
+            1
+          ],
+          "check": true
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "prod03_trig_identities_q10",
+      "group": "mixed",
+      "title": "A second nested quotient",
+      "original": [
+        "div",
+        [
+          "sub",
+          "csc",
+          1
+        ],
+        "cot"
+      ],
+      "domain": "SC",
+      "final": [
+        "div",
+        "c",
+        [
+          "add",
+          1,
+          "s"
+        ]
+      ],
+      "final_form": "rationalized_fraction",
+      "multiplier": [
+        "mul",
+        "c",
+        [
+          "add",
+          1,
+          "s"
+        ]
+      ],
+      "goal": "Select and execute a coordinate-rewrite strategy, then rationalize to denominator 1+s with one coordinate above it. Retain the full original domain and prove the result.",
+      "domain_text": "Theta is real and measured in radians; s=sin(theta) and c=cos(theta). E names the original expression. D is its full domain, which must be retained after every cancellation.",
+      "steps": [
+        {
+          "form": "domain",
+          "prompt": "Which condition describes the full original domain D?",
+          "candidates": [
+            "SC",
+            "S",
+            "C"
+          ]
+        },
+        {
+          "form": "quotient_rewrite",
+          "prompt": "Choose the strategy that exposes the nested division: replace every named trigonometric function by coordinates before cancelling.",
+          "candidates": [
+            [
+              "div",
+              [
+                "sub",
+                [
+                  "div",
+                  1,
+                  "s"
+                ],
+                1
+              ],
+              [
+                "div",
+                "c",
+                "s"
+              ]
+            ],
+            [
+              "div",
+              [
+                "sub",
+                [
+                  "div",
+                  1,
+                  "c"
+                ],
+                1
+              ],
+              [
+                "div",
+                "c",
+                "s"
+              ]
+            ],
+            [
+              "div",
+              [
+                "sub",
+                [
+                  "div",
+                  1,
+                  "s"
+                ],
+                1
+              ],
+              [
+                "div",
+                "s",
+                "c"
+              ]
+            ]
+          ]
+        },
+        {
+          "form": "common_fraction",
+          "prompt": "Divide the coordinate fractions and leave one fraction before rationalizing.",
+          "candidates": [
+            [
+              "div",
+              [
+                "sub",
+                1,
+                "s"
+              ],
+              "c"
+            ],
+            [
+              "div",
+              [
+                "add",
+                1,
+                "s"
+              ],
+              "c"
+            ],
+            [
+              "div",
+              [
+                "sub",
+                1,
+                "s"
+              ],
+              "s"
+            ]
+          ]
+        },
+        {
+          "form": "conjugate_fraction",
+          "prompt": "Choose the conjugate multiplication that prepares the requested denominator.",
+          "candidates": [
+            [
+              "div",
+              [
+                "mul",
+                [
+                  "sub",
+                  1,
+                  "s"
+                ],
+                [
+                  "add",
+                  1,
+                  "s"
+                ]
+              ],
+              [
+                "mul",
+                "c",
+                [
+                  "add",
+                  1,
+                  "s"
+                ]
+              ]
+            ],
+            [
+              "div",
+              [
+                "mul",
+                [
+                  "sub",
+                  1,
+                  "s"
+                ],
+                [
+                  "sub",
+                  1,
+                  "s"
+                ]
+              ],
+              [
+                "mul",
+                "c",
+                [
+                  "add",
+                  1,
+                  "s"
+                ]
+              ]
+            ],
+            [
+              "div",
+              [
+                "mul",
+                [
+                  "sub",
+                  1,
+                  "s"
+                ],
+                [
+                  "add",
+                  1,
+                  "s"
+                ]
+              ],
+              "c"
+            ]
+          ]
+        },
+        {
+          "form": "squared_numerator",
+          "prompt": "Apply difference of squares and the circle relation to make the numerator one square.",
+          "candidates": [
+            [
+              "div",
+              [
+                "pow",
+                "c",
+                2
+              ],
+              [
+                "mul",
+                "c",
+                [
+                  "add",
+                  1,
+                  "s"
+                ]
+              ]
+            ],
+            [
+              "div",
+              [
+                "pow",
+                "s",
+                2
+              ],
+              [
+                "mul",
+                "c",
+                [
+                  "add",
+                  1,
+                  "s"
+                ]
+              ]
+            ],
+            [
+              "div",
+              [
+                "add",
+                1,
+                [
+                  "pow",
+                  "s",
+                  2
+                ]
+              ],
+              [
+                "mul",
+                "c",
+                [
+                  "add",
+                  1,
+                  "s"
+                ]
+              ]
+            ]
+          ]
+        },
+        {
+          "form": "rationalized_fraction",
+          "prompt": "Cancel one coordinate factor and retain the original domain.",
+          "candidates": [
+            [
+              "div",
+              "c",
+              [
+                "add",
+                1,
+                "s"
+              ]
+            ],
+            [
+              "div",
+              1,
+              [
+                "add",
+                1,
+                "s"
+              ]
+            ],
+            [
+              "div",
+              "s",
+              [
+                "add",
+                1,
+                "s"
+              ]
+            ]
+          ]
+        },
+        {
+          "form": "polynomial",
+          "prompt": "Multiply the original E by the nonzero multiplier (c times (1+s)). Which polynomial is the exact result?",
+          "candidates": [
+            [
+              "pow",
+              "c",
+              2
+            ],
+            [
+              "pow",
+              "s",
+              2
+            ],
+            1
+          ],
+          "check": true
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "prod03_trig_identities_q11",
+      "group": "mixed",
+      "title": "A ratio of two square sums",
+      "original": [
+        "div",
+        [
+          "add",
+          1,
+          [
+            "pow",
+            "tan",
+            2
+          ]
+        ],
+        [
+          "add",
+          1,
+          [
+            "pow",
+            "cot",
+            2
+          ]
+        ]
+      ],
+      "domain": "SC",
+      "final": [
+        "pow",
+        "tan",
+        2
+      ],
+      "final_form": "quotient_square",
+      "multiplier": [
+        "pow",
+        "c",
+        2
+      ],
+      "goal": "Select a Pythagorean strategy and reduce E to one squared quotient function. Retain the full original domain and prove the result.",
+      "domain_text": "Theta is real and measured in radians; s=sin(theta) and c=cos(theta). E names the original expression. D is its full domain, which must be retained after every cancellation.",
+      "steps": [
+        {
+          "form": "domain",
+          "prompt": "Which condition describes the full original domain D?",
+          "candidates": [
+            "SC",
+            "S",
+            "C"
+          ]
+        },
+        {
+          "form": "reciprocal_ratio",
+          "prompt": "Choose the Pythagorean strategy: replace each entire square sum by one reciprocal-function square.",
+          "candidates": [
+            [
+              "div",
+              [
+                "pow",
+                "sec",
+                2
+              ],
+              [
+                "pow",
+                "csc",
+                2
+              ]
+            ],
+            [
+              "div",
+              [
+                "pow",
+                "csc",
+                2
+              ],
+              [
+                "pow",
+                "sec",
+                2
+              ]
+            ],
+            [
+              "div",
+              [
+                "pow",
+                "sec",
+                2
+              ],
+              [
+                "pow",
+                "cot",
+                2
+              ]
+            ]
+          ]
+        },
+        {
+          "form": "nested_reciprocals",
+          "prompt": "Replace both reciprocal squares by their coordinate definitions.",
+          "candidates": [
+            [
+              "div",
+              [
+                "div",
+                1,
+                [
+                  "pow",
+                  "c",
+                  2
+                ]
+              ],
+              [
+                "div",
+                1,
+                [
+                  "pow",
+                  "s",
+                  2
+                ]
+              ]
+            ],
+            [
+              "div",
+              [
+                "div",
+                1,
+                [
+                  "pow",
+                  "s",
+                  2
+                ]
+              ],
+              [
+                "div",
+                1,
+                [
+                  "pow",
+                  "c",
+                  2
+                ]
+              ]
+            ],
+            [
+              "div",
+              [
+                "div",
+                1,
+                [
+                  "pow",
+                  "c",
+                  2
+                ]
+              ],
+              [
+                "pow",
+                "s",
+                2
+              ]
+            ]
+          ]
+        },
+        {
+          "form": "inverted_ratio",
+          "prompt": "Invert the divisor and simplify to a ratio of coordinate squares.",
+          "candidates": [
+            [
+              "div",
+              [
+                "pow",
+                "s",
+                2
+              ],
+              [
+                "pow",
+                "c",
+                2
+              ]
+            ],
+            [
+              "div",
+              [
+                "pow",
+                "c",
+                2
+              ],
+              [
+                "pow",
+                "s",
+                2
+              ]
+            ],
+            [
+              "div",
+              1,
+              [
+                "mul",
+                [
+                  "pow",
+                  "s",
+                  2
+                ],
+                [
+                  "pow",
+                  "c",
+                  2
+                ]
+              ]
+            ]
+          ]
+        },
+        {
+          "form": "quotient_square",
+          "prompt": "Express the coordinate-square ratio as one squared quotient function.",
+          "candidates": [
+            [
+              "pow",
+              "tan",
+              2
+            ],
+            [
+              "pow",
+              "cot",
+              2
+            ],
+            [
+              "pow",
+              "sec",
+              2
+            ]
+          ]
+        },
+        {
+          "form": "polynomial",
+          "prompt": "Multiply the original E by the nonzero multiplier (c) squared. Which polynomial is the exact result?",
+          "candidates": [
+            [
+              "pow",
+              "s",
+              2
+            ],
+            [
+              "pow",
+              "c",
+              2
+            ],
+            1
+          ],
+          "check": true
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "prod03_trig_identities_q12",
+      "group": "mixed",
+      "title": "Two reciprocal binomials",
+      "original": [
+        "add",
+        [
+          "div",
+          1,
+          [
+            "sub",
+            1,
+            "s"
+          ]
+        ],
+        [
+          "div",
+          1,
+          [
+            "add",
+            1,
+            "s"
+          ]
+        ]
+      ],
+      "domain": "C",
+      "final": [
+        "mul",
+        2,
+        [
+          "pow",
+          "sec",
+          2
+        ]
+      ],
+      "final_form": "reciprocal_multiple",
+      "multiplier": [
+        "pow",
+        "c",
+        2
+      ],
+      "goal": "Choose and execute a common-denominator strategy, then express E as a constant multiple of one reciprocal-function square. Retain D and prove the identity.",
+      "domain_text": "Theta is real and measured in radians; s=sin(theta) and c=cos(theta). E names the original expression. D is its full domain, which must be retained after every cancellation.",
+      "steps": [
+        {
+          "form": "domain",
+          "prompt": "Which condition describes the full original domain D?",
+          "candidates": [
+            "C",
+            "S",
+            "R"
+          ]
+        },
+        {
+          "form": "common_fraction",
+          "prompt": "Choose the common-denominator strategy that keeps both original fractions equivalent.",
+          "candidates": [
+            [
+              "div",
+              [
+                "add",
+                [
+                  "add",
+                  1,
+                  "s"
+                ],
+                [
+                  "sub",
+                  1,
+                  "s"
+                ]
+              ],
+              [
+                "mul",
+                [
+                  "sub",
+                  1,
+                  "s"
+                ],
+                [
+                  "add",
+                  1,
+                  "s"
+                ]
+              ]
+            ],
+            [
+              "div",
+              [
+                "add",
+                [
+                  "sub",
+                  1,
+                  "s"
+                ],
+                [
+                  "sub",
+                  1,
+                  "s"
+                ]
+              ],
+              [
+                "mul",
+                [
+                  "sub",
+                  1,
+                  "s"
+                ],
+                [
+                  "add",
+                  1,
+                  "s"
+                ]
+              ]
+            ],
+            [
+              "div",
+              [
+                "sub",
+                [
+                  "add",
+                  1,
+                  "s"
+                ],
+                [
+                  "sub",
+                  1,
+                  "s"
+                ]
+              ],
+              [
+                "mul",
+                [
+                  "sub",
+                  1,
+                  "s"
+                ],
+                [
+                  "add",
+                  1,
+                  "s"
+                ]
+              ]
+            ]
+          ]
+        },
+        {
+          "form": "constant_over_conjugates",
+          "prompt": "Collect the numerator terms while leaving the denominator product intact.",
+          "candidates": [
+            [
+              "div",
+              2,
+              [
+                "mul",
+                [
+                  "sub",
+                  1,
+                  "s"
+                ],
+                [
+                  "add",
+                  1,
+                  "s"
+                ]
+              ]
+            ],
+            [
+              "div",
+              [
+                "mul",
+                2,
+                "s"
+              ],
+              [
+                "mul",
+                [
+                  "sub",
+                  1,
+                  "s"
+                ],
+                [
+                  "add",
+                  1,
+                  "s"
+                ]
+              ]
+            ],
+            [
+              "div",
+              0,
+              [
+                "mul",
+                [
+                  "sub",
+                  1,
+                  "s"
+                ],
+                [
+                  "add",
+                  1,
+                  "s"
+                ]
+              ]
+            ]
+          ]
+        },
+        {
+          "form": "constant_difference",
+          "prompt": "Apply difference of squares to the denominator product.",
+          "candidates": [
+            [
+              "div",
+              2,
+              [
+                "sub",
+                1,
+                [
+                  "pow",
+                  "s",
+                  2
+                ]
+              ]
+            ],
+            [
+              "div",
+              2,
+              [
+                "add",
+                1,
+                "s"
+              ]
+            ],
+            [
+              "div",
+              2,
+              [
+                "pow",
+                [
+                  "sub",
+                  1,
+                  "s"
+                ],
+                2
+              ]
+            ]
+          ]
+        },
+        {
+          "form": "constant_square",
+          "prompt": "Replace the denominator difference by one coordinate square.",
+          "candidates": [
+            [
+              "div",
+              2,
+              [
+                "pow",
+                "c",
+                2
+              ]
+            ],
+            [
+              "div",
+              2,
+              [
+                "pow",
+                "s",
+                2
+              ]
+            ],
+            [
+              "div",
+              2,
+              "c"
+            ]
+          ]
+        },
+        {
+          "form": "reciprocal_multiple",
+          "prompt": "Write the result as a constant multiple of one reciprocal-function square.",
+          "candidates": [
+            [
+              "mul",
+              2,
+              [
+                "pow",
+                "sec",
+                2
+              ]
+            ],
+            [
+              "mul",
+              2,
+              [
+                "pow",
+                "csc",
+                2
+              ]
+            ],
+            [
+              "pow",
+              "sec",
+              2
+            ]
+          ]
+        },
+        {
+          "form": "polynomial",
+          "prompt": "Multiply the original E by the nonzero multiplier (c) squared. Which polynomial is the exact result?",
+          "candidates": [
+            2,
+            0,
+            [
+              "mul",
+              2,
+              "s"
+            ]
+          ],
+          "check": true
+        }
+      ],
+      "controls": []
+    }
+  ]
+}

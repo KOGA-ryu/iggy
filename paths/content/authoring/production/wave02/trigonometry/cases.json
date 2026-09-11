@@ -1,0 +1,354 @@
+{
+  "format": "paths_trigonometry_depth_cases",
+  "version": 1,
+  "cases": [
+    {
+      "id": "prod02_trig_full_equations_q01",
+      "title": "Two sine branches",
+      "group": "introductory",
+      "original": {
+        "function": "sin",
+        "a": 2,
+        "b": 1,
+        "c": 2,
+        "k": 1,
+        "phi_pi": "0"
+      },
+      "domain": {
+        "kind": "interval",
+        "units": "radians",
+        "lower_pi": "0",
+        "upper_pi": "2",
+        "lower_included": true,
+        "upper_included": false
+      },
+      "local_goals": [
+        "isolate",
+        "range",
+        "branches",
+        "filter",
+        "verify"
+      ],
+      "first_position": 0
+    },
+    {
+      "id": "prod02_trig_full_equations_q02",
+      "title": "Two cosine branches",
+      "group": "introductory",
+      "original": {
+        "function": "cos",
+        "a": 2,
+        "b": -1,
+        "c": 0,
+        "k": 1,
+        "phi_pi": "0"
+      },
+      "domain": {
+        "kind": "interval",
+        "units": "radians",
+        "lower_pi": "0",
+        "upper_pi": "2",
+        "lower_included": true,
+        "upper_included": false
+      },
+      "local_goals": [
+        "isolate",
+        "range",
+        "branches",
+        "filter",
+        "verify"
+      ],
+      "first_position": 1
+    },
+    {
+      "id": "prod02_trig_full_equations_q03",
+      "title": "A signed sine equation",
+      "group": "introductory",
+      "original": {
+        "function": "sin",
+        "a": -2,
+        "b": 1,
+        "c": -1,
+        "k": 1,
+        "phi_pi": "0"
+      },
+      "domain": {
+        "kind": "interval",
+        "units": "radians",
+        "lower_pi": "0",
+        "upper_pi": "2",
+        "lower_included": true,
+        "upper_included": false
+      },
+      "local_goals": [
+        "isolate",
+        "range",
+        "branches",
+        "filter",
+        "verify"
+      ],
+      "first_position": 2
+    },
+    {
+      "id": "prod02_trig_full_equations_q04",
+      "title": "A scaled cosine equation",
+      "group": "introductory",
+      "original": {
+        "function": "cos",
+        "a": 3,
+        "b": -2,
+        "c": 1,
+        "k": 1,
+        "phi_pi": "0"
+      },
+      "domain": {
+        "kind": "interval",
+        "units": "radians",
+        "lower_pi": "0",
+        "upper_pi": "2",
+        "lower_included": true,
+        "upper_included": false
+      },
+      "local_goals": [
+        "isolate",
+        "range",
+        "branches",
+        "filter",
+        "verify"
+      ],
+      "first_position": 1
+    },
+    {
+      "id": "prod02_trig_full_equations_q05",
+      "title": "A double-angle sine equation",
+      "group": "practice",
+      "original": {
+        "function": "sin",
+        "a": 2,
+        "b": -1,
+        "c": -1,
+        "k": 2,
+        "phi_pi": "0"
+      },
+      "domain": {
+        "kind": "interval",
+        "units": "radians",
+        "lower_pi": "0",
+        "upper_pi": "2",
+        "lower_included": true,
+        "upper_included": false
+      },
+      "local_goals": [
+        "isolate",
+        "range",
+        "branches",
+        "bounds",
+        "filter",
+        "theta",
+        "verify"
+      ],
+      "first_position": 2
+    },
+    {
+      "id": "prod02_trig_full_equations_q06",
+      "title": "A double-angle cosine equation",
+      "group": "practice",
+      "original": {
+        "function": "cos",
+        "a": -2,
+        "b": 1,
+        "c": 3,
+        "k": 2,
+        "phi_pi": "0"
+      },
+      "domain": {
+        "kind": "interval",
+        "units": "radians",
+        "lower_pi": "0",
+        "upper_pi": "2",
+        "lower_included": true,
+        "upper_included": false
+      },
+      "local_goals": [
+        "isolate",
+        "range",
+        "branches",
+        "bounds",
+        "filter",
+        "theta",
+        "verify"
+      ],
+      "first_position": 0
+    },
+    {
+      "id": "prod02_trig_full_equations_q07",
+      "title": "Sine with an argument shift",
+      "group": "practice",
+      "original": {
+        "function": "sin",
+        "a": 2,
+        "b": 2,
+        "c": 1,
+        "k": 1,
+        "phi_pi": "1/2"
+      },
+      "domain": {
+        "kind": "interval",
+        "units": "radians",
+        "lower_pi": "0",
+        "upper_pi": "2",
+        "lower_included": true,
+        "upper_included": false
+      },
+      "local_goals": [
+        "isolate",
+        "range",
+        "branches",
+        "bounds",
+        "filter",
+        "theta",
+        "verify"
+      ],
+      "first_position": 2
+    },
+    {
+      "id": "prod02_trig_full_equations_q08",
+      "title": "Cosine with an argument shift",
+      "group": "practice",
+      "original": {
+        "function": "cos",
+        "a": 3,
+        "b": -1,
+        "c": -1,
+        "k": 1,
+        "phi_pi": "-1/2"
+      },
+      "domain": {
+        "kind": "interval",
+        "units": "radians",
+        "lower_pi": "0",
+        "upper_pi": "2",
+        "lower_included": true,
+        "upper_included": false
+      },
+      "local_goals": [
+        "isolate",
+        "range",
+        "branches",
+        "bounds",
+        "filter",
+        "theta",
+        "verify"
+      ],
+      "first_position": 0
+    },
+    {
+      "id": "prod02_trig_full_equations_q09",
+      "title": "All real angles in a shifted sine equation",
+      "group": "mixed",
+      "original": {
+        "function": "sin",
+        "a": -2,
+        "b": 2,
+        "c": 1,
+        "k": 2,
+        "phi_pi": "-1/2"
+      },
+      "domain": {
+        "kind": "general",
+        "units": "radians",
+        "integer_parameter": "n"
+      },
+      "local_goals": [
+        "method",
+        "isolate",
+        "range",
+        "branches",
+        "general_theta",
+        "verify"
+      ],
+      "first_position": 1
+    },
+    {
+      "id": "prod02_trig_full_equations_q10",
+      "title": "All real angles in a shifted cosine equation",
+      "group": "mixed",
+      "original": {
+        "function": "cos",
+        "a": 2,
+        "b": 1,
+        "c": 0,
+        "k": 2,
+        "phi_pi": "1/2"
+      },
+      "domain": {
+        "kind": "general",
+        "units": "radians",
+        "integer_parameter": "n"
+      },
+      "local_goals": [
+        "method",
+        "isolate",
+        "range",
+        "branches",
+        "general_theta",
+        "verify"
+      ],
+      "first_position": 0
+    },
+    {
+      "id": "prod02_trig_full_equations_q11",
+      "title": "A full sine equation",
+      "group": "mixed",
+      "original": {
+        "function": "sin",
+        "a": 1,
+        "b": -1,
+        "c": 1,
+        "k": 2,
+        "phi_pi": "0"
+      },
+      "domain": {
+        "kind": "interval",
+        "units": "radians",
+        "lower_pi": "0",
+        "upper_pi": "2",
+        "lower_included": true,
+        "upper_included": false
+      },
+      "local_goals": [
+        "isolate",
+        "range",
+        "empty"
+      ],
+      "first_position": 1
+    },
+    {
+      "id": "prod02_trig_full_equations_q12",
+      "title": "A full cosine equation",
+      "group": "mixed",
+      "original": {
+        "function": "cos",
+        "a": -1,
+        "b": 1,
+        "c": 3,
+        "k": 1,
+        "phi_pi": "1/2"
+      },
+      "domain": {
+        "kind": "interval",
+        "units": "radians",
+        "lower_pi": "0",
+        "upper_pi": "2",
+        "lower_included": true,
+        "upper_included": false
+      },
+      "local_goals": [
+        "isolate",
+        "range",
+        "empty"
+      ],
+      "first_position": 2
+    }
+  ]
+}

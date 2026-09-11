@@ -7,8 +7,11 @@ syntax and not permission to expand a writer's assigned scope. The completed
 the expected detail. The [research note](../MATH_PROBLEM_DESIGN_RESEARCH.md)
 explains the evidence and its limits.
 
-For the registered `linear_balance_v1` family, use
-`tools/author_question_family.py init NEW_FOLDER --family linear_balance_v1 --package NEW_ID`.
+For a registered family, use
+`tools/author_question_family.py init NEW_FOLDER --family FAMILY --package NEW_ID`.
+FAMILY is `linear_balance_v1` or `sine_turn_v1`; the
+[sine example](../../content/authoring/learning/sine_family/DESIGN.md) documents
+the second family's finite cases and teaching fields.
 The command supplies recipe.json, lesson.md.in, questions.paths.md.in and the
 completed example brief. Edit those four files and run
 `tools/author_question_family.py check NEW_FOLDER` with Python 3. The shared

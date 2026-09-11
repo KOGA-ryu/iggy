@@ -1,0 +1,164 @@
+{
+  "format": "paths_learning_authoring",
+  "format_version": 1,
+  "package_id": "prod04_trig_identity_equations",
+  "package_version": 1,
+  "sources": [
+    {
+      "id": "prod04_trig_identity_equations_lesson_source",
+      "kind": "adapted",
+      "title": "Equations with identities — adapted lesson",
+      "uri": "https://www.opentextbookstore.com/precalc/2.3/Chapter%207.pdf",
+      "revision": "Edition 2.3; Section 7.1; pinned 2026-09-11T03:16:52.020541+00:00",
+      "attribution": "David Lippman and Melonie Rasmussen, Precalculus: An Investigation of Functions. Lesson adapted from Section 7.1. Worked seed: Example 4, printed pp.457-458 / PDF pp.5-6, tan(x)=3sin(x), 0<=x<2pi. Change coefficient 3 to 1 and rename x to theta; add explicit overlapping-branch and original-domain proof.",
+      "reuse": "Adapted lesson licensed CC BY-SA 4.0: https://creativecommons.org/licenses/by-sa/4.0/ Definitions, new explanations and worked route are adaptations; no author endorsement or application-wide license claim.",
+      "content_ids": [
+        "prod04_trig_identity_equations_r"
+      ]
+    },
+    {
+      "id": "prod04_trig_identity_equations_q01_source",
+      "kind": "adapted",
+      "title": "Lippman and Rasmussen — Section 7.1 Example 1; printed p.454, PDF p.2",
+      "uri": "https://www.opentextbookstore.com/precalc/2.3/Chapter%207.pdf",
+      "revision": "Edition 2.3; pinned 2026-09-11T03:16:52.020541+00:00",
+      "attribution": "David Lippman and Melonie Rasmussen, Precalculus: An Investigation of Functions. Section 7.1 Example 1; printed p.454, PDF p.2. Original givens: 2 sin^2(t)+sin(t)=0; 0<=t<2pi. Changes: Rename t to theta; retain all coefficients and interval; add original teaching and symbolic decision route.",
+      "reuse": "Adapted question, teaching, choices and feedback licensed CC BY-SA 4.0: https://creativecommons.org/licenses/by-sa/4.0/ No author endorsement implied; no NC solutions manual, figures or third-party puzzles used.",
+      "content_ids": [
+        "prod04_trig_identity_equations_q01"
+      ]
+    },
+    {
+      "id": "prod04_trig_identity_equations_q02_source",
+      "kind": "adapted",
+      "title": "Lippman and Rasmussen — Section 7.1 Exercise 23; printed p.460, PDF p.8",
+      "uri": "https://www.opentextbookstore.com/precalc/2.3/Chapter%207.pdf",
+      "revision": "Edition 2.3; pinned 2026-09-11T03:16:52.020541+00:00",
+      "attribution": "David Lippman and Melonie Rasmussen, Precalculus: An Investigation of Functions. Section 7.1 Exercise 23; printed p.460, PDF p.8. Original givens: 2 sin^2(w)+3 sin(w)+1=0; 0<=w<2pi. Changes: Rename w to theta; retain equation and interval; add factor, branch, endpoint and original checks.",
+      "reuse": "Adapted question, teaching, choices and feedback licensed CC BY-SA 4.0: https://creativecommons.org/licenses/by-sa/4.0/ No author endorsement implied; no NC solutions manual, figures or third-party puzzles used.",
+      "content_ids": [
+        "prod04_trig_identity_equations_q02"
+      ]
+    },
+    {
+      "id": "prod04_trig_identity_equations_q03_source",
+      "kind": "adapted",
+      "title": "Lippman and Rasmussen — Section 7.1 Exercise 19; printed p.460, PDF p.8",
+      "uri": "https://www.opentextbookstore.com/precalc/2.3/Chapter%207.pdf",
+      "revision": "Edition 2.3; pinned 2026-09-11T03:16:52.020541+00:00",
+      "attribution": "David Lippman and Melonie Rasmussen, Precalculus: An Investigation of Functions. Section 7.1 Exercise 19; printed p.460, PDF p.8. Original givens: sin^2(x)=1/4; angle in [0,2pi). Changes: Rename x to theta; retain the equation and interval; add complete factoring and checking.",
+      "reuse": "Adapted question, teaching, choices and feedback licensed CC BY-SA 4.0: https://creativecommons.org/licenses/by-sa/4.0/ No author endorsement implied; no NC solutions manual, figures or third-party puzzles used.",
+      "content_ids": [
+        "prod04_trig_identity_equations_q03"
+      ]
+    },
+    {
+      "id": "prod04_trig_identity_equations_q04_source",
+      "kind": "adapted",
+      "title": "Lippman and Rasmussen — Section 7.1 Exercise 20; printed p.460, PDF p.8",
+      "uri": "https://www.opentextbookstore.com/precalc/2.3/Chapter%207.pdf",
+      "revision": "Edition 2.3; pinned 2026-09-11T03:16:52.020541+00:00",
+      "attribution": "David Lippman and Melonie Rasmussen, Precalculus: An Investigation of Functions. Section 7.1 Exercise 20; printed p.460, PDF p.8. Original givens: cos^2(theta)=1/2; angle in [0,2pi). Changes: Change right side from 1/2 to 1/4 for exact rational half-coordinate branches; retain the interval.",
+      "reuse": "Adapted question, teaching, choices and feedback licensed CC BY-SA 4.0: https://creativecommons.org/licenses/by-sa/4.0/ No author endorsement implied; no NC solutions manual, figures or third-party puzzles used.",
+      "content_ids": [
+        "prod04_trig_identity_equations_q04"
+      ]
+    },
+    {
+      "id": "prod04_trig_identity_equations_q05_source",
+      "kind": "adapted",
+      "title": "Lippman and Rasmussen — Section 7.1 Example 3; printed pp.456-457, PDF pp.4-5",
+      "uri": "https://www.opentextbookstore.com/precalc/2.3/Chapter%207.pdf",
+      "revision": "Edition 2.3; pinned 2026-09-11T03:16:52.020541+00:00",
+      "attribution": "David Lippman and Melonie Rasmussen, Precalculus: An Investigation of Functions. Section 7.1 Example 3; printed pp.456-457, PDF pp.4-5. Original givens: 2 sin^2(t)-cos(t)=1; 0<=t<2pi. Changes: Rename t to theta; retain the equation and interval; expose conversion to cosine, factorization and exact completeness proof.",
+      "reuse": "Adapted question, teaching, choices and feedback licensed CC BY-SA 4.0: https://creativecommons.org/licenses/by-sa/4.0/ No author endorsement implied; no NC solutions manual, figures or third-party puzzles used.",
+      "content_ids": [
+        "prod04_trig_identity_equations_q05"
+      ]
+    },
+    {
+      "id": "prod04_trig_identity_equations_q06_source",
+      "kind": "adapted",
+      "title": "Lippman and Rasmussen — Section 7.1 Example 2; printed p.455, PDF p.3",
+      "uri": "https://www.opentextbookstore.com/precalc/2.3/Chapter%207.pdf",
+      "revision": "Edition 2.3; pinned 2026-09-11T03:16:52.020541+00:00",
+      "attribution": "David Lippman and Melonie Rasmussen, Precalculus: An Investigation of Functions. Section 7.1 Example 2; printed p.455, PDF p.3. Original givens: 3 sec^2(t)-5 sec(t)-2=0; 0<=t<2pi. Changes: Rename t to theta; retain equation and interval; solve in cosine via nonzero-denominator clearing instead of the source secant substitution.",
+      "reuse": "Adapted question, teaching, choices and feedback licensed CC BY-SA 4.0: https://creativecommons.org/licenses/by-sa/4.0/ No author endorsement implied; no NC solutions manual, figures or third-party puzzles used.",
+      "content_ids": [
+        "prod04_trig_identity_equations_q06"
+      ]
+    },
+    {
+      "id": "prod04_trig_identity_equations_q07_source",
+      "kind": "adapted",
+      "title": "Lippman and Rasmussen — Section 7.1 Exercise 21; printed p.460, PDF p.8",
+      "uri": "https://www.opentextbookstore.com/precalc/2.3/Chapter%207.pdf",
+      "revision": "Edition 2.3; pinned 2026-09-11T03:16:52.020541+00:00",
+      "attribution": "David Lippman and Melonie Rasmussen, Precalculus: An Investigation of Functions. Section 7.1 Exercise 21; printed p.460, PDF p.8. Original givens: sec^2(x)=7; 0<=x<2pi. Changes: Change right side from 7 to 4 to obtain exact rational half-coordinate branches; rename x and retain the interval/domain.",
+      "reuse": "Adapted question, teaching, choices and feedback licensed CC BY-SA 4.0: https://creativecommons.org/licenses/by-sa/4.0/ No author endorsement implied; no NC solutions manual, figures or third-party puzzles used.",
+      "content_ids": [
+        "prod04_trig_identity_equations_q07"
+      ]
+    },
+    {
+      "id": "prod04_trig_identity_equations_q08_source",
+      "kind": "adapted",
+      "title": "Lippman and Rasmussen — Section 7.1 Exercise 22; printed p.460, PDF p.8",
+      "uri": "https://www.opentextbookstore.com/precalc/2.3/Chapter%207.pdf",
+      "revision": "Edition 2.3; pinned 2026-09-11T03:16:52.020541+00:00",
+      "attribution": "David Lippman and Melonie Rasmussen, Precalculus: An Investigation of Functions. Section 7.1 Exercise 22; printed p.460, PDF p.8. Original givens: csc^2(t)=3; 0<=t<2pi. Changes: Change right side from 3 to 1/4 to test impossible sine branches and a rigorous no-solution result; retain the original reciprocal exclusion.",
+      "reuse": "Adapted question, teaching, choices and feedback licensed CC BY-SA 4.0: https://creativecommons.org/licenses/by-sa/4.0/ No author endorsement implied; no NC solutions manual, figures or third-party puzzles used.",
+      "content_ids": [
+        "prod04_trig_identity_equations_q08"
+      ]
+    },
+    {
+      "id": "prod04_trig_identity_equations_q09_source",
+      "kind": "adapted",
+      "title": "Lippman and Rasmussen — Section 7.1 Exercise 13; printed p.460, PDF p.8",
+      "uri": "https://www.opentextbookstore.com/precalc/2.3/Chapter%207.pdf",
+      "revision": "Edition 2.3; pinned 2026-09-11T03:16:52.020541+00:00",
+      "attribution": "David Lippman and Melonie Rasmussen, Precalculus: An Investigation of Functions. Section 7.1 Exercise 13; printed p.460, PDF p.8. Original givens: 10 sin(x) cos(x)=6 cos(x); 0<=x<2pi. Changes: Change coefficients 10 and 6 to 2 and 1 for sine 1/2; rename x; retain the cosine-zero branch and interval.",
+      "reuse": "Adapted question, teaching, choices and feedback licensed CC BY-SA 4.0: https://creativecommons.org/licenses/by-sa/4.0/ No author endorsement implied; no NC solutions manual, figures or third-party puzzles used.",
+      "content_ids": [
+        "prod04_trig_identity_equations_q09"
+      ]
+    },
+    {
+      "id": "prod04_trig_identity_equations_q10_source",
+      "kind": "adapted",
+      "title": "Lippman and Rasmussen — Section 7.1 Exercise 14; printed p.460, PDF p.8",
+      "uri": "https://www.opentextbookstore.com/precalc/2.3/Chapter%207.pdf",
+      "revision": "Edition 2.3; pinned 2026-09-11T03:16:52.020541+00:00",
+      "attribution": "David Lippman and Melonie Rasmussen, Precalculus: An Investigation of Functions. Section 7.1 Exercise 14; printed p.460, PDF p.8. Original givens: -3 sin(t)=15 cos(t) sin(t); 0<=t<2pi. Changes: Change coefficients -3 and 15 to -1 and 2 for cosine -1/2; rename t; retain sine-zero roots and interval.",
+      "reuse": "Adapted question, teaching, choices and feedback licensed CC BY-SA 4.0: https://creativecommons.org/licenses/by-sa/4.0/ No author endorsement implied; no NC solutions manual, figures or third-party puzzles used.",
+      "content_ids": [
+        "prod04_trig_identity_equations_q10"
+      ]
+    },
+    {
+      "id": "prod04_trig_identity_equations_q11_source",
+      "kind": "adapted",
+      "title": "Lippman and Rasmussen — Section 7.1 Exercise 17; printed p.460, PDF p.8",
+      "uri": "https://www.opentextbookstore.com/precalc/2.3/Chapter%207.pdf",
+      "revision": "Edition 2.3; pinned 2026-09-11T03:16:52.020541+00:00",
+      "attribution": "David Lippman and Melonie Rasmussen, Precalculus: An Investigation of Functions. Section 7.1 Exercise 17; printed p.460, PDF p.8. Original givens: sec(x) sin(x)-2 sin(x)=0; 0<=x<2pi. Changes: Retain equation and interval, rename x; add explicit reciprocal/domain strategy and exact checks of both zero and nonzero sine branches.",
+      "reuse": "Adapted question, teaching, choices and feedback licensed CC BY-SA 4.0: https://creativecommons.org/licenses/by-sa/4.0/ No author endorsement implied; no NC solutions manual, figures or third-party puzzles used.",
+      "content_ids": [
+        "prod04_trig_identity_equations_q11"
+      ]
+    },
+    {
+      "id": "prod04_trig_identity_equations_q12_source",
+      "kind": "adapted",
+      "title": "Lippman and Rasmussen — Section 7.1 Exercise 40; printed p.460, PDF p.8",
+      "uri": "https://www.opentextbookstore.com/precalc/2.3/Chapter%207.pdf",
+      "revision": "Edition 2.3; pinned 2026-09-11T03:16:52.020541+00:00",
+      "attribution": "David Lippman and Melonie Rasmussen, Precalculus: An Investigation of Functions. Section 7.1 Exercise 40; printed p.460, PDF p.8. Original givens: 3 cos(x)=cot(x); 0<=x<2pi. Changes: Change coefficient 3 to 2 for exact sine 1/2; rename x and retain all original sine exclusions and the interval.",
+      "reuse": "Adapted question, teaching, choices and feedback licensed CC BY-SA 4.0: https://creativecommons.org/licenses/by-sa/4.0/ No author endorsement implied; no NC solutions manual, figures or third-party puzzles used.",
+      "content_ids": [
+        "prod04_trig_identity_equations_q12"
+      ]
+    }
+  ]
+}

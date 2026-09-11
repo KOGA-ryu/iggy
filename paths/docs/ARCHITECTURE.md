@@ -86,13 +86,21 @@ instead of parsing matrix-only test projections. No runtime C++ changed.
 `author_question_family.py` owns the reusable recipe entry point for new writer
 folders. `init` supplies four editable data/prose files; `check` selects a
 registered mathematical provider and assembles its groups into one ordinary
-chapter. The first provider is the existing bounded linear teaching family.
-Its standalone packaging/receipt route was removed. It retains original-case
-construction, independent exact certificates and calculated teaching fields.
+chapter. The registered providers cover bounded linear balance and exact
+one-turn sine equations. The linear provider's standalone packaging/receipt
+route was removed. The sine adapter translates finite seeds and supplies
+numeric teaching fields while reusing the frozen Wave 01 exact mathematical
+functions; its historical recipe/presentation/packaging routes are not called.
+The registry hashes that imported implementation and its local pilot import
+alongside the runner and provider. Both retain original-case construction,
+independent exact certificates and calculated teaching fields.
 The shared runner owns metadata, stable namespace IDs, numbered titles, choice
 placement, practice links, compiler/model/disclosure gates and a compact handoff
-with immutable evidence. It reuses the batch template/certificate functions and
-exporter file/provenance contracts. Author inputs cannot select Python paths.
+with immutable evidence. Answer positions vary across both roles and sets
+without detaching semantic option IDs from their feedback. The single
+`tests/question_family_tests.py` gate covers both providers. The runner reuses
+the batch template/certificate functions and exporter file/provenance contracts.
+Author inputs cannot select Python paths.
 No runtime grammar, judge, renderer or publication route is added; accepted
 candidates reach publication through the existing exporter and coordinator.
 

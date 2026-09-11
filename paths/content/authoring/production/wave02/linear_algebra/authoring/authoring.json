@@ -1,0 +1,32 @@
+{
+  "format": "paths_learning_authoring",
+  "format_version": 1,
+  "package_id": "prod02_linear_full_systems",
+  "package_version": 1,
+  "sources": [
+    {
+      "id": "prod02_linear_full_systems_original",
+      "kind": "original",
+      "title": "Complete two-equation systems",
+      "uri": "paths:original/prod02_linear_full_systems/v1",
+      "revision": "1",
+      "attribution": "Original Paths lesson, problems and corrections. Conditions checked against OpenStax College Algebra 2e 7.6 (https://openstax.org/books/college-algebra-2e/pages/7-6-solving-systems-with-gaussian-elimination), 7.8 (https://openstax.org/books/college-algebra-2e/pages/7-8-solving-systems-with-cramers-rule), and Margalit and Rabinoff, Interactive Linear Algebra 1.2 (https://textbooks.math.gatech.edu/ila/row-reduction.html), 1.3 (https://textbooks.math.gatech.edu/ila/parametric-form.html); accessed 2026-09-10.",
+      "reuse": "All exercises and prose are original; no textbook exercise or passage copied.",
+      "content_ids": [
+        "prod02_linear_full_systems_r",
+        "prod02_linear_full_systems_q01",
+        "prod02_linear_full_systems_q02",
+        "prod02_linear_full_systems_q03",
+        "prod02_linear_full_systems_q04",
+        "prod02_linear_full_systems_q05",
+        "prod02_linear_full_systems_q06",
+        "prod02_linear_full_systems_q07",
+        "prod02_linear_full_systems_q08",
+        "prod02_linear_full_systems_q09",
+        "prod02_linear_full_systems_q10",
+        "prod02_linear_full_systems_q11",
+        "prod02_linear_full_systems_q12"
+      ]
+    }
+  ]
+}

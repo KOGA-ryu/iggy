@@ -1,0 +1,16 @@
+{
+  "format": "paths_learning_authoring",
+  "format_version": 1,
+  "package_id": "prod03_calc_integration",
+  "package_version": 1,
+  "sources": [{
+    "id": "prod03_calc_integration_source",
+    "kind": "original",
+    "title": "Polynomial integration",
+    "uri": "paths:original/prod03_calc_integration",
+    "revision": "1",
+    "attribution": "Original Paths lesson, exercises and corrections. Definitions and conditions read 2026-09-10 in OpenStax Calculus Volume 1: https://openstax.org/books/calculus-volume-1/pages/4-10-antiderivatives and https://openstax.org/books/calculus-volume-1/pages/5-3-the-fundamental-theorem-of-calculus .",
+    "reuse": "Original authoring; no external exercise wording copied.",
+    "content_ids": ["prod03_calc_integration_r","prod03_calc_integration_q01","prod03_calc_integration_q02","prod03_calc_integration_q03","prod03_calc_integration_q04","prod03_calc_integration_q05","prod03_calc_integration_q06","prod03_calc_integration_q07","prod03_calc_integration_q08","prod03_calc_integration_q09","prod03_calc_integration_q10","prod03_calc_integration_q11","prod03_calc_integration_q12"]
+  }]
+}

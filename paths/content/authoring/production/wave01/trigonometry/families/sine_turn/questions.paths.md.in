@@ -1,0 +1,102 @@
+@question {{read_notation_id}} | {{read_notation_title}}
+@template choices.v1
+@version 1
+@goal {{read_notation_objective}}
+@given {{read_notation_given}}
+@domain Theta is real, measured in radians, with 0<=theta<2pi. Sine is the unit-circle vertical coordinate.
+@read {{reading_id}}
+@step 10 | What exact vertical coordinate must the original equation have?
+{{read_notation_choices_1}}
+@feedback 12 | This reverses the required coordinate sign. Substituting {{read_notation_opposite}} gives ({{read_notation_a}})({{read_notation_opposite}})+({{read_notation_b}})={{read_notation_wrong_sign_lhs}}, not {{read_notation_c}}. Keep the signed divisor when isolating sine.
+@feedback 13 | This coordinate is too large by 1/2. It gives ({{read_notation_a}})({{read_notation_shifted}})+({{read_notation_b}})={{read_notation_shifted_lhs}}, not {{read_notation_c}}. Subtract the constant on both sides, then divide both sides.
+@after {{read_notation_after_1}}
+@wrong A coordinate is a number, not an angle. Undo the added constant and the nonzero multiplier in that order.
+@why Here A={{read_notation_a}}, B={{read_notation_b}} and C={{read_notation_c}}. Subtracting B gives ({{read_notation_a}})sine(theta)={{read_notation_c}}-({{read_notation_b}})={{read_notation_rhs}}. Dividing by {{read_notation_a}} gives sine(theta)={{read_notation_rhs}}/({{read_notation_a}})={{read_notation_level}}. Check the coordinate in the original: ({{read_notation_a}})({{read_notation_level}})+({{read_notation_b}})={{read_notation_c}}. Multiplying and adding back reverse the moves, so every angle at this coordinate, and only such an angle, solves the original.
+@end
+
+@question {{worked_check_id}} | {{worked_check_title}}
+@template choices.v1
+@version 1
+@goal {{worked_check_objective}}
+@given {{worked_check_given}}
+@domain Theta is real, measured in radians, with 0<=theta<2pi. Sine is the unit-circle vertical coordinate. The displayed theta value is one known solution, not a restriction to that angle.
+@read {{reading_id}}
+@step 10 | Which other permitted angle has the same sine coordinate?
+{{worked_check_choices_1}}
+@feedback 11 | {{worked_check_known}} is the known angle already supplied. It checks the equation, but repeating it does not supply the other angle requested.
+@feedback 13 | At {{worked_check_wrong_angle}}, sine is {{worked_check_wrong_coordinate}}, not {{worked_check_level}}. A quarter-turn changes this coordinate; it is not the required reflection.
+@after {{worked_check_after_1}}
+@wrong Find a distinct point with the same vertical coordinate, not a repeat of the known point or a quarter-turn.
+@why Subtracting {{worked_check_b}} and dividing by {{worked_check_a}} gives sine(theta)=({{worked_check_c}}-({{worked_check_b}}))/({{worked_check_a}})={{worked_check_rhs}}/({{worked_check_a}})={{worked_check_level}}. Reflect the known {{worked_check_known}} across the vertical axis: pi-{{worked_check_known}}={{worked_check_reflected_raw}}; adding {{worked_check_reflection_shift}} gives {{worked_check_other}} in the required turn. Both angles in {{worked_check_answers}} have sine {{worked_check_level}}, so ({{worked_check_a}})({{worked_check_level}})+({{worked_check_b}})={{worked_check_c}} for each. Both lie in [0,2pi). A coordinate strictly between -1 and 1 cuts the circle at two points, so these two exhaust the interval.
+@end
+
+@question {{choose_next_step_id}} | {{choose_next_step_title}}
+@template choices.v1
+@version 1
+@goal {{choose_next_step_objective}}
+@given {{choose_next_step_given}}
+@domain Theta is real, measured in radians, with 0<=theta<2pi. Sine is the unit-circle vertical coordinate.
+@read {{reading_id}}
+@step 10 | Which equivalent equation has sine itself isolated?
+{{choose_next_step_choices_1}}
+@feedback 12 | This equation is valid: subtracting {{choose_next_step_b}} gives ({{choose_next_step_a}})sine(theta)={{choose_next_step_rhs}}. But the nonunit multiplier {{choose_next_step_a}} remains attached. Divide both complete sides by {{choose_next_step_a}} to meet the isolation goal; the valid intermediate move is not mathematically false.
+@feedback 13 | This value gives ({{choose_next_step_a}})({{choose_next_step_shifted}})+({{choose_next_step_b}})={{choose_next_step_shifted_lhs}}, not {{choose_next_step_c}}. Division must give {{choose_next_step_rhs}}/({{choose_next_step_a}}), with the divisor's sign retained.
+@after {{choose_next_step_after_1}}
+@wrong Distinguish a solution-preserving intermediate equation from one that also completes the stated goal.
+@why Subtract {{choose_next_step_b}} from both sides: ({{choose_next_step_a}})sine(theta)={{choose_next_step_c}}-({{choose_next_step_b}})={{choose_next_step_rhs}}. Divide by the nonzero {{choose_next_step_a}}: sine(theta)={{choose_next_step_rhs}}/({{choose_next_step_a}})={{choose_next_step_level}}. This has coefficient 1 on sine. Multiplication by {{choose_next_step_a}} followed by addition of {{choose_next_step_b}} recovers the original, and ({{choose_next_step_a}})({{choose_next_step_level}})+({{choose_next_step_b}})={{choose_next_step_c}} checks the required coordinate.
+@end
+
+@question {{explain_step_id}} | {{explain_step_title}}
+@template choices.v1
+@version 1
+@goal {{explain_step_objective}}
+@given {{explain_step_given}}
+@domain Theta is real, measured in radians, with 0<=theta<2pi. Sine is the unit-circle vertical coordinate. Alpha names the given known angle; expressions differing by a full turn name the same direction.
+@read {{reading_id}}
+@step 10 | Which reflection preserves the stated sine coordinate?
+{{explain_step_choices_1}}
+@feedback 11 | A half-turn takes {{explain_step_known}} to {{explain_step_halfturn}}. It negates both coordinates, giving sine {{explain_step_opposite}} instead of {{explain_step_level}}.
+@feedback 12 | Reflecting across the horizontal axis sends the known angle to {{explain_step_other_reflection}} and negates its vertical coordinate. Its sine is {{explain_step_opposite}}, not {{explain_step_level}}.
+@after {{explain_step_after_1}}
+@wrong Use the coordinate definition to decide which axis reflection keeps sine unchanged.
+@why Sine is the vertical coordinate. Reflection across the vertical axis changes only the other coordinate, so sine(pi-alpha)=sine(alpha). With alpha={{explain_step_known}}, the calculation is pi-{{explain_step_known}}={{explain_step_reflected_raw}}; adding {{explain_step_reflection_shift}} gives {{explain_step_reflected}} in the required turn, and its sine is {{explain_step_level}}. The two proposed alternatives have coordinate {{explain_step_opposite}}. The stated coordinate is nonzero, so neither alternative can preserve it.
+@end
+
+@question {{repair_error_id}} | {{repair_error_title}}
+@template choices.v1
+@version 1
+@goal {{repair_error_objective}}
+@given {{repair_error_given}}
+@domain Theta is real, measured in radians, with 0<=theta<2pi. Sine is the unit-circle vertical coordinate. L1-L3 are a deliberately incorrect attempt, not accepted working.
+@read {{reading_id}}
+@step 10 | Which line is the first invalid step in the displayed attempt?
+{{repair_error_choices_1}}
+@feedback 12 | L1 is valid isolation: ({{repair_error_c}}-({{repair_error_b}}))/({{repair_error_a}})={{repair_error_level}}. It states a coordinate equation, not a completed interval solution list. The list has not yet been checked there.
+@feedback 13 | L3 endorses the list already written in L2. It is also false, but the first failure is L2's inclusion of an angle outside the domain.
+@after {{repair_error_after_1}}
+@wrong Read the attempt in order. A later endorsement does not move the first error to a later line.
+@why L1 follows by subtracting {{repair_error_b}} and dividing by the nonzero {{repair_error_a}}. L2 is the first list and includes 2pi, which fails theta<2pi. L3 merely endorses that already invalid list. Only the line number has been identified; the corrected set still has to be selected.
+@step 20 | Which corrected set contains every permitted solution?
+{{repair_error_choices_2}}
+@feedback 21 | This set omits {{repair_error_omitted}}. That angle has sine {{repair_error_level}}, gives ({{repair_error_a}})({{repair_error_level}})+({{repair_error_b}})={{repair_error_c}}, and is in [0,2pi). Even an empty set can miss a valid solution.
+@feedback 22 | This retains 2pi, the excluded right endpoint. Its original left side is {{repair_error_endpoint_lhs}}; regardless of whether that equals {{repair_error_c}}, theta<2pi is still required.
+@after {{repair_error_after_2}}
+@wrong Remove the out-of-domain angle without losing any angle that satisfies both the equation and the interval.
+@why Isolation gives sine(theta)=({{repair_error_c}}-({{repair_error_b}}))/({{repair_error_a}})={{repair_error_level}}. The allowed angles are {{repair_error_answers}}. Each has that coordinate and checks ({{repair_error_a}})({{repair_error_level}})+({{repair_error_b}})={{repair_error_c}}. In x squared+y squared=1, fixing one coordinate at {{repair_error_level}} leaves the other coordinate squared equal to 1-({{repair_error_level}}) squared; there are {{repair_error_count}} circle points. All {{repair_error_count}} are represented once in the interval, while 2pi is excluded.
+@end
+
+@question {{independent_id}} | {{independent_title}}
+@template choices.v1
+@version 1
+@goal {{independent_objective}}
+@given {{independent_given}}
+@domain Theta is real, measured in radians, with 0<=theta<2pi. Sine is the unit-circle vertical coordinate.
+@read {{reading_id}}
+@step 10 | Which set is exactly the complete solution set?
+{{independent_choices_1}}
+@feedback 11 | These angles have sine {{independent_contrast}}. The original left side is ({{independent_a}})({{independent_contrast}})+({{independent_b}})={{independent_contrast_lhs}}, not {{independent_c}}. They solve a different coordinate equation.
+@feedback 13 | This set omits {{independent_omitted}}, which is in the interval and has sine {{independent_level}}. Substitution gives ({{independent_a}})({{independent_level}})+({{independent_b}})={{independent_c}}. A complete set must include that angle.
+@after {{independent_after_1}}
+@wrong Check the proposed angles against the original equation, both endpoints, and the number of possible unit-circle points.
+@why Subtract {{independent_b}} on both sides to get ({{independent_a}})sine(theta)={{independent_c}}-({{independent_b}})={{independent_rhs}}; divide by {{independent_a}} to get sine(theta)={{independent_level}}. The complete set is {{independent_answers}}. Every listed angle checks ({{independent_a}})({{independent_level}})+({{independent_b}})={{independent_c}} and lies in [0,2pi). Fixing this coordinate in x squared+y squared=1 gives {{independent_count}} circle points: two when its magnitude is below 1, one at magnitude 1. We have exactly that many distinct directions; adding full turns cannot add another angle in this interval.
+@end

@@ -1,0 +1,103 @@
+<!-- read_notation -->
+@question {{id}} | {{title}}
+@template choices.v1
+@version 1
+@goal {{objective}}
+@given {{given}}
+@domain x is real. In ax+b=c, a is a nonzero coefficient, b is the signed added constant and c is the other side.
+@read {{reading_id}}
+@step 10 | Which ordered pair names the nonzero multiplier a and signed added constant b?
+{{choices_1}}
+@feedback {{wrong_a_1}} | This changes the sign of the coefficient {{a}}. The multiplier is the signed number attached to x.
+@feedback {{wrong_b_1}} | This swaps the jobs of {{a}} and {{b}}. The first multiplies x; the second is the separate signed term.
+@after {{after_1}}
+@wrong Read the coefficient and separate signed term before operating.
+@why The ordered pair records the numbers' jobs in the original equality; it is notation, not a solved value.
+@end
+<!-- worked_check -->
+@question {{id}} | {{title}}
+@template choices.v1
+@version 1
+@goal {{objective}}
+@given {{given}}
+@domain x is real. In ax+b=c, a is a nonzero coefficient, b is the signed added constant and c is the other side.
+@read {{reading_id}}
+@step 10 | After subtracting the signed constant b={{b}} from both sides, what is the new right-hand value?
+{{choices_1}}
+@feedback {{wrong_a_1}} | This leaves the original right side at {{right}}. Subtract the signed constant on both sides: {{right}}-({{b}})={{balance}}.
+@feedback {{wrong_b_1}} | This adds the signed constant: {{right}}+({{b}})={{added}}. Removing that term requires {{right}}-({{b}})={{balance}}.
+@after {{after_1}}
+@wrong Apply the signed inverse operation to both complete sides.
+@why Subtracting the same signed constant on both sides gives {{right}}-({{b}})={{balance}} on the right and {{b}}-({{b}})=0 on the left. The reached equation is {{after_1}}.
+@end
+<!-- choose_next_step -->
+@question {{id}} | {{title}}
+@template choices.v1
+@version 1
+@goal {{objective}}
+@given {{given}}
+@domain x is real. In ax+b=c, a is a nonzero coefficient, b is the signed added constant and c is the other side.
+@read {{reading_id}}
+@step 10 | Which reached equation is equivalent and removes the stated added constant?
+{{choices_1}}
+@feedback {{wrong_a_1}} | Adding {{b}} to both sides preserves equality, but it leaves twice the original constant beside x. The stated goal is to cancel that constant.
+@feedback {{wrong_b_1}} | This removes {{b}} only from the left side. Apply the same subtraction to the right: {{right}}-({{b}})={{balance}}.
+@after {{after_1}}
+@wrong Check both equality preservation and the cancellation goal.
+@why The balanced intermediate equality is {{after_1}}; adding the same signed constant back reverses this chosen step.
+@end
+<!-- explain_step -->
+@question {{id}} | {{title}}
+@template choices.v1
+@version 1
+@goal {{objective}}
+@given {{given}}
+@domain x is real. In ax+b=c, a is a nonzero coefficient, b is the signed added constant and c is the other side.
+@read {{reading_id}}
+@step 10 | Which operation reverses the indicated division and restores the prior equality?
+{{choices_1}}
+@feedback {{wrong_a_1}} | This divides by {{a}} again. To reverse the displayed division, multiply both complete sides by its nonzero divisor {{a}}.
+@feedback {{wrong_b_1}} | Multiplying by zero makes both sides zero and erases the restriction on x. It cannot recover the preceding equation.
+@after {{after_1}}
+@wrong Name the inverse on both complete sides, not merely another valid operation.
+@why The restored intermediate equality is {{after_1}}. Multiplying by the nonzero divisor reverses the displayed division.
+@end
+<!-- repair_error -->
+@question {{id}} | {{title}}
+@template choices.v1
+@version 1
+@goal {{objective}}
+@given {{given}}
+@domain x is real. In ax+b=c, a is a nonzero coefficient, b is the signed added constant and c is the other side.
+@read {{reading_id}}
+@step 10 | Which labelled transition is the first one that fails to preserve the original equality?
+{{choices_1}}
+@feedback {{wrong_a_1}} | L2 correctly evaluates the already incorrect addition in L1. The first error is the choice of addition in L1.
+@feedback {{wrong_b_1}} | L3 follows the incorrect intermediate equation. Repair the earlier inverse-sign error in L1 first.
+@after {{after_1}}
+@wrong Identify the first invalid transition before calculating its repair.
+@why L1 uses addition of b, but removing the signed term requires subtracting b from both complete sides. The first decision identifies this invalid transition before calculating its numerical repair.
+@step 20 | What exact value repairs that transition's right-side calculation?
+{{choices_2}}
+@feedback {{wrong_a_2}} | This repeats the sign error: {{right}}+({{b}})={{added}}. The inverse calculation is {{right}}-({{b}})={{balance}}.
+@feedback {{wrong_b_2}} | This leaves the right side unchanged at {{right}}. Apply the same subtraction used on the left: {{right}}-({{b}})={{balance}}.
+@after {{after_2}}
+@wrong Apply the inverse of the signed added term to the original right side.
+@why The required right-side calculation is {{right}}-({{b}})={{balance}}, giving {{after_2}}. Division by its nonzero coefficient and substitution in the original verify the solution.
+@end
+<!-- independent -->
+@question {{id}} | {{title}}
+@template choices.v1
+@version 1
+@goal {{objective}}
+@given {{given}}
+@domain x is real. In ax+b=c, a is a nonzero coefficient, b is the signed added constant and c is the other side.
+@read {{reading_id}}
+@step 10 | Which exact value makes the two complete original sides equal?
+{{choices_1}}
+@feedback {{wrong_a_1}} | This reverses the sign of the solution. Substitution gives left side minus right side equal to {{wrong_a_residual}}, so the original sides are unequal.
+@feedback {{wrong_b_1}} | This stops at the value of ax and omits division by {{a}}. Substitution gives residual {{wrong_b_residual}}; a solution requires residual zero.
+@after {{after_1}}
+@wrong Substitute each candidate into the complete original equality, preserving signs.
+@why Substitution in the original given is {{substitution}}. Thus the accepted value {{after_1}} makes both complete sides equal; the nonzero coefficient makes a second different solution impossible.
+@end

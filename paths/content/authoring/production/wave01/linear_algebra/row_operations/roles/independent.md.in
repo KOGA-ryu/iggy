@@ -1,0 +1,15 @@
+@question {{id}} | {{title}}
+@template choices.v1
+@version 1
+@goal {{objective}}
+@given {{given}}
+@domain x and y are real. Each option is an ordered pair (x,y), and the same pair must satisfy both original equations.
+@read {{reading_id}}
+@step 10 | Which ordered pair solves both original equations?
+{{choices_1}}
+@feedback {{wrong_1_0_id}} | This pair makes the original left sides {{wrong_0_left_0}} and {{wrong_0_left_1}}; they must equal {{first_constant}} and {{second_constant}} respectively. The pair (x,y)=({{x}},{{y}}) satisfies both equations.
+@feedback {{wrong_1_2_id}} | This pair makes the original left sides {{wrong_2_left_0}} and {{wrong_2_left_1}}; they must equal {{first_constant}} and {{second_constant}} respectively. The pair (x,y)=({{x}},{{y}}) satisfies both equations.
+@after {{after_1}}
+@wrong Substitute both coordinates into both original rows, retaining exact fractions.
+@why Substitute the same ordered pair into both original equations: {{calculation_1}}
+@end

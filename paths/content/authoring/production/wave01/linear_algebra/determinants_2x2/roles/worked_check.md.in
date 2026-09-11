@@ -1,0 +1,15 @@
+@question {{id}} | {{title}}
+@template choices.v1
+@version 1
+@goal {{objective}}
+@given {{given}}
+@domain The displayed products use the original matrix positions a,b,c,d.
+@read {{reading_id}}
+@step 10 | What is the completed value after subtracting the diagonal products?
+{{choices_1}}
+@feedback {{sum_id}} | This adds the diagonal products: {{sum_expression}}={{sum_value}}. The determinant subtracts the second product, giving {{determinant}}, not {{sum_label}}.
+@feedback {{other_id}} | This omits the other diagonal product after ({{a}})({{d}})={{main_product}}. Subtract ({{b}})({{c}})={{other_product}} to obtain {{determinant}}, not {{other_label}}.
+@after {{after_1}}
+@wrong Keep subtraction between ad and bc; do not add those products.
+@why The second diagonal product is subtracted, not added: {{determinant_expression}}={{determinant}}.
+@end

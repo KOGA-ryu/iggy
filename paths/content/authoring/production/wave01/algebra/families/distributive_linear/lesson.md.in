@@ -1,0 +1,39 @@
+@block introduction | start | - | Distribute before isolating x
+@prose Grouped linear equations use a nonzero multiplier on every term inside parentheses. Expand carefully, then use balanced inverse operations and check the unexpanded original equation.
+@endblock
+@block definition | terms | 1.1 | The grouped expression
+@prose In a(x+b)+d=e, x is a real unknown, a is the nonzero multiplier, b is the signed inside constant, d is a separate outside constant, and e is the original right-hand constant.
+@display form
+a\left(x+b\right)+d=e,\qquad a\ne0
+@endblock
+@block proposition | rule | 1.2 | Distribution reaches every term
+@prose Distribution means a(x+b)=ax+ab. The multiplier a acts on both x and b, including their signs. Afterwards, remove d from both complete sides and divide by nonzero a when appropriate.
+@display distribute
+a\left(x+b\right)=ax+ab
+@help proof
+@prose Reversing the same balanced operations recovers the preceding equation, so each permitted step preserves the complete solution set.
+@endblock
+@block example | condition | 1.3 | A negative multiplier changes both products
+@prose For -3(x-2), distribution gives -3x+6, not -3x-2. Multiplying by zero loses a restriction and cannot be reversed; zero multipliers are explanatory boundaries only.
+@endblock
+@block example | worked | 1.4 | Worked example
+@prose Solve 4(x-3)+2=18. Find the value of x that makes this original equality true.
+@display worked_given
+4\left(x-3\right)+2=18
+@help hint
+@prose Distribute first, remove the outside 2, then divide by 4.
+@help answer
+@display
+x=7
+@help solution
+@prose Distribute: 4x-12+2=18, so 4x-10=18. Add 10 to both sides: 4x=28. Divide by 4: x=7. Check the original: 4(7-3)+2=4(4)+2=18.
+@endblock
+@block example | errors | 1.5 | Diagnose incomplete distribution
+@prose In 5(x+2)=20, the line 5x+2=20 is the first error because 5 has not multiplied the 2. Later solving must not hide that missing product.
+@endblock
+@block exercise | practice | 1.6 | Three groups of decisions
+@prose Teaching establishes the distributive step; practice varies signs and outside constants; fresh check combines grouping with exact fractions. Check the unexpanded expression after finding x.
+@endblock
+@block summary | summary | 1.7 | Expand, balance, and check
+@prose Distribute to every term, preserve equality by operating on complete sides, divide only by nonzero a, and substitute in the original grouped expression. Subtracting two alleged solutions proves uniqueness when a is nonzero.
+@endblock

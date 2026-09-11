@@ -1,0 +1,40 @@
+@block introduction | start | - | Derivatives from nearby slopes
+@prose A derivative at a real input a is an instantaneous slope, not the function value f(a). This reading builds it from the average slopes over nearby nonzero increments h.
+@endblock
+@block definition | terms | 1.1 | Values, increments and prime notation
+@prose A function assigns an output f(x) to each allowed input x. Here f is a polynomial and x is the real input variable. A, B and C are fixed real coefficients: A multiplies x squared, B multiplies x, and C is the constant term. A power such as x squared means x times x. a is the fixed real input, and h is a real input increment. f(a) is an output. f prime(a) is the derivative when its limit exists.
+@display eq1
+f'(a)=\lim_{h\to0}\frac{f(a+h)-f(a)}{h}
+@endblock
+@block proposition | rule | 1.2 | Expand before cancelling
+@prose For f(x)=Ax^2+Bx+C, substitution uses (a+h) squared=a squared+2ah+h squared. Subtracting f(a) cancels the constant terms, so every remaining term has a factor h.
+@display eq2
+\begin{aligned}f(a+h)-f(a)&=A(a^2+2ah+h^2)+B(a+h)+C-(Aa^2+Ba+C)\\&=Ah^2+(2Aa+B)h\\&=h(Ah+2Aa+B)\end{aligned}
+@prose This algebra explains why the quotient can simplify for permitted nonzero h. The h coefficient 2Aa+B is also the value obtained by coefficient differentiation.
+@endblock
+@block proposition | condition | 1.3 | Why h must be nonzero
+@prose The original quotient is undefined at h=0. For nonzero h, the common h cancels, leaving Ah+2Aa+B. This is a polynomial, so as h approaches zero its value approaches 2Aa+B. The cancellation does not assign a value to the original quotient at zero.
+@display eq3
+\frac{f(a+h)-f(a)}{h}=Ah+2Aa+B\ (h\ne0),\qquad f'(a)=2Aa+B
+@endblock
+@block example | worked | 1.4 | Work f(x)=x^2+x at a=1
+@prose Given f(x)=x squared+x and a=1, find the derivative from its difference quotient. The derivative describes the slope at the specified input.
+@display eq4
+f(x)=x^2+x,\qquad a=1
+@help hint
+@prose Evaluate f(1+h) term by term, subtract f(1), and factor the remaining h before cancelling.
+@help answer
+@display eq5
+f'(1)=3
+@help solution
+@prose First, f(1)=1^2+1=2 and f(1+h)=(1+h)^2+(1+h)=1+2h+h^2+1+h=2+3h+h^2. Therefore f(1+h)-f(1)=3h+h^2=h(3+h). For h not equal to zero, the quotient is 3+h, so its limit is 3. Independently, coefficient differentiation gives 2x+1, and 2(1)+1=3. The original output check f(1)=2 is distinct from the slope 3.
+@endblock
+@block example | errors | 1.5 | Two errors to avoid
+@prose Do not substitute h=0 into the original quotient, and do not drop a linear h contribution while expanding f(a+h). A later line may follow an earlier bad expansion.
+@endblock
+@block exercise | practice | 1.6 | Three groups of six decisions
+@prose Teaching, practice and fresh-check questions retain the same definition while varying signs, points and degree. A function value, an average slope and a derivative value answer different questions.
+@endblock
+@block summary | summary | 1.7 | A checked derivative value
+@prose Expand from the original polynomial, retain h not equal to zero while cancelling, take the limit, and compare with coefficient differentiation. A derivative at a point is a slope; substituting the point into f gives the output instead.
+@endblock

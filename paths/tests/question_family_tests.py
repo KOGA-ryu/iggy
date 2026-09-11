@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exact family cases plus compiled false-key/false-working regression checks."""
+"""Registered family mathematics and the shared data-to-compiled-card boundary."""
 import argparse
 import copy
 from fractions import Fraction
@@ -12,13 +12,15 @@ import sys
 from unittest.mock import patch
 import unittest
 
-ROOT = Path(__file__).resolve().parents[4]
+ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
 
 import author_question_family as runner
-import generate as family
 import build_question_batch as batch
 import export_learning as export
+
+family = runner.load_provider('linear_balance_v1')
+sine = runner.load_provider('sine_turn_v1')
 
 
 class FamilyTests(unittest.TestCase):
@@ -86,6 +88,7 @@ class FamilyTests(unittest.TestCase):
                           if option['id'] in q['question']['steps'][0]['accepted_option_ids'])
                      for q in report['route_checks']['questions']]
         self.assertEqual([positions.count(i) for i in range(3)], [6, 6, 6])
+        self.assertTrue(all(sorted(positions[i::6]) == [0,1,2] for i in range(6)))
         titles = [e['title'] for e in report['inspection']['entities'] if e['kind'] == 'question']
         self.assertEqual(len(set(titles)), 18)
         self.assertTrue(titles[6].startswith('07 ')); self.assertTrue(titles[6].endswith('practice'))
@@ -100,12 +103,14 @@ class FamilyTests(unittest.TestCase):
                 self.assertIn(questions[0]['id'], str(caught.exception))
 
 
-class RecipePipelineTests(unittest.TestCase):
+class RecipeFixture(unittest.TestCase):
+    family_name = 'linear_balance_v1'
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix='paths-family-recipe-')
         self.addCleanup(self.temporary.cleanup)
         self.source = Path(self.temporary.name).resolve()/'authoring'
-        self.created = runner.initialize(self.source, 'linear_balance_v1', 'recipe_test')
+        self.created = runner.initialize(self.source, self.family_name, 'recipe_test')
         self.active = (ROOT/'b/learning-store/active.json').read_bytes()
 
     def tearDown(self):
@@ -118,6 +123,8 @@ class RecipePipelineTests(unittest.TestCase):
         p = self.source/'recipe.json'; value = export.decoded(p.read_bytes()); edit(value)
         p.write_bytes(export.encoded(value))
 
+
+class RecipePipelineTests(RecipeFixture):
     def test_scaffold_is_data_only_repeatable_and_source_bound(self):
         self.assertEqual({p.name for p in self.source.iterdir()}, set(runner.INPUTS))
         self.assertFalse(any(p.suffix == '.py' for p in self.source.iterdir()))
@@ -200,6 +207,162 @@ class RecipePipelineTests(unittest.TestCase):
                 p = self.source/'DESIGN.md'; p.write_text(p.read_text()+'\nChanged during check.\n')
             return result
         with patch.object(runner, 'model_gate', side_effect=mutate):
+            with self.assertRaises(export.ExportError) as caught: self.check()
+        self.assertEqual(caught.exception.code, 'family.source_changed')
+
+
+class SineRecipeTests(RecipeFixture):
+    family_name = 'sine_turn_v1'
+
+    def test_reviewed_math_teaching_and_feedback_survive_the_shared_route(self):
+        report = self.check()
+        self.assertEqual((report['questions'], report['readings'], report['decisions'], report['wrong_choices']), (18, 1, 21, 42))
+        self.assertTrue(report['route_checks']['save_replay'])
+        self.assertEqual(report['lesson_checks']['independent_worked_disclosures'], 3)
+        self.assertEqual({p.name for p in self.source.iterdir()}, set(runner.INPUTS))
+        self.assertFalse(report['published'])
+        self.assertEqual(report, self.check())
+        for path in runner.PROVIDER_DEPENDENCIES[self.family_name]:
+            self.assertEqual(report['tools_sha256'][str(path.relative_to(ROOT))], export.sha(path.read_bytes()))
+        for name in ('lesson.md.in', 'questions.paths.md.in'):
+            self.assertEqual((self.source/name).read_bytes(), (sine.math.SOURCE/'families/sine_turn'/name).read_bytes())
+        recipe = export.decoded((self.source/'recipe.json').read_bytes())
+        groups = sine.prepare(recipe['parameters'], 'reuse_test')
+        for (questions, fields), old_set in zip(groups, sine.math.SETS):
+            old = sine.math.sequence('sine_turn', old_set)['questions']
+            for q, previous in zip(questions, old):
+                self.assertEqual(q['case'], previous['case'])
+                actual = batch.reasoning_certificate(q, sine.CHECKERS)
+                prior = batch.reasoning_certificate(previous, sine.math.CHECKERS)
+                self.assertEqual(actual['expected'], prior['expected'])
+                self.assertEqual(actual['evidence'], prior['evidence'])
+            prior_fields = sine.math.presentation('sine_turn', old_set)
+            self.assertEqual({k:v for k,v in fields.items() if k != 'set_title'},
+                             {k:prior_fields[k] for k in fields if k != 'set_title'})
+        first_positions = []
+        for item in report['route_checks']['questions']:
+            step = item['question']['steps'][0]
+            first_positions.append(next(i for i,o in enumerate(step['options']) if o['id'] in step['accepted_option_ids']))
+            for step in item['question']['steps']:
+                for o in step['options']:
+                    self.assertEqual(bool(o.get('wrong_feedback')), o['id'] not in step['accepted_option_ids'])
+        self.assertEqual([first_positions.count(i) for i in range(3)], [6, 6, 6])
+        self.assertTrue(all(sorted(first_positions[i::6]) == [0,1,2] for i in range(6)))
+
+    def test_all_permitted_role_seeds_against_triangle_and_quadrant_oracle(self):
+        # Reference-triangle folding, independent of the producer's inverse
+        # branch table and repeated exact rotations (the Wave 01 test method).
+        def sine_coordinate(theta):
+            t = theta%2; sign = 1
+            if t > 1: t -= 1; sign = -1
+            if t > Fraction(1,2): t = 1-t
+            rational, radical = {Fraction(0):(0,0), Fraction(1,6):(Fraction(1,2),0),
+                                 Fraction(1,3):(0,Fraction(1,2)), Fraction(1,2):(1,0)}[t]
+            return sign*rational, sign*radical
+        parameters = export.decoded((self.source/'recipe.json').read_bytes())['parameters']
+        counts = {}
+        for meta in parameters['roles']:
+            role = meta['role']; counts[role] = 0
+            for level, sign, offset, branch in itertools.product(sine.ROLE_LEVELS[role], (-1,1), range(-2,3), (0,1)):
+                if branch and (role not in ('worked_check','explain_step') or abs(Fraction(level)) == 1): continue
+                if role == 'choose_next_step' and sign == 1 and Fraction(level).denominator == 1: continue
+                seed = dict(level=level, coefficient_sign=sign, offset=offset, known_branch=branch)
+                case = sine.original_case(seed, role, '/seed')
+                q = dict(meta, id='seed_'+role, case=case)
+                check = batch.reasoning_certificate(q, sine.CHECKERS)
+                derived = Fraction(case['c']-case['b'], case['a'])
+                expected = [Fraction(i,6) for i in range(12) if sine_coordinate(Fraction(i,6)) == (derived,0)]
+                self.assertEqual(len(expected), 1 if abs(derived) == 1 else 2)
+                self.assertEqual(list(map(str, expected)), check['evidence']['facts']['interval_solutions_theta_over_pi'])
+                self.assertTrue(all(case['a']*sine_coordinate(t)[0]+case['b'] == case['c'] for t in expected))
+                self.assertNotEqual((case['a'],case['b'],case['c']), (2,2,4))
+                counts[role] += 1
+        self.assertEqual(counts, dict(read_notation=40, worked_check=60, choose_next_step=35,
+                                     explain_step=40, repair_error=50, independent=50))
+
+    def test_number_edit_reaches_compiled_given_feedback_and_only_one_question(self):
+        before = self.check()
+        self.change_recipe(lambda r: r['parameters']['sets'][0]['cases']['read_notation'].update(offset=1))
+        after = self.check()
+        old, new = before['route_checks']['questions'], after['route_checks']['questions']
+        self.assertEqual(old[1:], new[1:])
+        self.assertNotEqual(old[0]['id'], new[0]['id'])
+        self.assertEqual(new[0]['question']['equation'], r'2\sin\theta+1=2')
+        wrong = next(o for o in new[0]['question']['steps'][0]['options'] if o['id'] == 12)
+        self.assertIn('(2)(-1/2)+(1)=0, not 2', wrong['wrong_feedback'])
+        self.assertEqual(after['mathematical_checks'][0]['expected']['steps'][0]['answer'], r'\sin\theta=\frac{1}{2}')
+
+    def test_markdown_changes_only_the_requested_prompts_and_feedback(self):
+        before = self.check(); path = self.source/'questions.paths.md.in'; original = path.read_text()
+        for fragment, field in [('Which other permitted angle has the same sine coordinate?', 'prompt'),
+                                ('is the known angle already supplied.', 'wrong_feedback')]:
+            path.write_text(original.replace(fragment, 'Consider the known angle. '+fragment, 1))
+            after = self.check(); expected = copy.deepcopy(before['route_checks'])
+            for q in expected['questions'][1::6]:
+                step = q['question']['steps'][0]
+                if field == 'prompt': step['prompt'] = 'Consider the known angle. '+step['prompt']
+                else:
+                    option = next(o for o in step['options'] if o['id'] == 11)
+                    option['wrong_feedback'] = option['wrong_feedback'].replace(fragment, 'Consider the known angle. '+fragment, 1)
+            self.assertEqual(after['route_checks'], expected)
+            self.assertEqual(after['mathematical_checks'], before['mathematical_checks'])
+
+    def test_bad_seeds_domains_and_repeated_displayed_questions_identify_the_field(self):
+        original = (self.source/'recipe.json').read_bytes()
+        invalid = [('read_notation','level','0'), ('read_notation','level','0.5'),
+                   ('worked_check','level','1'), ('explain_step','level','-1'),
+                   ('worked_check','known_branch',2), ('worked_check','known_branch',True),
+                   ('independent','known_branch',1), ('independent','offset',3),
+                   ('independent','offset',False), ('independent','coefficient_sign',0),
+                   ('independent','coefficient_sign',True)]
+        for role, field, bad in invalid:
+            with self.subTest(role=role, field=field, bad=bad):
+                (self.source/'recipe.json').write_bytes(original)
+                self.change_recipe(lambda r: r['parameters']['sets'][0]['cases'][role].update({field:bad}))
+                with self.assertRaises(export.ExportError) as caught: self.check()
+                self.assertIn(str(self.source/'recipe.json')+f':/parameters/sets/0/cases/{role}/{field}', str(caught.exception))
+        for field, bad in [('units','degrees'), ('include_lower',1), ('include_upper',True), ('upper','4')]:
+            (self.source/'recipe.json').write_bytes(original)
+            self.change_recipe(lambda r: r['parameters']['domain'].update({field:bad}))
+            with self.assertRaises(export.ExportError) as caught: self.check()
+            self.assertIn('/parameters/domain', str(caught.exception))
+        (self.source/'recipe.json').write_bytes(original)
+        self.change_recipe(lambda r: r['parameters']['sets'][0]['cases']['choose_next_step'].update(level='1', coefficient_sign=1))
+        with self.assertRaises(export.ExportError): self.check()
+        (self.source/'recipe.json').write_bytes(original)
+        def repeat(r):
+            cases = r['parameters']['sets']
+            cases[2]['cases']['explain_step'] = dict(cases[0]['cases']['explain_step'], offset=1)
+        self.change_recipe(repeat)
+        with self.assertRaises(export.ExportError) as caught: self.check()
+        self.assertIn('different displayed original', str(caught.exception))
+
+    def test_compiled_false_keys_and_reached_working_fail_certificate_comparison(self):
+        report = self.check(); recipe = export.decoded((self.source/'recipe.json').read_bytes())
+        questions, checks, _, _, _ = runner.assemble(recipe, runner.inputs(self.source), self.source, sine)
+        original = (Path(report['authoring'])/'documents/chapter.paths.md').read_text()
+        false_key = original.replace('@answer 11', '@answer 12', 1).replace('@feedback 12 |', '@feedback 11 |', 1)
+        false_working = original.replace(r'@after \sin\theta=\frac{1}{2}', '@after 0=1', 1)
+        for damaged in (false_key, false_working):
+            self.assertNotEqual(damaged, original)
+            with tempfile.TemporaryDirectory(prefix='paths-sine-mutation-') as temporary:
+                folder = Path(temporary).resolve(); (folder/'chapter.paths.md').write_text(damaged)
+                compiled = runner.model_gate(MODEL, '--question-batch', folder)['questions']
+                with self.assertRaises(export.ExportError) as caught: batch.verify_role_content(questions, compiled, checks)
+                self.assertIn(questions[0]['id'], str(caught.exception))
+
+    def test_imported_mathematical_source_change_invalidates_check(self):
+        actual_gate, actual_read = runner.model_gate, export.read_bytes
+        changed = False
+        def gate(model, flag, documents):
+            nonlocal changed
+            result = actual_gate(model, flag, documents); changed = True
+            return result
+        def read(path, *args):
+            data = actual_read(path, *args)
+            return data+b'\n' if changed and path == Path(sine.math.__file__) else data
+        # Simulate changed captured bytes without writing to the frozen file.
+        with patch.object(runner, 'model_gate', side_effect=gate), patch.object(export, 'read_bytes', side_effect=read):
             with self.assertRaises(export.ExportError) as caught: self.check()
         self.assertEqual(caught.exception.code, 'family.source_changed')
 

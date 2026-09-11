@@ -1,0 +1,35 @@
+@block introduction | start | - | Polynomial derivative rules
+@prose A derivative function records how a polynomial changes at every real input; evaluating it at a gives one instantaneous slope. This reading connects the power, sum and constant rules to a difference quotient.
+@endblock
+@block definition | terms | 1.1 | Powers and coefficients
+@prose The polynomial function f assigns an output f(x) to each real input x. A coefficient multiplies a power of x: in Ax cubed+Bx squared+Cx+D, A multiplies x cubed, B multiplies x squared, C multiplies x, and D is constant. A power x cubed means x times x times x. The derivative function f prime(x) is different from its value f prime(a) at a fixed real input a. A constant term does not depend on x and its derivative is zero. The symbol d/dx means differentiate with respect to x; n in the rule below is a positive integer exponent.
+@display eq1
+\frac{d}{dx}x^n=nx^{n-1}\quad(n\text{ a positive integer})
+@endblock
+@block proposition | rule | 1.2 | Apply the rules term by term
+@prose Differentiate each polynomial term, multiply its coefficient by its power, reduce that power by one, add the results, and retain the derivative zero for a constant.
+@endblock
+@block proposition | condition | 1.3 | An independent difference-quotient check
+@prose Here a is the fixed input and h is a real change in input. The difference f(a+h)-f(a) is the output change. Its quotient by h is an average slope, defined only for nonzero h. Expanding f(a+h)-f(a) has zero constant term. Its h coefficient equals f prime(a); higher powers of h vanish in the limit after valid nonzero-h cancellation.
+@endblock
+@block example | worked | 1.4 | Work f(x)=x^3-2x^2+x+4 at a=1
+@prose Given f(x)=x cubed-2x squared+x+4 and a=1, find the derivative value from the rules and from a difference quotient. The two methods should produce the same slope at that input.
+@display eq2
+f(x)=x^3-2x^2+x+4,\qquad a=1
+@help hint
+@prose Substitute 1+h into every power, then look for the coefficient of h after subtracting f(1).
+@help answer
+@display eq3
+f'(1)=0
+@help solution
+@prose Coefficient rules give f prime(x)=3x^2-4x+1, so f prime(1)=3(1)^2-4(1)+1=0. Also f(1)=1-2+1+4=4. Expanding gives f(1+h)=4+0h+h^2+h^3, so f(1+h)-f(1)=h^2+h^3=h(h+h^2). For nonzero h the quotient is h+h^2, whose limit is 0. This agrees with the rule calculation and distinguishes output 4 from derivative 0.
+@endblock
+@block example | errors | 1.5 | Keep every rule visible
+@prose A missing exponent multiplier, a retained constant, or a function value reported as a derivative changes the requested result. Diagnose the first bad line before repairing a later conclusion.
+@endblock
+@block exercise | practice | 1.6 | Three groups of six decisions
+@prose Teaching, practice and fresh-check questions vary signs, evaluation points and cubic, quadratic or linear degree while preserving the same bounded rules.
+@endblock
+@block summary | summary | 1.7 | Two checks for one slope
+@prose Differentiate coefficients by degree and independently recover the h coefficient from f(a+h)-f(a). Keep the derivative value distinct from the original output f(a).
+@endblock

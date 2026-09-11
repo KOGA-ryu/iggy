@@ -1,0 +1,32 @@
+{
+  "format": "paths_learning_authoring",
+  "format_version": 1,
+  "package_id": "prod03_trig_identities",
+  "package_version": 1,
+  "sources": [
+    {
+      "id": "prod03_trig_identities_source",
+      "kind": "original",
+      "title": "Identities and their original domains",
+      "uri": "paths:original/prod03_trig_identities",
+      "revision": "1",
+      "attribution": "Original Paths exercises, lesson and explanations. Definitions and conditions checked 2026-09-10 against OpenStax Precalculus section 7.1, Solving Trigonometric Equations with Identities: https://openstax.org/books/precalculus/pages/7-1-solving-trigonometric-equations-with-identities .",
+      "reuse": "Original authoring; no external exercise wording copied.",
+      "content_ids": [
+        "prod03_trig_identities_r",
+        "prod03_trig_identities_q01",
+        "prod03_trig_identities_q02",
+        "prod03_trig_identities_q03",
+        "prod03_trig_identities_q04",
+        "prod03_trig_identities_q05",
+        "prod03_trig_identities_q06",
+        "prod03_trig_identities_q07",
+        "prod03_trig_identities_q08",
+        "prod03_trig_identities_q09",
+        "prod03_trig_identities_q10",
+        "prod03_trig_identities_q11",
+        "prod03_trig_identities_q12"
+      ]
+    }
+  ]
+}

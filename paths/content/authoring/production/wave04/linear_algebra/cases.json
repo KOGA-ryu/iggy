@@ -1,0 +1,771 @@
+{
+  "format": "paths_finite_span_basis",
+  "format_version": 1,
+  "domain": "Scalars are real. The displayed matrices list the original vectors as COLUMNS in the given order. Coefficients and coordinates use that same order. Row operations include the entire augmented row.",
+  "bounds": {
+    "dimension": [
+      2,
+      3
+    ],
+    "vector_count": [
+      2,
+      4
+    ],
+    "integer_magnitude": 7,
+    "witness_numerator": 12,
+    "witness_denominator": 12
+  },
+  "goals": {
+    "member": "Decide whether w is in the span of the columns of A; construct coefficients and verify them in the original vectors.",
+    "outside": "Decide whether w is in the span of the columns of A and give an exact inconsistency witness.",
+    "independent": "Determine independence from the full homogeneous system, and distinguish the column span from the ambient space.",
+    "dependent": "Determine dependence from a homogeneous system, construct a nonzero coefficient relation and verify it in the original columns.",
+    "basis": "Verify that the stated ordered columns form a basis of the ambient space, then find and check the coordinates of w.",
+    "column_basis": "Construct a basis of W=span(U) from original pivot columns in increasing order; find and verify the coordinates of w in that ordered basis.",
+    "plane_basis": "Construct an ordered basis for the specified plane W using parameter order x=s,z=t, then find and verify the coordinates of w.",
+    "two_bases": "Verify the two ordered bases and find the coordinates of w in each, checking both original reconstructions."
+  },
+  "cases": [
+    {
+      "id": "prod04_linear_span_basis_q01",
+      "group": "introductory",
+      "first_position": 0,
+      "kind": "member",
+      "columns": [
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          0,
+          0,
+          2
+        ]
+      ],
+      "target": [
+        3,
+        0,
+        5
+      ],
+      "route": [
+        [
+          "add",
+          2,
+          0,
+          "-1"
+        ],
+        [
+          "swap",
+          1,
+          2
+        ],
+        [
+          "scale",
+          1,
+          "2"
+        ],
+        [
+          "coeff"
+        ],
+        [
+          "reconstruct"
+        ]
+      ],
+      "source": {
+        "source_id": "hefferon_span_basis",
+        "locator": "Two.I.2.23(a)",
+        "printed_page": 103,
+        "pdf_page": 113,
+        "original_givens": "Target (2,0,1)^T; generators (1,0,0)^T,(0,0,1)^T in R3.",
+        "adaptation_kind": "adapted_exercise",
+        "changes": "Change generators to (1,0,1)^T,(0,0,2)^T and target to (3,0,5)^T; construct exact coefficients."
+      }
+    },
+    {
+      "id": "prod04_linear_span_basis_q02",
+      "group": "introductory",
+      "first_position": 1,
+      "kind": "outside",
+      "columns": [
+        [
+          2,
+          1,
+          -1
+        ],
+        [
+          1,
+          -1,
+          1
+        ]
+      ],
+      "target": [
+        1,
+        0,
+        3
+      ],
+      "ell_anchor": 1,
+      "route": [
+        [
+          "swap",
+          0,
+          1
+        ],
+        [
+          "add",
+          1,
+          0,
+          "-2"
+        ],
+        [
+          "add",
+          2,
+          0,
+          "1"
+        ],
+        [
+          "annihilator"
+        ],
+        [
+          "obstruction"
+        ]
+      ],
+      "source": {
+        "source_id": "hefferon_span_basis",
+        "locator": "Two.I.2.22",
+        "printed_page": 103,
+        "pdf_page": 113,
+        "original_givens": "Target (1,0,3)^T; generators (2,1,-1)^T,(1,-1,1)^T.",
+        "adaptation_kind": "adapted_exercise",
+        "changes": "Retain original numbers; add row route and normalized annihilator witness proving non-membership."
+      }
+    },
+    {
+      "id": "prod04_linear_span_basis_q03",
+      "group": "introductory",
+      "first_position": 2,
+      "kind": "member",
+      "columns": [
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          3,
+          0,
+          0
+        ]
+      ],
+      "target": [
+        2,
+        1,
+        0
+      ],
+      "route": [
+        [
+          "add",
+          1,
+          0,
+          "-1"
+        ],
+        [
+          "scale",
+          1,
+          "-3"
+        ],
+        [
+          "add",
+          0,
+          1,
+          "-3"
+        ],
+        [
+          "coeff"
+        ],
+        [
+          "reconstruct"
+        ]
+      ],
+      "source": {
+        "source_id": "hefferon_span_basis",
+        "locator": "Two.I.2.26(c)",
+        "printed_page": 104,
+        "pdf_page": 114,
+        "original_givens": "Determine whether {(1,1,0)^T,(3,0,0)^T} spans R3.",
+        "adaptation_kind": "adapted_exercise",
+        "changes": "Retain generators; add target (2,1,0)^T, coefficient construction and proper-span explanation."
+      }
+    },
+    {
+      "id": "prod04_linear_span_basis_q04",
+      "group": "introductory",
+      "first_position": 0,
+      "kind": "outside",
+      "columns": [
+        [
+          2,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ]
+      ],
+      "target": [
+        1,
+        1,
+        2
+      ],
+      "ell_anchor": 1,
+      "route": [
+        [
+          "swap",
+          1,
+          2
+        ],
+        [
+          "annihilator"
+        ],
+        [
+          "obstruction"
+        ]
+      ],
+      "source": {
+        "source_id": "hefferon_span_basis",
+        "locator": "Two.I.2.28(a)",
+        "printed_page": 104,
+        "pdf_page": 114,
+        "original_givens": "Find a spanning set for the xz-plane in R3, that is {(x,0,z)^T:x,z real}.",
+        "adaptation_kind": "adapted_exercise",
+        "changes": "Specify generators (2,0,0)^T,(0,0,1)^T and outside target (1,1,2)^T; prove non-membership."
+      }
+    },
+    {
+      "id": "prod04_linear_span_basis_q05",
+      "group": "practice",
+      "first_position": 1,
+      "kind": "independent",
+      "columns": [
+        [
+          1,
+          2,
+          0
+        ],
+        [
+          -1,
+          1,
+          0
+        ]
+      ],
+      "route": [
+        [
+          "add",
+          1,
+          0,
+          "-2"
+        ],
+        [
+          "scale",
+          1,
+          "3"
+        ],
+        [
+          "add",
+          0,
+          1,
+          "1"
+        ],
+        [
+          "coeff"
+        ],
+        [
+          "rank_pair"
+        ]
+      ],
+      "source": {
+        "source_id": "hefferon_span_basis",
+        "locator": "Two.II.1.23(a)",
+        "printed_page": 117,
+        "pdf_page": 127,
+        "original_givens": "Determine independence of {(1,2,0)^T,(-1,1,0)^T} in its natural space R3.",
+        "adaptation_kind": "adapted_exercise",
+        "changes": "Retain original columns; add homogeneous solve and explicit distinction between independence and spanning R3."
+      }
+    },
+    {
+      "id": "prod04_linear_span_basis_q06",
+      "group": "practice",
+      "first_position": 2,
+      "kind": "dependent",
+      "columns": [
+        [
+          1,
+          7,
+          7
+        ],
+        [
+          2,
+          7,
+          7
+        ],
+        [
+          3,
+          7,
+          7
+        ]
+      ],
+      "witness_anchor": 2,
+      "route": [
+        [
+          "add",
+          1,
+          0,
+          "-7"
+        ],
+        [
+          "add",
+          2,
+          0,
+          "-7"
+        ],
+        [
+          "add",
+          2,
+          1,
+          "-1"
+        ],
+        [
+          "scale",
+          1,
+          "-7"
+        ],
+        [
+          "add",
+          0,
+          1,
+          "-2"
+        ],
+        [
+          "relation"
+        ],
+        [
+          "null_check"
+        ]
+      ],
+      "source": {
+        "source_id": "hefferon_span_basis",
+        "locator": "Two.II.1.21(b)",
+        "printed_page": 117,
+        "pdf_page": 127,
+        "original_givens": "Determine independence of {(1,7,7)^T,(2,7,7)^T,(3,7,7)^T} in R3.",
+        "adaptation_kind": "adapted_exercise",
+        "changes": "Retain columns; require relation normalized to third coefficient 1, and verify it in originals."
+      }
+    },
+    {
+      "id": "prod04_linear_span_basis_q07",
+      "group": "practice",
+      "first_position": 0,
+      "kind": "dependent",
+      "columns": [
+        [
+          0,
+          0,
+          -1
+        ],
+        [
+          1,
+          0,
+          4
+        ],
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      "witness_anchor": 2,
+      "route": [
+        [
+          "swap",
+          0,
+          2
+        ],
+        [
+          "swap",
+          1,
+          2
+        ],
+        [
+          "add",
+          0,
+          1,
+          "-4"
+        ],
+        [
+          "scale",
+          0,
+          "-1"
+        ],
+        [
+          "relation"
+        ],
+        [
+          "null_check"
+        ]
+      ],
+      "source": {
+        "source_id": "hefferon_span_basis",
+        "locator": "Two.II.1.21(c)",
+        "printed_page": 117,
+        "pdf_page": 127,
+        "original_givens": "Determine independence of {(0,0,-1)^T,(1,0,4)^T} in R3.",
+        "adaptation_kind": "adapted_exercise",
+        "changes": "Append the zero vector; use a homogeneous system and normalized relation to establish the resulting dependence."
+      }
+    },
+    {
+      "id": "prod04_linear_span_basis_q08",
+      "group": "practice",
+      "first_position": 1,
+      "kind": "dependent",
+      "columns": [
+        [
+          1,
+          1,
+          1
+        ],
+        [
+          -1,
+          2,
+          3
+        ],
+        [
+          -1,
+          5,
+          7
+        ]
+      ],
+      "witness_anchor": 2,
+      "route": [
+        [
+          "add",
+          1,
+          0,
+          "-1"
+        ],
+        [
+          "add",
+          2,
+          0,
+          "-1"
+        ],
+        [
+          "scale",
+          1,
+          "3"
+        ],
+        [
+          "add",
+          2,
+          1,
+          "-4"
+        ],
+        [
+          "add",
+          0,
+          1,
+          "1"
+        ],
+        [
+          "relation"
+        ],
+        [
+          "null_check"
+        ]
+      ],
+      "source": {
+        "source_id": "hefferon_span_basis",
+        "locator": "Two.II.1.23(b)",
+        "printed_page": 117,
+        "pdf_page": 127,
+        "original_givens": "Determine independence of row vectors (1,3,1),(-1,4,3),(-1,11,7).",
+        "adaptation_kind": "adapted_exercise",
+        "changes": "Use column notation; replace second coordinates by 1,2,5, retaining u3=u1+2u2; require third relation coefficient 1."
+      }
+    },
+    {
+      "id": "prod04_linear_span_basis_q09",
+      "group": "mixed",
+      "first_position": 2,
+      "kind": "basis",
+      "columns": [
+        [
+          1,
+          1
+        ],
+        [
+          -1,
+          1
+        ]
+      ],
+      "target": [
+        1,
+        2
+      ],
+      "route": [
+        [
+          "method_system"
+        ],
+        [
+          "add",
+          1,
+          0,
+          "-1"
+        ],
+        [
+          "scale",
+          1,
+          "2"
+        ],
+        [
+          "add",
+          0,
+          1,
+          "1"
+        ],
+        [
+          "rank_pair"
+        ],
+        [
+          "coeff"
+        ],
+        [
+          "reconstruct"
+        ]
+      ],
+      "source": {
+        "source_id": "hefferon_span_basis",
+        "locator": "Two.III.1.22(a)",
+        "printed_page": 127,
+        "pdf_page": 137,
+        "original_givens": "Represent w=(1,2)^T in ordered basis B=((1,1)^T,(-1,1)^T) of R2.",
+        "adaptation_kind": "adapted_exercise",
+        "changes": "Retain all givens; add column-system method, basis verification and original reconstruction."
+      }
+    },
+    {
+      "id": "prod04_linear_span_basis_q10",
+      "group": "mixed",
+      "first_position": 0,
+      "kind": "column_basis",
+      "columns": [
+        [
+          2,
+          1,
+          1
+        ],
+        [
+          3,
+          0,
+          1
+        ],
+        [
+          5,
+          1,
+          2
+        ],
+        [
+          6,
+          0,
+          2
+        ]
+      ],
+      "target": [
+        -1,
+        1,
+        0
+      ],
+      "route": [
+        [
+          "method_swap",
+          0,
+          1
+        ],
+        [
+          "add",
+          2,
+          0,
+          "-1"
+        ],
+        [
+          "add",
+          1,
+          0,
+          "-2"
+        ],
+        [
+          "add",
+          1,
+          2,
+          "-3"
+        ],
+        [
+          "swap",
+          1,
+          2
+        ],
+        [
+          "basis_columns"
+        ],
+        [
+          "coeff"
+        ],
+        [
+          "reconstruct"
+        ]
+      ],
+      "source": {
+        "source_id": "hefferon_span_basis",
+        "locator": "Two.I.2.26(e)",
+        "printed_page": 104,
+        "pdf_page": 114,
+        "original_givens": "Decide whether {(2,1,1)^T,(3,0,1)^T,(5,1,2)^T,(6,0,2)^T} spans R3.",
+        "adaptation_kind": "adapted_exercise",
+        "changes": "Retain generators; construct original pivot-column basis of W=span(U), add w=(-1,1,0)^T and its ordered coordinates."
+      }
+    },
+    {
+      "id": "prod04_linear_span_basis_q11",
+      "group": "mixed",
+      "first_position": 1,
+      "kind": "plane_basis",
+      "normal": [
+        1,
+        1,
+        0
+      ],
+      "target": [
+        2,
+        -2,
+        3
+      ],
+      "route": [
+        [
+          "plane_rule"
+        ],
+        [
+          "basis_columns"
+        ],
+        [
+          "add",
+          1,
+          0,
+          "1"
+        ],
+        [
+          "swap",
+          1,
+          2
+        ],
+        [
+          "coeff"
+        ],
+        [
+          "reconstruct"
+        ]
+      ],
+      "source": {
+        "source_id": "hefferon_span_basis",
+        "locator": "Two.III.1.27(b)",
+        "printed_page": 127,
+        "pdf_page": 137,
+        "original_givens": "Find a basis for three-wide row vectors whose first and second components add to zero: {(x,y,z):x+y=0}.",
+        "adaptation_kind": "adapted_exercise",
+        "changes": "Use columns, parameter order x=s,z=t, and target (2,-2,3)^T. Construct basis of this proper plane and coordinates."
+      }
+    },
+    {
+      "id": "prod04_linear_span_basis_q12",
+      "group": "mixed",
+      "first_position": 2,
+      "kind": "two_bases",
+      "columns": [
+        [
+          1,
+          -1
+        ],
+        [
+          1,
+          1
+        ]
+      ],
+      "second_columns": [
+        [
+          1,
+          2
+        ],
+        [
+          1,
+          3
+        ]
+      ],
+      "target": [
+        3,
+        -1
+      ],
+      "route": [
+        [
+          "add",
+          1,
+          0,
+          "1"
+        ],
+        [
+          "scale",
+          1,
+          "2"
+        ],
+        [
+          "add",
+          0,
+          1,
+          "-1"
+        ],
+        [
+          "coeff_first"
+        ],
+        [
+          "second_add",
+          1,
+          0,
+          "-2"
+        ],
+        [
+          "add",
+          0,
+          1,
+          "-1"
+        ],
+        [
+          "coeff_second"
+        ],
+        [
+          "both_check"
+        ]
+      ],
+      "source": {
+        "source_id": "hefferon_span_basis",
+        "locator": "Two.III.1.23",
+        "printed_page": 127,
+        "pdf_page": 137,
+        "original_givens": "w=(3,-1)^T; B1=((1,-1)^T,(1,1)^T), B2=((1,2)^T,(1,3)^T). Represent w in both bases.",
+        "adaptation_kind": "adapted_exercise",
+        "changes": "Retain all givens and basis orders; expand both solves, basis proofs and original reconstructions."
+      }
+    }
+  ]
+}

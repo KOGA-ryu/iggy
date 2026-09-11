@@ -1,0 +1,48 @@
+@block introduction | start | 1.1 | Every sine solution in one turn
+@prose This reading solves exact sine equations for real angles theta measured in radians on 0<=theta<2pi. A complete answer contains every permitted angle once, not merely one familiar angle.
+@endblock
+@block definition | terms | 1.2 | Radians, angles, and vertical coordinate
+@prose A radian measures an angle by arc length on a unit circle, a circle of radius 1 centered at the origin. Pi is the exact angle of a half-turn and 2pi is one full turn. Theta is a real radian angle; alpha names one known solution angle, which need not be acute. On the unit circle, sin(theta) is the vertical coordinate. A solution set contains every theta that makes the original equation true.
+@prose Sine, abbreviated sin, is the vertical coordinate; cosine, abbreviated cos, is the horizontal coordinate. Writing sin theta or cos theta without parentheses means the same function value as sin(theta) or cos(theta).
+@display coordinate
+\sin(\theta)=\text{vertical coordinate on the unit circle}
+@prose Zero is included by 0<=theta; 2pi is excluded by theta<2pi, so the shared direction is not counted twice. An integer parameter k records repeated full turns.
+@prose Angles start on the positive horizontal axis and increase counterclockwise. The four quadrants, in that order, have coordinate signs (+,+), (-,+), (-,-), (+,-). Here x means horizontal coordinate and y means vertical coordinate. Braces list a set without order or repetition; the empty-set symbol means no members. Square brackets include an endpoint and round brackets exclude it. The symbol sqrt(3) denotes the positive number whose square is 3.
+@endblock
+@block proposition | rule | 1.3 | Locate, repeat, and filter
+@prose Isolate sine, locate every unit-circle point with that height, add 2kpi for integer k, and filter the stated interval. Reflection across the vertical axis maps alpha to pi-alpha and preserves vertical coordinate.
+@display reflection
+\sin(\pi-\alpha)=\sin(\alpha)
+@help proof
+@prose A horizontal line at a permitted height meets the unit circle at the listed one-turn points: two for a non-extreme height and one at height 1 or -1. Adding full turns lists all periodic copies; filtering [0,2pi) retains each direction once.
+@prose For completeness, the unit-circle equation is x squared+y squared=1. Fixing either coordinate at h leaves the other coordinate squared equal to 1-h squared: two roots when -1<h<1, one when h is 1 or -1, and none when the magnitude of h exceeds 1. Membership and this count together prove a complete set; remembering one angle alone does not.
+@prose Bisect an equilateral triangle of side 2. Its right triangle has hypotenuse 2, short leg 1 and long leg sqrt(3), because 2 squared-1 squared=3. Its small angle is pi/6 and its other acute angle is pi/3. Dividing the lengths by 2 gives sine(pi/6)=1/2 and cosine(pi/3)=1/2. Reflect these points using the quadrant signs for negative halves; the axis points supply zero and the extreme coordinates. Add or subtract 2pi until an angle is in the stated turn. At an extreme the reflected point coincides with the original and must not be counted twice.
+@endblock
+@block example | condition | 1.4 | Isolate without changing solutions
+@prose In A sin(theta)+B=C, A is the nonzero integer coefficient multiplying sine, B is the added constant, and C is the right-side constant. Subtract B from both complete sides and divide by nonzero A. Adding B and multiplying by A reverse those moves, so the solution set is preserved. Division by zero is undefined.
+@display isolate
+A\sin(\theta)+B=C\quad\Longrightarrow\quad\sin(\theta)=\frac{C-B}{A}
+@endblock
+@block example | worked | 1.5 | A complete worked extreme-height example
+@prose Solve the following equation in the stated interval.
+@display worked_given
+2\sin(\theta)+2=4,\qquad0\le\theta<2\pi
+@help hint
+@prose First subtract 2 from both complete sides. Then divide by 2 and locate the resulting unit-circle height.
+@help answer
+@display
+\theta\in\left\{\frac{\pi}{2}\right\}
+@help solution
+@prose Subtracting 2 gives 2sin(theta)=4-2=2. Dividing by the nonzero coefficient 2 gives sin(theta)=1. Height 1 occurs only at the top of the unit circle, theta=pi/2; its vertical reflection is the same point, not a second solution. The check is 2sin(pi/2)+2=2(1)+2=4. Copies pi/2+2kpi have only k=0 in [0,2pi).
+@display worked_check
+2\sin\left(\frac{\pi}{2}\right)+2=4
+@endblock
+@block example | errors | 1.6 | Locate the first endpoint error
+@prose A later line can copy an earlier bad angle list correctly. First check the branches, then both interval endpoints. Adding 2pi is wrong because the right endpoint is excluded.
+@endblock
+@block exercise | practice | 1.7 | Distinguish a height from a complete set
+@prose The exercises distinguish a sine value, an angle, a reflected angle, and a complete solution set. Practice identifying the required kind of answer before calculating. The fresh question supplies no intermediate method.
+@endblock
+@block summary | summary | 1.8 | Membership plus completeness
+@prose Isolate sine, list every height-matching point, repeat by 2kpi, filter [0,2pi), and check each retained angle in the original equation. The horizontal-line intersection argument establishes completeness. Other coordinate values may require additional reference angles or inverse functions.
+@endblock

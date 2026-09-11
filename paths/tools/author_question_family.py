@@ -16,7 +16,16 @@ import build_question_batch as batch
 import export_learning as export
 
 ROOT = batch.ROOT
-PROVIDERS = {'linear_balance_v1': ROOT / 'content/authoring/learning/linear_family'}
+PROVIDERS = {
+    'linear_balance_v1': ROOT / 'content/authoring/learning/linear_family',
+    'sine_turn_v1': ROOT / 'content/authoring/learning/sine_family',
+}
+# Reviewed code only. The sine adapter reuses the frozen Wave 01 mathematics;
+# include that imported implementation and its local imports in the receipt.
+PROVIDER_DEPENDENCIES = {'sine_turn_v1': (
+    ROOT / 'content/authoring/production/wave01/trigonometry/generate.py',
+    ROOT / 'tools/check_authoring_pilot.py',
+)}
 INPUTS = ('recipe.json', 'lesson.md.in', 'questions.paths.md.in', 'DESIGN.md')
 
 
@@ -78,7 +87,8 @@ def load_provider(family):
 
 def tool_hashes(family):
     paths = (Path(__file__), PROVIDERS[family] / 'generate.py', Path(batch.__file__),
-             Path(export.__file__), Path(batch.linear.__file__), batch.CHAPTER_TEMPLATE)
+             Path(export.__file__), Path(batch.linear.__file__), batch.CHAPTER_TEMPLATE,
+             *PROVIDER_DEPENDENCIES.get(family, ()))
     return {str(p.relative_to(ROOT)): export.sha(export.read_bytes(p)) for p in paths}
 
 
@@ -101,7 +111,7 @@ def assemble(recipe, captured, source, provider):
     common = dict(recipe['placement'], reading_id=reading, reading_title=recipe['package']['title'])
     blocks = []
     ordinal = 0
-    for group, calculated in groups:
+    for group_index, (group, calculated) in enumerate(groups):
         values = dict(calculated, **common)
         for index, q in enumerate(group):
             ordinal += 1
@@ -113,8 +123,9 @@ def assemble(recipe, captured, source, provider):
                 lines = batch.choices_text(step['choices'], accepted, number).splitlines()
                 choices, answer = lines[:-1], lines[-1]
                 # Keep semantic option IDs attached to their feedback. The first
-                # correct position cycles evenly; later steps vary deterministically.
-                target = (index + number - 1) % len(choices)
+                # correct position cycles across both roles and sets; the same
+                # role cannot teach a fixed answer position across its repetitions.
+                target = (index + group_index + number - 1) % len(choices)
                 rotation = (accepted - target) % len(choices)
                 ordered = choices[rotation:] + choices[:rotation]
                 fields['choices_' + str(number)] = '\n'.join([*ordered, answer])

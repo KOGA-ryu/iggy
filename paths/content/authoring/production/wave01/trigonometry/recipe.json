@@ -1,0 +1,312 @@
+{
+  "format": "paths_trigonometry_wave01",
+  "version": 2,
+  "sets": [
+    "teaching",
+    "practice",
+    "fresh_check"
+  ],
+  "domain": {
+    "units": "radians",
+    "lower": "0",
+    "upper": "2",
+    "include_lower": true,
+    "include_upper": false
+  },
+  "roles": [
+    {
+      "role": "read_notation",
+      "title": "Read the target coordinate",
+      "objective": "Interpret the exact coordinate required by the original equation.",
+      "prerequisites": "Radian angles, interval inequalities, signed arithmetic, and unit-circle coordinates."
+    },
+    {
+      "role": "worked_check",
+      "title": "Complete the other one-turn point",
+      "objective": "Supply the other permitted angle with the stated coordinate.",
+      "prerequisites": "Radian angles, interval inequalities, signed arithmetic, and unit-circle coordinates."
+    },
+    {
+      "role": "choose_next_step",
+      "title": "Isolate the coordinate",
+      "objective": "Choose an equivalent equation with the trigonometric coordinate isolated.",
+      "prerequisites": "Radian angles, interval inequalities, signed arithmetic, and unit-circle coordinates."
+    },
+    {
+      "role": "explain_step",
+      "title": "Explain the matching coordinate",
+      "objective": "Choose the reflection that preserves the stated coordinate.",
+      "prerequisites": "Radian angles, interval inequalities, signed arithmetic, and unit-circle coordinates."
+    },
+    {
+      "role": "repair_error",
+      "title": "Repair the first endpoint error",
+      "objective": "Identify the first interval error and repair the complete set.",
+      "prerequisites": "Radian angles, interval inequalities, signed arithmetic, and unit-circle coordinates."
+    },
+    {
+      "role": "independent",
+      "title": "Solve a fresh one-turn equation",
+      "objective": "Select every solution of a new equation in the stated interval.",
+      "prerequisites": "Radian angles, interval inequalities, signed arithmetic, and unit-circle coordinates."
+    }
+  ],
+  "families": {
+    "sine_turn": {
+      "teaching": {
+        "levels": [
+          "1/2",
+          "1/2",
+          "-1/2",
+          "1/2",
+          "0",
+          "-1/2"
+        ],
+        "coefficient_signs": [
+          1,
+          1,
+          -1,
+          -1,
+          1,
+          1
+        ],
+        "offsets": [
+          0,
+          -1,
+          2,
+          0,
+          -1,
+          2
+        ],
+        "first_positions": [
+          0,
+          1,
+          2,
+          0,
+          1,
+          2
+        ],
+        "known_branch_indices": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "practice": {
+        "levels": [
+          "-1/2",
+          "-1/2",
+          "0",
+          "-1/2",
+          "1",
+          "0"
+        ],
+        "coefficient_signs": [
+          1,
+          1,
+          -1,
+          -1,
+          1,
+          1
+        ],
+        "offsets": [
+          1,
+          -2,
+          1,
+          0,
+          0,
+          1
+        ],
+        "first_positions": [
+          1,
+          2,
+          0,
+          2,
+          0,
+          1
+        ],
+        "known_branch_indices": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "fresh_check": {
+        "levels": [
+          "-1",
+          "0",
+          "1/2",
+          "1/2",
+          "-1/2",
+          "1"
+        ],
+        "coefficient_signs": [
+          1,
+          1,
+          -1,
+          -1,
+          1,
+          1
+        ],
+        "offsets": [
+          2,
+          1,
+          0,
+          0,
+          2,
+          0
+        ],
+        "first_positions": [
+          2,
+          0,
+          1,
+          1,
+          2,
+          0
+        ],
+        "known_branch_indices": [
+          0,
+          0,
+          0,
+          1,
+          0,
+          0
+        ]
+      }
+    },
+    "cosine_turn": {
+      "teaching": {
+        "levels": [
+          "1/2",
+          "1/2",
+          "-1/2",
+          "1/2",
+          "1",
+          "-1/2"
+        ],
+        "coefficient_signs": [
+          1,
+          1,
+          -1,
+          -1,
+          1,
+          1
+        ],
+        "offsets": [
+          0,
+          -1,
+          2,
+          0,
+          -1,
+          2
+        ],
+        "first_positions": [
+          0,
+          2,
+          1,
+          2,
+          1,
+          0
+        ],
+        "known_branch_indices": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "practice": {
+        "levels": [
+          "-1/2",
+          "-1/2",
+          "0",
+          "-1/2",
+          "0",
+          "1"
+        ],
+        "coefficient_signs": [
+          1,
+          1,
+          -1,
+          -1,
+          1,
+          1
+        ],
+        "offsets": [
+          1,
+          -2,
+          1,
+          0,
+          0,
+          1
+        ],
+        "first_positions": [
+          1,
+          0,
+          2,
+          0,
+          2,
+          1
+        ],
+        "known_branch_indices": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "fresh_check": {
+        "levels": [
+          "-1",
+          "0",
+          "1/2",
+          "1/2",
+          "-1",
+          "0"
+        ],
+        "coefficient_signs": [
+          1,
+          1,
+          -1,
+          -1,
+          1,
+          1
+        ],
+        "offsets": [
+          2,
+          1,
+          0,
+          0,
+          2,
+          0
+        ],
+        "first_positions": [
+          2,
+          1,
+          0,
+          1,
+          0,
+          2
+        ],
+        "known_branch_indices": [
+          0,
+          0,
+          0,
+          1,
+          0,
+          0
+        ]
+      }
+    }
+  }
+}

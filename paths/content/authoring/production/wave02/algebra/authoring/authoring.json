@@ -1,0 +1,18 @@
+{
+  "format": "paths_learning_authoring",
+  "format_version": 1,
+  "package_id": "prod02_algebra_full_linear",
+  "package_version": 1,
+  "sources": [
+    {
+      "id": "prod02_algebra_full_linear_original",
+      "kind": "original",
+      "title": "Complete real linear equations: original Paths lesson and full solving routes",
+      "uri": "paths:original/prod02_algebra_full_linear/v1",
+      "revision": "1",
+      "attribution": "Original Paths equations, explanations and choices. Mathematical conditions checked against OpenStax Elementary Algebra 2e sections 2.3, 2.4 and 2.5, accessed 2026-09-10; exact section URLs and scope are recorded in DESIGN.md.",
+      "reuse": "Original project content; no external exercise wording or solutions copied. References: https://openstax.org/books/elementary-algebra-2e/pages/2-3-solve-equations-with-variables-and-constants-on-both-sides ; https://openstax.org/books/elementary-algebra-2e/pages/2-4-use-a-general-strategy-to-solve-linear-equations ; https://openstax.org/books/elementary-algebra-2e/pages/2-5-solve-equations-with-fractions-or-decimals",
+      "content_ids": ["prod02_algebra_full_linear_r", "prod02_algebra_full_linear_q01", "prod02_algebra_full_linear_q02", "prod02_algebra_full_linear_q03", "prod02_algebra_full_linear_q04", "prod02_algebra_full_linear_q05", "prod02_algebra_full_linear_q06", "prod02_algebra_full_linear_q07", "prod02_algebra_full_linear_q08", "prod02_algebra_full_linear_q09", "prod02_algebra_full_linear_q10", "prod02_algebra_full_linear_q11", "prod02_algebra_full_linear_q12"]
+    }
+  ]
+}

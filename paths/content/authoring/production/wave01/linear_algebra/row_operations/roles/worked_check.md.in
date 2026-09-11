@@ -1,0 +1,15 @@
+@question {{id}} | {{title}}
+@template choices.v1
+@version 1
+@goal {{objective}}
+@given {{given}}
+@domain R2 is the destination; use the old rows and operate on its x, y, and constant entries.
+@read {{reading_id}}
+@step 10 | What is the missing constant after the complete replacement of row 2?
+{{choices_1}}
+@feedback {{wrong_1_0_id}} | This keeps the old constant {{second_2}}. Apply the same row operation: {{constant_calculation}}.
+@feedback {{wrong_1_2_id}} | This uses the wrong signed constant update. The complete replacement requires {{constant_calculation}}, not {{wrong_1_2_label}}.
+@after {{after_1}}
+@wrong Apply the same signed multiple to the constant after the augmented bar.
+@why Apply the stated multiple to the constant after the bar as well: {{forward_calculation}}. Row 1 is unchanged, so the resulting augmented matrix is {{changed_row}}.
+@end

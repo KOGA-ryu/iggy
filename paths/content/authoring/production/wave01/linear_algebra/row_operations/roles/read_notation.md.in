@@ -1,0 +1,15 @@
+@question {{id}} | {{title}}
+@template choices.v1
+@version 1
+@goal {{objective}}
+@given {{given}}
+@domain The entries are real coefficients of x and y followed by the right-hand constant. The vertical bar is not division.
+@read {{reading_id}}
+@step 10 | Which equation is represented by this augmented row?
+{{choices_1}}
+@feedback {{wrong_1_1_id}} | This changes the y coefficient from {{b}} to {{negative_b}}. The ordered row [{{a}},{{b}}|{{c}}] represents {{answer_1}}.
+@feedback {{wrong_1_2_id}} | This uses y coefficient {{negative_c}} instead of {{b}}, and right-hand constant {{b}} instead of {{c}}. Keep coefficient, coefficient, constant order: {{answer_1}}.
+@after {{after_1}}
+@wrong Match the x coefficient, y coefficient, and constant in order.
+@why Read the entries in x, y, constant order: {{calculation_1}}
+@end

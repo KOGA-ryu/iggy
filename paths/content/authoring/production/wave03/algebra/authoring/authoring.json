@@ -1,0 +1,12 @@
+{
+  "format":"paths_learning_authoring","format_version":1,
+  "package_id":"prod03_algebra_quadratic_roots","package_version":1,
+  "sources":[{
+    "id":"prod03_algebra_quadratic_original","kind":"original",
+    "title":"Original complete real quadratic problems and canonical lesson",
+    "uri":"paths:original/prod03_algebra_quadratic_roots/v1","revision":"1",
+    "attribution":"Original Paths exercises, prose, choices and exact certificates. Definitions and conditions checked against OpenStax Intermediate Algebra 2e sections 6.5, 9.2 and 9.3, accessed 2026-09-10.",
+    "reuse":"No external exercise wording or solutions copied. Primary references: https://openstax.org/books/intermediate-algebra-2e/pages/6-5-polynomial-equations ; https://openstax.org/books/intermediate-algebra-2e/pages/9-2-solve-quadratic-equations-by-completing-the-square ; https://openstax.org/books/intermediate-algebra-2e/pages/9-3-solve-quadratic-equations-using-the-quadratic-formula",
+    "content_ids":["prod03_algebra_quadratic_roots_r","prod03_algebra_quadratic_roots_q01","prod03_algebra_quadratic_roots_q02","prod03_algebra_quadratic_roots_q03","prod03_algebra_quadratic_roots_q04","prod03_algebra_quadratic_roots_q05","prod03_algebra_quadratic_roots_q06","prod03_algebra_quadratic_roots_q07","prod03_algebra_quadratic_roots_q08","prod03_algebra_quadratic_roots_q09","prod03_algebra_quadratic_roots_q10","prod03_algebra_quadratic_roots_q11","prod03_algebra_quadratic_roots_q12"]
+  }]
+}

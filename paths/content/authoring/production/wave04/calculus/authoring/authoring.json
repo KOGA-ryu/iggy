@@ -1,0 +1,16 @@
+{
+  "format": "paths_learning_authoring",
+  "format_version": 1,
+  "package_id": "prod04_calc_substitution",
+  "package_version": 1,
+  "sources": [{
+    "id": "active_substitution",
+    "kind": "adapted",
+    "title": "Active Calculus Activities Workbook Chapters 5-8",
+    "uri": "https://activecalculus.org/wp-content/uploads/2024/08/acs-activity-workbook-58-2024.pdf",
+    "revision": "2018 edition updated August 1, 2024; Section 5.3, printed pp.17-24; pinned PDF SHA-256 262344da4d7598bb49a0753a0e169288e18bcde6aa806d0abc8f3ada205a00cd",
+    "attribution": "Adapted from Matthew Boelkins, with David Austin and Steven Schlicker, Active Calculus, 2024 workbook revision. CC BY-SA 4.0, https://creativecommons.org/licenses/by-sa/4.0/ .",
+    "reuse": "This adapted lesson and its twelve questions are CC BY-SA 4.0. Some source integrands and bounds are retained; others are explicitly simplified or assigned new bounds as mapped in cases.json and DESIGN.md. Teaching prose, symbolic choices and misconception feedback are newly written. No figures or photographs reused. This license statement concerns the adapted content, not the surrounding application.",
+    "content_ids": ["prod04_calc_substitution_r","prod04_calc_substitution_q01","prod04_calc_substitution_q02","prod04_calc_substitution_q03","prod04_calc_substitution_q04","prod04_calc_substitution_q05","prod04_calc_substitution_q06","prod04_calc_substitution_q07","prod04_calc_substitution_q08","prod04_calc_substitution_q09","prod04_calc_substitution_q10","prod04_calc_substitution_q11","prod04_calc_substitution_q12"]
+  }]
+}

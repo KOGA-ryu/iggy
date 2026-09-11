@@ -1,0 +1,15 @@
+@question {{id}} | {{title}}
+@template choices.v1
+@version 1
+@goal {{objective}}
+@given {{given}}
+@domain Row 1 remains unchanged. A reverse operation must recover all three entries of the original row 2.
+@read {{reading_id}}
+@step 10 | Which inverse operation restores the original second row?
+{{choices_1}}
+@feedback {{wrong_1_0_id}} | Repeating the original multiple gives constant {{changed_constant}}+({{k}})({{first_2}})={{repeated_constant}}, not the original {{second_2}}. Use {{answer_1}}.
+@feedback {{wrong_1_1_id}} | Zeroing row 2 erases its original entries [{{second_0}},{{second_1}}|{{second_2}}] instead of recovering them. Use {{answer_1}}.
+@after {{after_1}}
+@wrong Undo an addition or subtraction with the opposite multiple of the retained row.
+@why Reverse the replacement with the opposite multiple on every entry: {{inverse_calculation}}. With row 1 unchanged, this restores the complete original augmented matrix {{original_row}}.
+@end

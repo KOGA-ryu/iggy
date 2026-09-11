@@ -1,0 +1,22 @@
+{
+  "format": "paths_calculus_depth_cases",
+  "format_version": 1,
+  "domain": "All inputs are real. The given polynomial is differentiable for every real x.",
+  "bounds": {"coefficient_magnitude": 5, "powers": [2,3,4], "expanded_degree": 5, "evaluation_points": [-2,-1,0,1,2]},
+  "local_goals": {"chain": ["method","derivative","values","tangent"], "product": ["method","factors","derivative","values","tangent"], "mixed": ["method","factors","derivative","values","tangent"]},
+  "coefficient_order": "constant upward; affine [b,a] means a*x+b",
+  "cases": [
+    {"id":"prod02_calc_derivative_tangent_q01","group":"introductory","kind":"chain","u":[1,2],"n":2,"x0":1},
+    {"id":"prod02_calc_derivative_tangent_q02","group":"introductory","kind":"product","u":[1,0,1],"v":[2,1],"x0":1},
+    {"id":"prod02_calc_derivative_tangent_q03","group":"introductory","kind":"chain","u":[2,-1],"n":3,"x0":0},
+    {"id":"prod02_calc_derivative_tangent_q04","group":"introductory","kind":"product","u":[1,-1,2],"v":[-1,1],"x0":2},
+    {"id":"prod02_calc_derivative_tangent_q05","group":"practice","kind":"chain","u":[-1,3],"n":3,"x0":1},
+    {"id":"prod02_calc_derivative_tangent_q06","group":"practice","kind":"product","u":[-2,0,1],"v":[1,-2],"x0":-1},
+    {"id":"prod02_calc_derivative_tangent_q07","group":"practice","kind":"chain","u":[2,2],"n":4,"x0":-1},
+    {"id":"prod02_calc_derivative_tangent_q08","group":"practice","kind":"product","u":[2,1,-1],"v":[-1,3],"x0":0},
+    {"id":"prod02_calc_derivative_tangent_q09","group":"mixed","kind":"mixed","u":[1,1],"n":2,"v":[-1,2],"x0":1},
+    {"id":"prod02_calc_derivative_tangent_q10","group":"mixed","kind":"mixed","u":[-1,2],"n":3,"v":[1,1],"x0":0},
+    {"id":"prod02_calc_derivative_tangent_q11","group":"mixed","kind":"mixed","u":[1,-1],"n":2,"v":[2,1],"x0":-1},
+    {"id":"prod02_calc_derivative_tangent_q12","group":"mixed","kind":"mixed","u":[-1,1],"n":4,"v":[2,-1],"x0":0}
+  ]
+}

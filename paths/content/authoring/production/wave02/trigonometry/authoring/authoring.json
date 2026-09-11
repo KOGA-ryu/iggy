@@ -1,0 +1,32 @@
+{
+  "format": "paths_learning_authoring",
+  "format_version": 1,
+  "package_id": "prod02_trig_full_equations",
+  "package_version": 1,
+  "sources": [
+    {
+      "id": "prod02_trig_full_equations_source",
+      "kind": "original",
+      "title": "Complete trigonometric solution sets",
+      "uri": "paths:original/prod02_trig_full_equations",
+      "revision": "1",
+      "attribution": "Original Paths lesson, exercises and explanations. Definitions and conditions checked 2026-09-10 against OpenStax Precalculus 2e sections 5.1, 5.2, 6.1 and 7.5: https://openstax.org/books/precalculus-2e/pages/7-5-solving-trigonometric-equations and https://openstax.org/books/precalculus-2e/pages/6-1-graphs-of-the-sine-and-cosine-functions .",
+      "reuse": "Original authoring; no external exercise wording copied.",
+      "content_ids": [
+        "prod02_trig_full_equations_r",
+        "prod02_trig_full_equations_q01",
+        "prod02_trig_full_equations_q02",
+        "prod02_trig_full_equations_q03",
+        "prod02_trig_full_equations_q04",
+        "prod02_trig_full_equations_q05",
+        "prod02_trig_full_equations_q06",
+        "prod02_trig_full_equations_q07",
+        "prod02_trig_full_equations_q08",
+        "prod02_trig_full_equations_q09",
+        "prod02_trig_full_equations_q10",
+        "prod02_trig_full_equations_q11",
+        "prod02_trig_full_equations_q12"
+      ]
+    }
+  ]
+}

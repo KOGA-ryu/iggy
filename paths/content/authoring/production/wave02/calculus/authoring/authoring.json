@@ -1,0 +1,16 @@
+{
+  "format": "paths_learning_authoring",
+  "format_version": 1,
+  "package_id": "prod02_calc_derivative_tangent",
+  "package_version": 1,
+  "sources": [{
+    "id": "prod02_calc_derivative_tangent_source",
+    "kind": "original",
+    "title": "Original complete derivative and tangent problems",
+    "uri": "paths:original/prod02_calc_derivative_tangent/v1",
+    "revision": "1",
+    "attribution": "Original Paths directly authored problems, lesson and feedback. Definitions and rule conditions checked 2026-09-10 against OpenStax Calculus Volume 1 sections 3.1 Defining the Derivative (https://openstax.org/books/calculus-volume-1/pages/3-1-defining-the-derivative), 3.3 Differentiation Rules (https://openstax.org/books/calculus-volume-1/pages/3-3-differentiation-rules), and 3.6 The Chain Rule (https://openstax.org/books/calculus-volume-1/pages/3-6-the-chain-rule).",
+    "reuse": "Original numerical exercises and directly authored prose; no textbook problem text copied.",
+    "content_ids": ["prod02_calc_derivative_tangent_r","prod02_calc_derivative_tangent_q01","prod02_calc_derivative_tangent_q02","prod02_calc_derivative_tangent_q03","prod02_calc_derivative_tangent_q04","prod02_calc_derivative_tangent_q05","prod02_calc_derivative_tangent_q06","prod02_calc_derivative_tangent_q07","prod02_calc_derivative_tangent_q08","prod02_calc_derivative_tangent_q09","prod02_calc_derivative_tangent_q10","prod02_calc_derivative_tangent_q11","prod02_calc_derivative_tangent_q12"]
+  }]
+}

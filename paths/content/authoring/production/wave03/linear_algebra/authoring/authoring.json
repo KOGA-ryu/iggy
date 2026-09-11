@@ -1,0 +1,32 @@
+{
+  "format": "paths_learning_authoring",
+  "format_version": 1,
+  "package_id": "prod03_linear_matrix_inverse",
+  "package_version": 1,
+  "sources": [
+    {
+      "id": "prod03_linear_matrix_inverse_original",
+      "kind": "original",
+      "title": "Constructing and using a two by two inverse",
+      "uri": "paths:original/prod03_linear_matrix_inverse/v1",
+      "revision": "1",
+      "attribution": "Original Paths problems, lesson and corrections. Mathematical conditions checked against Dan Margalit and Joseph Rabinoff, Interactive Linear Algebra, Georgia Institute of Technology: https://textbooks.math.gatech.edu/ila/matrix-inverses.html (3.5), https://textbooks.math.gatech.edu/ila/matrix-multiplication.html (3.4), https://textbooks.math.gatech.edu/ila/row-reduction.html (1.2); accessed 2026-09-10.",
+      "reuse": "No textbook passage or exercise copied. References inform definitions and conditions only.",
+      "content_ids": [
+        "prod03_linear_matrix_inverse_r",
+        "prod03_linear_matrix_inverse_q01",
+        "prod03_linear_matrix_inverse_q02",
+        "prod03_linear_matrix_inverse_q03",
+        "prod03_linear_matrix_inverse_q04",
+        "prod03_linear_matrix_inverse_q05",
+        "prod03_linear_matrix_inverse_q06",
+        "prod03_linear_matrix_inverse_q07",
+        "prod03_linear_matrix_inverse_q08",
+        "prod03_linear_matrix_inverse_q09",
+        "prod03_linear_matrix_inverse_q10",
+        "prod03_linear_matrix_inverse_q11",
+        "prod03_linear_matrix_inverse_q12"
+      ]
+    }
+  ]
+}

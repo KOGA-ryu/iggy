@@ -1,0 +1,39 @@
+@block introduction | start | - | Balance signed linear equations
+@prose A signed linear equation has the form ax+b=c, where x is a real unknown, a is a nonzero multiplier, b is the signed added constant, and c is the constant on the other side. Read signs before operating, make the same permitted change to both complete sides, and check the final value in the original equation.
+@endblock
+@block definition | terms | 1.1 | Coefficients and signed constants
+@prose The coefficient a multiplies x. The separate signed added constant b is not part of that coefficient. A solution makes the original equality true after substitution.
+@display form
+ax+b=c,\qquad a\ne0
+@endblock
+@block proposition | rule | 1.2 | Balance has an inverse
+@prose A convenient sequence is to subtract b from both complete sides to reach ax=c-b, then divide by nonzero a. Adding b back reverses the first step. Other equality-preserving sequences may also be valid; this sequence is chosen because it exposes x efficiently.
+@display balance
+ax+b-b=c-b
+@help proof
+@prose Each operation has an inverse on both sides, so it preserves the complete solution set rather than only one trial value.
+@endblock
+@block example | condition | 1.3 | Negative signs and zero
+@prose Subtracting a negative adds its opposite. A zero coefficient cannot be divided away: 0x=0 holds for every real x, while 0x=1 holds for none. Those cases are boundaries, not questions in this unique-solution family.
+@endblock
+@block example | worked | 1.4 | Worked example
+@prose Solve -5x+7=22. The added constant is 7, so subtract 7 from both complete sides.
+@display worked_given
+-5x+7=22
+@help hint
+@prose Subtract the same signed constant from both complete sides, then divide by the nonzero coefficient.
+@help answer
+@display
+x=-3
+@help solution
+@prose Subtract 7: -5x+7-7=22-7, so -5x=15. Divide by -5: x=15/(-5)=-3. Check the original given: -5(-3)+7=15+7=22.
+@endblock
+@block example | errors | 1.5 | Find the first changed equation
+@prose In the attempt 3x-4=8, then 3x=8-4, the original equation 3x-4=8 is valid. The transition to the next line is the first error: removing -4 requires adding 4 to both complete sides, not subtracting 4 from the right. Later arithmetic can follow that wrong line correctly; repair the first invalid transition first.
+@endblock
+@block exercise | practice | 1.6 | Three groups of decisions
+@prose Teaching, practice, and fresh-check questions use the same equality rules. The fresh group changes signs, orientation, or exact fractional values. Substitute the final value back into the original equality.
+@endblock
+@block summary | summary | 1.7 | Preserve the original condition
+@prose Name the signed terms, balance both complete sides, divide by a nonzero multiplier when that is the chosen inverse step, and substitute in the original equation. If x1 and x2 are two alleged solutions, subtracting their original equalities gives a(x1-x2)=0; because a is nonzero, x1=x2.
+@endblock

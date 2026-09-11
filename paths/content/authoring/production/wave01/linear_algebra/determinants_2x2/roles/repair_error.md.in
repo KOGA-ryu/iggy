@@ -1,0 +1,22 @@
+@question {{id}} | {{title}}
+@template choices.v1
+@version 1
+@goal {{objective}}
+@given {{given}}
+@domain L1, L2 and L3 form a student attempt containing an error; later lines may carry an earlier error. The determinant rule is ad-bc.
+@read {{reading_id}}
+@step 10 | Which line first uses the determinant rule incorrectly?
+{{choices_1}}
+@feedback {{l2_id}} | L2 only evaluates the plus expression already written in L1; L1 is where subtraction first becomes addition.
+@feedback {{l3_id}} | L3 carries the earlier determinant error; the first sign error is in L1.
+@after {{after_1}}
+@wrong Locate the first place where subtraction became addition.
+@why The first error replaces the required subtraction with addition; later lines may carry that error. L_1 uses {{sum_expression}}; the rule requires {{determinant_expression}}.
+@step 20 | What is the corrected determinant?
+{{choices_2}}
+@feedback {{sum_id}} | This adds the diagonal products: {{sum_expression}}={{sum_value}}. The determinant subtracts the second product, giving {{determinant}}, not {{sum_label}}.
+@feedback {{other_id}} | This omits the other diagonal product after ({{a}})({{d}})={{main_product}}. Subtract ({{b}})({{c}})={{other_product}} to obtain {{determinant}}, not {{other_label}}.
+@after {{after_2}}
+@wrong Recompute ad-bc from the original four entries.
+@why Now use the required subtraction on the original entries: {{determinant_expression}}={{determinant}}.
+@end

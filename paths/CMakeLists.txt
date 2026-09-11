@@ -417,7 +417,7 @@ if(BUILD_TESTING)
   add_test(NAME paths_content_tests COMMAND paths_content_tests)
   if(PATHS_BUILD_NATIVE)
     add_test(NAME paths_question_family_tests COMMAND "${Python3_EXECUTABLE}"
-      "${CMAKE_CURRENT_SOURCE_DIR}/content/authoring/learning/linear_family/tests.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tests/question_family_tests.py"
       --target "$<TARGET_FILE:sorter>" --model "$<TARGET_FILE:paths_learning_document_tests>")
     add_test(NAME paths_question_batch_tests COMMAND "${Python3_EXECUTABLE}"
       "${CMAKE_CURRENT_SOURCE_DIR}/tests/question_batch_tests.py"

@@ -1,0 +1,106 @@
+{
+  "format": "paths_production_wave",
+  "format_version": 1,
+  "wave": "wave01",
+  "target_questions": 144,
+  "target_readings": 8,
+  "sets": [
+    "teaching",
+    "practice",
+    "fresh_check"
+  ],
+  "questions_per_set": 6,
+  "model": "gpt-5.6-terra",
+  "reasoning": "high",
+  "baseline_generation": "aac3fe81ef47fcae16a6c7d5246595ed7a5b3b44b03bc7532d083b0a34ef7a59",
+  "subjects": [
+    {
+      "subject": "algebra",
+      "title": "Algebra",
+      "thread_id": "01a08ba1-ce58-73e0-91ce-56db887705fd",
+      "families": [
+        {
+          "id": "signed_balance",
+          "title": "Signed linear equations",
+          "chapter": "worked_linear_practice",
+          "chapter_title": "Worked linear practice",
+          "scope": "Real ax+b=c with nonzero a; signed constants and coefficients, goal-sensitive equivalence, inverse operations, exact integer and fractional solutions. Reuse the reviewed linear-family generator/certificates where valid."
+        },
+        {
+          "id": "distributive_linear",
+          "title": "Linear equations with brackets",
+          "chapter": "topic_0003",
+          "chapter_title": "Equations and Relations",
+          "scope": "Real a(x+b)=c and a(x+b)+d=e with nonzero a and bounded integer original coefficients. Teach distribution to every term, inverse order, negative multipliers and exact fractions. Expand the original expression independently and check original substitution. Exclude variable denominators and equations requiring new runtime support."
+        }
+      ]
+    },
+    {
+      "subject": "trigonometry",
+      "title": "Trigonometry",
+      "thread_id": "01a08ba2-3e1e-7540-9098-6739fb1afd7a",
+      "families": [
+        {
+          "id": "sine_turn",
+          "title": "Sine equations in one turn",
+          "chapter": "topic_0032",
+          "chapter_title": "Unit Circle Framework",
+          "scope": "Real angles in radians on [0,2pi). Bounded A*sin(theta)+B=C with nonzero integer A, exact heights 0, +/-1/2 and +/-1 only. Prove complete solution counts including extreme heights and zero, check endpoints, forbid duplicate angles. Vary the six role decisions meaningfully; do not merely relabel the fixed pilot."
+        },
+        {
+          "id": "cosine_turn",
+          "title": "Cosine equations in one turn",
+          "chapter": "topic_0032",
+          "chapter_title": "Unit Circle Framework",
+          "scope": "Same bounded [0,2pi) framework for A*cos(theta)+B=C. Define cosine as horizontal coordinate and its reflection separately. Use exact heights 0, +/-1/2 and +/-1; verify each angle against cosine, correct branch count, and endpoint inclusion. Do not assume sine reflections apply unchanged."
+        }
+      ]
+    },
+    {
+      "subject": "calculus",
+      "title": "Calculus",
+      "thread_id": "01a08ba2-bec2-7663-a568-02d31981ea38",
+      "families": [
+        {
+          "id": "difference_quotient",
+          "title": "Derivatives from a difference quotient",
+          "chapter": "topic_0060",
+          "chapter_title": "Differentiation",
+          "scope": "Degree-at-most-two real polynomials, integer coefficients -9..9, integer point -3..3. Reuse reviewed expansion-versus-differentiation logic, keep h nonzero before the limit, distinguish f(a) and f prime(a). Independent checks must compare actually distinct computational procedures."
+        },
+        {
+          "id": "polynomial_rules",
+          "title": "Polynomial derivative rules",
+          "chapter": "topic_0060",
+          "chapter_title": "Differentiation",
+          "scope": "Real polynomials of degree at most three with bounded integer coefficients and evaluation points. Define powers, coefficients, derivative function versus value, sum/constant/power rules and their domain. Independently recover the h coefficient from expanding the original polynomial at a+h; compare it with coefficient-by-degree differentiation. Reject accidental equality between intended and distractor values; no transcendental derivatives or symbolic free-form grading."
+        }
+      ]
+    },
+    {
+      "subject": "linear_algebra",
+      "title": "Linear Algebra",
+      "thread_id": "01a08b7f-444b-7703-a228-d817abcd6afd",
+      "families": [
+        {
+          "id": "row_operations",
+          "title": "Complete and reversible row operations",
+          "chapter": "worked_matrix_practice",
+          "chapter_title": "Worked matrix practice",
+          "scope": "Two equations in x,y using existing bounded MATRIX_ROLE_CHECKERS where valid. Signed augmented entries, whole-row operations, inverse operations, first-error repair and original-system verification including fractional pairs. Explicitly preserve the order of x and y and every constant column."
+        },
+        {
+          "id": "determinants_2x2",
+          "title": "Two by two determinants and invertibility",
+          "chapter": "topic_0093",
+          "chapter_title": "Determinants",
+          "scope": "Bounded real integer 2x2 matrices. Define positions and determinant ad-bc, sign under a row swap, zero versus nonzero determinant, and invertibility. Cover singular and nonsingular cases deliberately without confusing a singular coefficient matrix with a unique system outcome. Independently verify a nonzero inverse by exact matrix multiplication; check singularity via dependence/null-vector evidence. No arbitrary-size determinants or new solver runtime."
+        }
+      ]
+    }
+  ],
+  "contract_revision": 2,
+  "target_packages": 8,
+  "staging_set_candidates": 24,
+  "delivery_unit": "one family: one canonical reading plus eighteen questions in three sets"
+}

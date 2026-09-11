@@ -1,0 +1,15 @@
+@question {{id}} | {{title}}
+@template choices.v1
+@version 1
+@goal {{objective}}
+@given {{given}}
+@domain The target is the x coefficient in row 2. Keep row 1 unchanged and use a whole-row replacement.
+@read {{reading_id}}
+@step 10 | Which operation eliminates x from row 2 while leaving row 1 unchanged?
+{{choices_1}}
+@feedback {{wrong_1_1_id}} | This changes row 1, but row 1 must remain unchanged. The stated goal requires a replacement of row 2 by {{answer_1}}.
+@feedback {{wrong_1_0_id}} | With this multiple, row 2 has x coefficient {{second_0}}+({{opposite_k}})({{first_0}})={{wrong_multiple_x}}, not 0. Use {{answer_1}}.
+@after {{after_1}}
+@wrong Check both the destination row and whether its new x coefficient is zero.
+@why Test row 2's x coefficient while retaining row 1: {{forward_calculation}}. All three destination entries use the same multiple; row 1 is unchanged: {{changed_row}}.
+@end

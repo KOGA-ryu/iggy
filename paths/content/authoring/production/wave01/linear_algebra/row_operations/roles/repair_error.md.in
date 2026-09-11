@@ -1,0 +1,22 @@
+@question {{id}} | {{title}}
+@template choices.v1
+@version 1
+@goal {{objective}}
+@given {{given}}
+@domain L1, L2 and L3 form a student attempt containing an error; later lines may carry an earlier error. The intended operation reaches every column.
+@read {{reading_id}}
+@step 10 | Which line first fails to apply the row operation to the complete row?
+{{choices_1}}
+@feedback {{wrong_1_1_id}} | L2 only carries forward the unchanged constant from L1; the omission first occurs in L1.
+@feedback {{wrong_1_2_id}} | L3 is a consequence of the incomplete earlier line; inspect L1 before judging later arithmetic.
+@after {{after_1}}
+@wrong Find the earliest omitted constant or coefficient operation before judging later arithmetic.
+@why The first incomplete operation is visible in the constant column: L_1 leaves {{second_2}} unchanged, but the constant must use {{constant_expression}}.
+@step 20 | What is the corrected consequence of that first error?
+{{choices_2}}
+@feedback {{wrong_2_0_id}} | This leaves the old constant {{second_2}} untouched. The complete constant update is {{constant_calculation}}.
+@feedback {{wrong_2_1_id}} | This subtracts only one copy of {{first_2}}, although the required multiple is {{k}}. The complete constant update is {{constant_calculation}}.
+@after {{after_2}}
+@wrong Recalculate the missing operation from the original entries.
+@why Recalculate that constant from the original rows: {{constant_calculation}}.
+@end

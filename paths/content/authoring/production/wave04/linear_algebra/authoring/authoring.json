@@ -1,0 +1,32 @@
+{
+  "format": "paths_learning_authoring",
+  "format_version": 1,
+  "package_id": "prod04_linear_span_basis",
+  "package_version": 1,
+  "sources": [
+    {
+      "id": "prod04_linear_span_basis_hefferon",
+      "kind": "adapted",
+      "title": "Span, independence, bases and coordinates",
+      "uri": "https://jheffero.w3.uvm.edu/linearalgebra/book.pdf",
+      "revision": "Fourth edition, 2020-Apr-26; pinned SHA-256 5240f2782e645bc6351ad9eba69d8c19500142a5cca9c90450c17b3765a1a400",
+      "attribution": "Adapted from Jim Hefferon, Linear Algebra, fourth edition, exercises in Two.I.2, Two.II.1 and Two.III.1. Author offers CC BY-SA 3.0 US at https://hefferon.net/source.html; license https://creativecommons.org/licenses/by-sa/3.0/us/. Accessed 2026-09-11. Exact per-question locators and changes are in cases.json; worked example from Two.I.2.27(a).",
+      "reuse": "These adapted lesson and questions are licensed CC BY-SA 3.0 US. Paths changed the identified numbers/tasks, added complete symbolic-choice routes, and wrote new teaching and feedback. No externally attributed puzzle, figure or photograph reused. No Hefferon endorsement implied; this notice does not license the surrounding application.",
+      "content_ids": [
+        "prod04_linear_span_basis_r",
+        "prod04_linear_span_basis_q01",
+        "prod04_linear_span_basis_q02",
+        "prod04_linear_span_basis_q03",
+        "prod04_linear_span_basis_q04",
+        "prod04_linear_span_basis_q05",
+        "prod04_linear_span_basis_q06",
+        "prod04_linear_span_basis_q07",
+        "prod04_linear_span_basis_q08",
+        "prod04_linear_span_basis_q09",
+        "prod04_linear_span_basis_q10",
+        "prod04_linear_span_basis_q11",
+        "prod04_linear_span_basis_q12"
+      ]
+    }
+  ]
+}

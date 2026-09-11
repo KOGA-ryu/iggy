@@ -1,0 +1,13 @@
+{
+  "format":"paths_learning_authoring","format_version":1,
+  "package_id":"prod04_algebra_rational_equations","package_version":1,
+  "sources":[{
+    "id":"precalc_rational","kind":"adapted",
+    "title":"Precalculus: An Investigation of Functions, Edition 2.3, Section 3.7 Exercises 5, 6, 7, 8, 11, 12, 13 and 16",
+    "uri":"https://www.opentextbookstore.com/precalc/2.3/Chapter%203.pdf",
+    "revision":"Edition 2.3; pinned PDF SHA256 bde8345a0d05e762cf787b341f6f62bfdbe8443769e5aae141ab2f95ef81259f; accessed 2026-09-11T03:16:52.020541+00:00",
+    "attribution":"Adapted from David Lippman and Melonie Rasmussen, Precalculus: An Investigation of Functions. Chapter 3 includes material remixed with permission from Carl Stitz and Jeff Zeager, College Algebra (2013). Main text and these adapted lesson/questions: Creative Commons Attribution-ShareAlike 4.0, https://creativecommons.org/licenses/by-sa/4.0/ . No endorsement implied.",
+    "reuse":"Changed graph/intercept/asymptote prompts into explicit real rational equations; selected constants, reduced two denominator exponents, factored expressions, and introduced related additive/identity equations. New teaching, choices and feedback. Exact per-question seed mapping is in cases.json; the lesson uses Exercise 5 with p(x)=-1. Excludes UW-marked exercises and the separately NC solutions manual. CC BY-SA 4.0 applies to this adapted content, not a claim about the surrounding application.",
+    "content_ids":["prod04_algebra_rational_equations_r","prod04_algebra_rational_equations_q01","prod04_algebra_rational_equations_q02","prod04_algebra_rational_equations_q03","prod04_algebra_rational_equations_q04","prod04_algebra_rational_equations_q05","prod04_algebra_rational_equations_q06","prod04_algebra_rational_equations_q07","prod04_algebra_rational_equations_q08","prod04_algebra_rational_equations_q09","prod04_algebra_rational_equations_q10","prod04_algebra_rational_equations_q11","prod04_algebra_rational_equations_q12"]
+  }]
+}

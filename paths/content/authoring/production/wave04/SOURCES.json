@@ -1,0 +1,165 @@
+{
+  "format": "paths_web_source_trial",
+  "format_version": 1,
+  "wave": "wave04",
+  "sources": [
+    {
+      "id": "precalc_rational",
+      "subject": "algebra",
+      "title": "Precalculus: An Investigation of Functions, Edition 2.3",
+      "authors": [
+        "David Lippman",
+        "Melonie Rasmussen"
+      ],
+      "license": "CC-BY-SA-4.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "source_url": "https://www.opentextbookstore.com/precalc/2.3/Chapter%203.pdf",
+      "accessed_utc": "2026-09-11T03:16:52.020541+00:00",
+      "download": {
+        "file": "precalculus-ch03.pdf",
+        "url": "https://www.opentextbookstore.com/precalc/current2.php?chapter=3&format=pdf",
+        "resolved_url": "https://www.opentextbookstore.com/precalc/2.3/Chapter%203.pdf",
+        "sha256": "bde8345a0d05e762cf787b341f6f62bfdbe8443769e5aae141ab2f95ef81259f",
+        "bytes": 3593240,
+        "text_file": "precalculus-ch03.txt",
+        "text_sha256": "475a1ee2789bb788bca7f6d9c5ae850ffe7fa10ff606f468bc0d07e2c7313aca"
+      },
+      "local_snapshot": "/Users/kogaryu/iggy3d/paths/build/production/wave04/source-snapshots/precalculus-ch03.pdf",
+      "local_text": "/Users/kogaryu/iggy3d/paths/build/production/wave04/source-snapshots/precalculus-ch03.txt",
+      "seed_pool": "Section 3.7, Exercises 5-18, printed p.234, PDF p.76; solving f(x)=k is an explicit adaptation of the source function, not its original graph task.",
+      "license_evidence": [
+        {
+          "file": "precalculus-frontmatter.pdf",
+          "url": "https://www.opentextbookstore.com/precalc/current2.php?chapter=front&format=pdf",
+          "resolved_url": "https://www.opentextbookstore.com/precalc/2.3/Front%20Matter.pdf",
+          "sha256": "460a7a13f61fc04cf9790346c608a91353d4adb22134e71db98dffed22a02585",
+          "bytes": 644540,
+          "text_file": "precalculus-frontmatter.txt",
+          "text_sha256": "feaf7c65de84788ad6320ce01a69ea8b48c8aafbe39cb40dd8749e58aeb419c9"
+        },
+        {
+          "file": "precalculus-source.html",
+          "url": "https://www.opentextbookstore.com/precalc/",
+          "resolved_url": "https://www.opentextbookstore.com/precalc/",
+          "sha256": "dd56eeac604ee28901b2f2a3df16a608d01ea53832f7ebf7ac6e8981eb668d33",
+          "bytes": 12186
+        }
+      ],
+      "scope_note": "The main text is CC BY-SA 4.0. Chapter 3 explicitly includes Stitz and Zeager material with permission under CC BY-SA; preserve that credit for algebra. Do not use the separately NC detailed solutions manual or UW-marked exercises."
+    },
+    {
+      "id": "precalc_trig",
+      "subject": "trigonometry",
+      "title": "Precalculus: An Investigation of Functions, Edition 2.3",
+      "authors": [
+        "David Lippman",
+        "Melonie Rasmussen"
+      ],
+      "license": "CC-BY-SA-4.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "source_url": "https://www.opentextbookstore.com/precalc/2.3/Chapter%207.pdf",
+      "accessed_utc": "2026-09-11T03:16:52.020541+00:00",
+      "download": {
+        "file": "precalculus-ch07.pdf",
+        "url": "https://www.opentextbookstore.com/precalc/current2.php?chapter=7&format=pdf",
+        "resolved_url": "https://www.opentextbookstore.com/precalc/2.3/Chapter%207.pdf",
+        "sha256": "c1d6456a40c0c4d252b55859bdc27e4f40608fb446a59ac2d1395c192eaab168",
+        "bytes": 1472824,
+        "text_file": "precalculus-ch07.txt",
+        "text_sha256": "57e2721c5ddf9db9bfedb46cfe68d6db894995423923419291ca0c98271b142a"
+      },
+      "local_snapshot": "/Users/kogaryu/iggy3d/paths/build/production/wave04/source-snapshots/precalculus-ch07.pdf",
+      "local_text": "/Users/kogaryu/iggy3d/paths/build/production/wave04/source-snapshots/precalculus-ch07.txt",
+      "seed_pool": "Section 7.1, Examples 1-4 and Exercises 13-32, 37-42, printed pp.454-460, PDF pp.2-8; choose or adapt coefficients for exact angle solutions.",
+      "license_evidence": [
+        {
+          "file": "precalculus-frontmatter.pdf",
+          "url": "https://www.opentextbookstore.com/precalc/current2.php?chapter=front&format=pdf",
+          "resolved_url": "https://www.opentextbookstore.com/precalc/2.3/Front%20Matter.pdf",
+          "sha256": "460a7a13f61fc04cf9790346c608a91353d4adb22134e71db98dffed22a02585",
+          "bytes": 644540,
+          "text_file": "precalculus-frontmatter.txt",
+          "text_sha256": "feaf7c65de84788ad6320ce01a69ea8b48c8aafbe39cb40dd8749e58aeb419c9"
+        },
+        {
+          "file": "precalculus-source.html",
+          "url": "https://www.opentextbookstore.com/precalc/",
+          "resolved_url": "https://www.opentextbookstore.com/precalc/",
+          "sha256": "dd56eeac604ee28901b2f2a3df16a608d01ea53832f7ebf7ac6e8981eb668d33",
+          "bytes": 12186
+        }
+      ],
+      "scope_note": "The main text is CC BY-SA 4.0. Chapter 3 explicitly includes Stitz and Zeager material with permission under CC BY-SA; preserve that credit for algebra. Do not use the separately NC detailed solutions manual or UW-marked exercises."
+    },
+    {
+      "id": "active_substitution",
+      "subject": "calculus",
+      "title": "Active Calculus Activities Workbook Chapters 5-8, 2018 edition updated August 1, 2024",
+      "authors": [
+        "Matthew Boelkins",
+        "David Austin",
+        "Steven Schlicker"
+      ],
+      "license": "CC-BY-SA-4.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "source_url": "https://activecalculus.org/wp-content/uploads/2024/08/acs-activity-workbook-58-2024.pdf",
+      "accessed_utc": "2026-09-11T03:16:52.020541+00:00",
+      "download": {
+        "file": "active-calculus-ch05-08.pdf",
+        "url": "https://activecalculus.org/wp-content/uploads/2024/08/acs-activity-workbook-58-2024.pdf",
+        "resolved_url": "https://activecalculus.org/wp-content/uploads/2024/08/acs-activity-workbook-58-2024.pdf",
+        "sha256": "262344da4d7598bb49a0753a0e169288e18bcde6aa806d0abc8f3ada205a00cd",
+        "bytes": 6937575,
+        "text_file": "active-calculus-ch05-08.txt",
+        "text_sha256": "527786c5d139c8050a659f3c7ca422b8082218dfaec8820e58238a72a77b4890"
+      },
+      "local_snapshot": "/Users/kogaryu/iggy3d/paths/build/production/wave04/source-snapshots/active-calculus-ch05-08.pdf",
+      "local_text": "/Users/kogaryu/iggy3d/paths/build/production/wave04/source-snapshots/active-calculus-ch05-08.txt",
+      "seed_pool": "Section 5.3, Preview Activity 5.3.1(b,c), Activities 5.3.2-5.3.4, printed pp.17-24, PDF pp.27-34.",
+      "license_evidence": "PDF page 6 explicitly permits commercial adaptation under CC BY-SA 4.0. No figures or cover photography are reused."
+    },
+    {
+      "id": "hefferon_span_basis",
+      "subject": "linear_algebra",
+      "title": "Linear Algebra, Fourth edition, 2020-Apr-26",
+      "authors": [
+        "Jim Hefferon"
+      ],
+      "license": "CC-BY-SA-3.0-US",
+      "license_url": "https://creativecommons.org/licenses/by-sa/3.0/us/",
+      "source_url": "https://jheffero.w3.uvm.edu/linearalgebra/book.pdf",
+      "accessed_utc": "2026-09-11T03:16:52.020541+00:00",
+      "download": {
+        "file": "hefferon-book.pdf",
+        "url": "https://jheffero.w3.uvm.edu/linearalgebra/book.pdf",
+        "resolved_url": "https://jheffero.w3.uvm.edu/linearalgebra/book.pdf",
+        "sha256": "5240f2782e645bc6351ad9eba69d8c19500142a5cca9c90450c17b3765a1a400",
+        "bytes": 7626685,
+        "text_file": "hefferon-book.txt",
+        "text_sha256": "1b13c328007945c1d9d877293603d6d2b75689d075534b3ea7a7d543ea84757d"
+      },
+      "local_snapshot": "/Users/kogaryu/iggy3d/paths/build/production/wave04/source-snapshots/hefferon-book.pdf",
+      "local_text": "/Users/kogaryu/iggy3d/paths/build/production/wave04/source-snapshots/hefferon-book.txt",
+      "seed_pool": "Two.I.2.22, 2.23(a), 2.26(a-e), 2.27(a), 2.28(a-b); Two.II.1.21(a-d), 1.23(a-b); Two.III.1.21(a-d), 1.22(a), 1.23, 1.27(b). Printed pp.103-104, 117, 127. Exclude externally attributed or question-mark puzzle exercises.",
+      "license_evidence": [
+        {
+          "file": "hefferon-license.html",
+          "url": "https://hefferon.net/source.html",
+          "resolved_url": "https://hefferon.net/source.html",
+          "sha256": "a6de32ca847a98dd185aef3f6d20bac2d961d6d682fdb03fed7d9596820862d4",
+          "bytes": 4707
+        }
+      ],
+      "scope_note": "Author offers a choice of GFDL or CC BY-SA 3.0 US; this trial uses CC BY-SA 3.0 US. Exclude externally attributed problems. Solutions PDF is a cross-check, not the mathematical oracle.",
+      "answer_snapshot": {
+        "file": "hefferon-answers.pdf",
+        "url": "https://jheffero.w3.uvm.edu/linearalgebra/jhanswer.pdf",
+        "resolved_url": "https://jheffero.w3.uvm.edu/linearalgebra/jhanswer.pdf",
+        "sha256": "6e1761061c136a984400198f62253cf208ca36ddee81415ae13de81319b5429d",
+        "bytes": 1789766,
+        "text_file": "hefferon-answers.txt",
+        "text_sha256": "43086345e6c808b270e71fca76b47a9c9ed5b510372571312068fcf8bc177f1f"
+      }
+    }
+  ]
+}

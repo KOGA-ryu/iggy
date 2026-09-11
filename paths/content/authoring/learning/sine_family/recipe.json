@@ -1,0 +1,196 @@
+{
+  "format": "paths_question_family",
+  "format_version": 1,
+  "family": "sine_turn_v1",
+  "package": {
+    "id": "sine_family_v1",
+    "version": 1,
+    "title": "Sine equations: every solution in one turn"
+  },
+  "placement": {
+    "subject": "trigonometry",
+    "subject_title": "Trigonometry",
+    "chapter": "topic_0032",
+    "chapter_title": "Unit Circle Framework"
+  },
+  "source": {
+    "kind": "generated",
+    "title": "Original Paths exact one-turn sine teaching family",
+    "uri": "paths:generated/sine_turn_v1",
+    "revision": "1",
+    "attribution": "Reuses the reviewed Paths Wave 01 sine cases, lesson, questions and exact certificates. The Wave 01 source review checked conventions against OpenStax Precalculus 2e sections 5.1, 5.2 and 7.5 on 2026-09-10.",
+    "reuse": "Original project material; no external exercise wording copied. Frozen source: content/authoring/production/wave01/trigonometry."
+  },
+  "parameters": {
+    "domain": {
+      "units": "radians",
+      "lower": "0",
+      "upper": "2",
+      "include_lower": true,
+      "include_upper": false
+    },
+    "sets": [
+      {
+        "id": "sample",
+        "cases": {
+          "read_notation": {
+            "level": "1/2",
+            "coefficient_sign": 1,
+            "offset": 0,
+            "known_branch": 0
+          },
+          "worked_check": {
+            "level": "1/2",
+            "coefficient_sign": 1,
+            "offset": -1,
+            "known_branch": 0
+          },
+          "choose_next_step": {
+            "level": "-1/2",
+            "coefficient_sign": -1,
+            "offset": 2,
+            "known_branch": 0
+          },
+          "explain_step": {
+            "level": "1/2",
+            "coefficient_sign": -1,
+            "offset": 0,
+            "known_branch": 0
+          },
+          "repair_error": {
+            "level": "0",
+            "coefficient_sign": 1,
+            "offset": -1,
+            "known_branch": 0
+          },
+          "independent": {
+            "level": "-1/2",
+            "coefficient_sign": 1,
+            "offset": 2,
+            "known_branch": 0
+          }
+        }
+      },
+      {
+        "id": "practice",
+        "cases": {
+          "read_notation": {
+            "level": "-1/2",
+            "coefficient_sign": 1,
+            "offset": 1,
+            "known_branch": 0
+          },
+          "worked_check": {
+            "level": "-1/2",
+            "coefficient_sign": 1,
+            "offset": -2,
+            "known_branch": 0
+          },
+          "choose_next_step": {
+            "level": "0",
+            "coefficient_sign": -1,
+            "offset": 1,
+            "known_branch": 0
+          },
+          "explain_step": {
+            "level": "-1/2",
+            "coefficient_sign": -1,
+            "offset": 0,
+            "known_branch": 0
+          },
+          "repair_error": {
+            "level": "1",
+            "coefficient_sign": 1,
+            "offset": 0,
+            "known_branch": 0
+          },
+          "independent": {
+            "level": "0",
+            "coefficient_sign": 1,
+            "offset": 1,
+            "known_branch": 0
+          }
+        }
+      },
+      {
+        "id": "fresh_check",
+        "cases": {
+          "read_notation": {
+            "level": "-1",
+            "coefficient_sign": 1,
+            "offset": 2,
+            "known_branch": 0
+          },
+          "worked_check": {
+            "level": "0",
+            "coefficient_sign": 1,
+            "offset": 1,
+            "known_branch": 0
+          },
+          "choose_next_step": {
+            "level": "1/2",
+            "coefficient_sign": -1,
+            "offset": 0,
+            "known_branch": 0
+          },
+          "explain_step": {
+            "level": "1/2",
+            "coefficient_sign": -1,
+            "offset": 0,
+            "known_branch": 1
+          },
+          "repair_error": {
+            "level": "-1/2",
+            "coefficient_sign": 1,
+            "offset": 2,
+            "known_branch": 0
+          },
+          "independent": {
+            "level": "1",
+            "coefficient_sign": 1,
+            "offset": 0,
+            "known_branch": 0
+          }
+        }
+      }
+    ],
+    "roles": [
+      {
+        "role": "read_notation",
+        "title": "Read the target coordinate",
+        "objective": "Interpret the exact coordinate required by the original equation.",
+        "prerequisites": "Radian angles, interval inequalities, signed arithmetic, and unit-circle coordinates."
+      },
+      {
+        "role": "worked_check",
+        "title": "Complete the other one-turn point",
+        "objective": "Supply the other permitted angle with the stated coordinate.",
+        "prerequisites": "Radian angles, interval inequalities, signed arithmetic, and unit-circle coordinates."
+      },
+      {
+        "role": "choose_next_step",
+        "title": "Isolate the coordinate",
+        "objective": "Choose an equivalent equation with the trigonometric coordinate isolated.",
+        "prerequisites": "Radian angles, interval inequalities, signed arithmetic, and unit-circle coordinates."
+      },
+      {
+        "role": "explain_step",
+        "title": "Explain the matching coordinate",
+        "objective": "Choose the reflection that preserves the stated coordinate.",
+        "prerequisites": "Radian angles, interval inequalities, signed arithmetic, and unit-circle coordinates."
+      },
+      {
+        "role": "repair_error",
+        "title": "Repair the first endpoint error",
+        "objective": "Identify the first interval error and repair the complete set.",
+        "prerequisites": "Radian angles, interval inequalities, signed arithmetic, and unit-circle coordinates."
+      },
+      {
+        "role": "independent",
+        "title": "Solve a fresh one-turn equation",
+        "objective": "Select every solution of a new equation in the stated interval.",
+        "prerequisites": "Radian angles, interval inequalities, signed arithmetic, and unit-circle coordinates."
+      }
+    ]
+  }
+}

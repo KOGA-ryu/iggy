@@ -345,19 +345,21 @@ a reset credit. Different topics, interruptions and coordinator work prevent
 an isolated speed or cost comparison; no token or weekly-allowance saving is
 claimed. No subsequent curriculum wave is assigned.
 
-The next capability is implemented for one registered family as described
-below. Other subjects still require their reviewed mathematical providers;
+The reusable recipe capability supports two registered families as described
+below. Other mathematics still requires its reviewed providers;
 this does not assign another production wave.
 
 ## Recipe authoring
 
 The common entry point is `tools/author_question_family.py`. It currently
-supports `linear_balance_v1`, using the existing linear teaching family and
-native choices/textbook layout. Work from the Paths root:
+supports `linear_balance_v1` and `sine_turn_v1`, using the existing reviewed
+teaching and native choices/textbook layout. Work from the Paths root:
 
 ```sh
 python3 -B tools/author_question_family.py init content/authoring/drafts/balance_next --family linear_balance_v1 --package balance_next
 python3 -B tools/author_question_family.py check content/authoring/drafts/balance_next
+python3 -B tools/author_question_family.py init content/authoring/drafts/sine_next --family sine_turn_v1 --package sine_next
+python3 -B tools/author_question_family.py check content/authoring/drafts/sine_next
 ```
 
 `init` requires a new directory. Its four editable files are:
@@ -373,16 +375,24 @@ The shared recipe fields are `format: paths_question_family`, `format_version: 1
 `family`, `package`, `placement`, `source` and `parameters`. Package has id,
 version and title; placement has subject/subject_title and chapter/chapter_title.
 Source has kind, title, uri, revision, attribution and reuse. The registered
-provider defines parameters. The linear provider uses three named finite sets
-and six role descriptions, following the complete [example](../content/authoring/learning/linear_family/DESIGN.md).
+provider defines parameters. Both use three named finite sets and six role
+descriptions. The [linear example](../content/authoring/learning/linear_family/DESIGN.md)
+derives signed linear cases from bounded coefficients and solutions. The
+[sine example](../content/authoring/learning/sine_family/DESIGN.md) specifies a
+height, coefficient sign, offset and known branch for each named role, with
+strict limits that keep its feedback and questions meaningful.
 No Python path or program is accepted as a recipe field.
 
 `check` generates stable question IDs from the registered family/version,
-package namespace, role, set and original mathematics. It fills existing Markdown templates, numbers all 18
-questions, labels their sets, balances first-answer positions while preserving
-feedback IDs, and assembles one lesson with ordered practice links. It creates
+package namespace, role, set and original mathematics. It fills existing
+Markdown templates, numbers all 18 questions, labels their sets, balances
+first-answer positions across roles and sets while preserving feedback IDs,
+and assembles one lesson with ordered practice links. It creates
 standard metadata and source coverage automatically. The linear provider's
-old standalone packaging and receipt implementation was removed.
+old standalone packaging and receipt implementation was removed. The sine
+adapter calls the frozen Wave 01 exact mathematical functions without calling
+its old recipe, presentation or packaging functions. Imported mathematical
+code is included in the shared source-change checks and verification hashes.
 
 The actual document compiler, independent finite certificates, complete model
 replay, wrong-choice checks, saved-work replay and shared disclosure gate must
@@ -406,11 +416,18 @@ not inferred merely from an unchanged ID. Routine teaching review remains the
 coordinator's responsibility. Visual quality and learning outcomes remain
 separate observations. Neither checking nor initialization publishes content.
 
-Only the linear family's finite parameters are supported at this checkpoint.
+Only these two families' documented finite parameters are supported at this
+checkpoint. The sine scaffold deliberately starts with the reviewed Wave 01
+mathematics; publishing it unchanged would duplicate that practice. New IDs or
+package names do not establish new mathematical coverage. Both examples remain
+unpublished. A number edit still needs review for purposeful variation.
+
 Adding another subject means registering its reviewed generator/certificates
 and calculated fields with the same runner, while reusing the packaging and
 checking path. It does not mean trusting answer keys or copying this linear
-oracle into unrelated mathematics.
+oracle into unrelated mathematics. The single targeted
+`paths_question_family_tests` CTest entry covers both providers; their tests
+are maintained in `tests/question_family_tests.py`.
 
 ## Deferred demonstration packaging
 

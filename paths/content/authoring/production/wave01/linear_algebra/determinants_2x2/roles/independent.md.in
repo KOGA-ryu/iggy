@@ -1,0 +1,15 @@
+@question {{id}} | {{title}}
+@template choices.v1
+@version 1
+@goal {{objective}}
+@given {{given}}
+@domain A is a real 2x2 matrix. A determinant conclusion must agree with the four displayed entries.
+@read {{reading_id}}
+@step 10 | Which exact determinant statement correctly classifies this fresh matrix?
+{{choices_1}}
+@feedback {{sum_id}} | This adds the diagonal products: {{sum_expression}}={{sum_value}}. The determinant subtracts the second product, giving {{determinant}}, not {{sum_label}}.
+@feedback {{other_id}} | This uses {{other_rule}} instead of ad-bc: {{other_expression}}={{other_value}}. Keep main diagonal minus other diagonal: {{determinant}}, not {{other_label}}.
+@after {{after_1}}
+@wrong Evaluate ad-bc and connect zero or nonzero to singularity or invertibility.
+@why Evaluate the determinant, then classify zero or nonzero: {{determinant_expression}}={{determinant}}.\ A\ \mathrm{is\ {{classification}}}.
+@end

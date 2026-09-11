@@ -1,0 +1,15 @@
+@question {{id}} | {{title}}
+@template choices.v1
+@version 1
+@goal {{objective}}
+@given {{given}}
+@domain Invertibility depends on the determinant, not on one isolated entry.
+@read {{reading_id}}
+@step 10 | Which statement gives a valid determinant criterion for this matrix?
+{{choices_1}}
+@feedback {{sum_id}} | This adds the diagonal products: {{sum_expression}}={{sum_value}}. The determinant subtracts the second product, giving {{determinant}}, not {{sum_label}}.
+@feedback {{other_id}} | This uses {{other_rule}} instead of ad-bc: {{other_expression}}={{other_value}}. Keep main diagonal minus other diagonal: {{determinant}}, not {{other_label}}.
+@after {{after_1}}
+@wrong Compute ad-bc before deciding whether the matrix is singular or invertible.
+@why The determinant criterion uses all four entries: {{determinant_expression}}={{determinant}}.\ A\ \mathrm{is\ {{classification}}}.
+@end

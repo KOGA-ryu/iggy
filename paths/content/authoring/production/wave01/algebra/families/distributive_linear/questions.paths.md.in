@@ -1,0 +1,103 @@
+<!-- read_notation -->
+@question {{id}} | {{title}}
+@template choices.v1
+@version 1
+@goal {{objective}}
+@given {{given}}
+@domain x is real. In a(x+b)+d=e, a is a nonzero multiplier, b is the inside constant, d is the outside constant and e is the other side.
+@read {{reading_id}}
+@step 10 | Which ordered pair names the nonzero multiplier a and signed inside constant b?
+{{choices_1}}
+@feedback {{wrong_a_1}} | This reverses the sign of the outside multiplier {{a}}. Read its sign before distributing.
+@feedback {{wrong_b_1}} | This interchanges the outside multiplier {{a}} and inside constant {{b}}. Their positions give them different algebraic jobs.
+@after {{after_1}}
+@wrong Read the multiplier and inside signed term before distributing.
+@why The ordered pair records the numbers' jobs in the original grouped expression; it is notation, not a solved value.
+@end
+<!-- worked_check -->
+@question {{id}} | {{title}}
+@template choices.v1
+@version 1
+@goal {{objective}}
+@given {{given}}
+@domain x is real. In a(x+b)+d=e, a is a nonzero multiplier, b is the inside constant, d is the outside constant and e is the other side.
+@read {{reading_id}}
+@step 10 | Which product is required when the multiplier distributes to the inside constant?
+{{choices_1}}
+@feedback {{wrong_a_1}} | This retains the inside constant {{b}} without its multiplier. The required product is ({{a}})({{b}})={{product}}.
+@feedback {{wrong_b_1}} | This reverses the sign of the product. Signed multiplication gives ({{a}})({{b}})={{product}}.
+@after {{after_1}}
+@wrong Multiply the outside coefficient by every term in the parentheses, including its sign.
+@why Multiplying both terms gives the constant product ({{a}})({{b}})={{product}}. The expanded equation is {{after_1}}; the multiplier must also remain on x.
+@end
+<!-- choose_next_step -->
+@question {{id}} | {{title}}
+@template choices.v1
+@version 1
+@goal {{objective}}
+@given {{given}}
+@domain x is real. In a(x+b)+d=e, a is a nonzero multiplier, b is the inside constant, d is the outside constant and e is the other side.
+@read {{reading_id}}
+@step 10 | Which reached equation has distributed to both terms and still equals the original right side?
+{{choices_1}}
+@feedback {{wrong_a_1}} | This multiplies x but leaves the inside constant unchanged. Distribution also requires ({{a}})({{b}})={{product}}.
+@feedback {{wrong_b_1}} | This uses the opposite sign for the constant product. The product must be ({{a}})({{b}})={{product}}.
+@after {{after_1}}
+@wrong Check every product and keep the complete equality unchanged while expanding.
+@why The complete intermediate expansion is {{after_1}}; reversing distribution recovers the grouped expression.
+@end
+<!-- explain_step -->
+@question {{id}} | {{title}}
+@template choices.v1
+@version 1
+@goal {{objective}}
+@given {{given}}
+@domain x is real. In a(x+b)+d=e, a is a nonzero multiplier, b is the inside constant, d is the outside constant and e is the other side.
+@read {{reading_id}}
+@step 10 | Which balanced operation gives the equation after the arrow, allowing the left side to be regrouped?
+{{choices_1}}
+@feedback {{wrong_a_1}} | Subtracting the outside constant moves in the opposite direction from the arrow. Add {{d}} to both sides, then regroup the left side.
+@feedback {{wrong_b_1}} | Multiplying by zero erases the restriction on x; it cannot give the displayed equation after the arrow.
+@after {{after_1}}
+@wrong Use the inverse on both complete sides; zero cannot restore a lost restriction.
+@why Adding the displayed outside constant to both complete sides yields {{after_1}}, making the direction of the inverse step explicit.
+@end
+<!-- repair_error -->
+@question {{id}} | {{title}}
+@template choices.v1
+@version 1
+@goal {{objective}}
+@given {{given}}
+@domain x is real. In a(x+b)+d=e, a is a nonzero multiplier, b is the inside constant, d is the outside constant and e is the other side.
+@read {{reading_id}}
+@step 10 | Which labelled transition first fails to distribute the multiplier correctly?
+{{choices_1}}
+@feedback {{wrong_a_1}} | L2 follows the already incomplete expansion in L1. The first error is leaving the inside constant undistributed in L1.
+@feedback {{wrong_b_1}} | L3 inherits the incomplete expansion. Diagnose L1 before changing later arithmetic.
+@after {{after_1}}
+@wrong Locate the first invalid distribution before correcting later arithmetic.
+@why L1 multiplies x by a but leaves the inside b unchanged. Distribution must act on both terms. The first decision identifies this invalid transition before calculating its numerical repair.
+@step 20 | What exact product repairs the missing distribution?
+{{choices_2}}
+@feedback {{wrong_a_2}} | This is the inside constant without its multiplier. The required product is ({{a}})({{b}})={{product}}.
+@feedback {{wrong_b_2}} | This reverses the product sign. Signed multiplication gives ({{a}})({{b}})={{product}}.
+@after {{after_2}}
+@wrong Multiply the signed multiplier by the signed inside constant.
+@why The required distributive product is ({{a}})({{b}})={{product}}, giving {{after_2}}. Substitution into the original grouped equation checks the later solved value.
+@end
+<!-- independent -->
+@question {{id}} | {{title}}
+@template choices.v1
+@version 1
+@goal {{objective}}
+@given {{given}}
+@domain x is real. In a(x+b)+d=e, a is a nonzero multiplier, b is the inside constant, d is the outside constant and e is the other side.
+@read {{reading_id}}
+@step 10 | Which exact value satisfies the original unexpanded equation?
+{{choices_1}}
+@feedback {{wrong_a_1}} | This reverses the sign of the solution. Substitution into the original parentheses leaves residual {{wrong_a_residual}} instead of zero.
+@feedback {{wrong_b_1}} | This is the value of x+b after removing the outside constant and dividing. Subtract b to obtain x; this candidate leaves residual {{wrong_b_residual}}.
+@after {{after_1}}
+@wrong Substitute in the original parentheses and outside constant, not only in a partial expansion.
+@why Substitution in the original grouped equality is {{substitution}}. Thus the accepted value {{after_1}} makes both complete sides equal; a nonzero multiplier gives a unique solution.
+@end

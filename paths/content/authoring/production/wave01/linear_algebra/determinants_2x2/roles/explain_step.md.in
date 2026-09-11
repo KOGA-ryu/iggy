@@ -1,0 +1,15 @@
+@question {{id}} | {{title}}
+@template choices.v1
+@version 1
+@goal {{objective}}
+@given {{given}}
+@domain B is obtained only by swapping the two rows of A.
+@read {{reading_id}}
+@step 10 | How does a row swap change the determinant?
+{{choices_1}}
+@feedback {{same_id}} | A row swap negates rather than retains the value: -({{determinant}})={{swapped_determinant}}, not {{determinant}}.
+@feedback {{zero_id}} | A row swap preserves whether a determinant is zero. Here the swap gives -({{determinant}})={{swapped_determinant}}, so this zero conclusion is unsupported.
+@after {{after_1}}
+@wrong Recalculate both determinants from their displayed row orders.
+@why A row swap changes only the determinant's sign: \det(A)={{determinant_expression}}={{determinant}},\quad \det(B)={{swapped_expression}}={{swapped_determinant}}. Thus \det(B)=-\det(A)=-({{determinant}})={{swapped_determinant}}.
+@end
